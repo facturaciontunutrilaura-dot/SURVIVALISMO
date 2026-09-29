@@ -1,0 +1,26 @@
+{
+  "name": "survival-offline",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Manual de campo offline de supervivencia, autoprotección y preparación ante emergencias. España y provincia de Ávila.",
+  "type": "module",
+  "scripts": {
+    "build:geo": "node tools/build-geo.mjs",
+    "build:assets": "node tools/build-assets.mjs",
+    "build": "npm run build:geo && npm run build:assets",
+    "dev": "node tools/serve.mjs",
+    "start": "node tools/serve.mjs",
+    "test": "node tools/test.mjs && node tools/test-sync.mjs",
+    "test:app": "node tools/test.mjs",
+    "test:sync": "node tools/test-sync.mjs"
+  },
+  "dependencies": {
+    "es-atlas": "^0.6.0",
+    "leaflet": "^1.9.4",
+    "topojson-client": "^3.1.0"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "playwright": "^1.62.1"
+  }
+}
