@@ -19,6 +19,17 @@ Alcance: fases 1–3 (diagnóstico, propuesta, priorización). **No se ha modifi
 | 29/09/2026 | **Fase 2 SOS**: botón `tel:112` y barra fija; cinco accesos sanitarios que reutilizan los artículos; infarto e ictus en fichas propias (solo contenido existente, marcadas como pendientes de ampliar); protocolos agrupados; pestañas en rejilla accesibles por teclado; pantalla encendida en SOS; posición para el 112 | B1, B2, B5, B8, S1–S7 |
 | 29/09/2026 | **Fase 2 búsqueda**: módulo `search.js` con normalización, raíces, palabras vacías, sinónimos estructurados, ranking por campos, fragmento resaltado, motivo, filtros, consulta en la URL y corrección de erratas | §1.8, H3, F1 |
 
+| 29/09/2026 | **Cierre de la fase 2**: corregida una carrera en el modo calma (salir mientras se concede el wake lock dejaba el temporizador y el bloqueo activos); prueba instrumentada de intervalos, ticks, listeners y wake lock; infarto e ictus marcadas como incompletas con contenido congelado por prueba; prueba de importación; validación de plantillas WMTS y CSP | A5, S2 |
+
+### Pendiente de verificación manual (no automatizable aquí)
+
+- **Mapas IGN en dispositivo real**: ver la lista del README (§4, «Pendiente de verificar en un dispositivo real»).
+- **Botón 112**: en un móvil real, que abre el marcador con el 112 escrito (sin llamar). No hacer llamadas de prueba al 112.
+- **Wake lock real**: las pruebas usan un sustituto de `navigator.wakeLock`; en un móvil, comprobar que la pantalla no se apaga en modo calma y en SOS, y sí al salir.
+- **Brújula con sensor real**: las pruebas simulan eventos de orientación; hay que comprobar en Android e iPhone (incluido el permiso de iOS) y en horizontal.
+- **Guiones silábicos** en español en Android/iOS (en el entorno de pruebas no hay diccionario).
+- **Fichas de infarto e ictus**: revisión clínica y ampliación con fuentes fiables (ERC, servicios de emergencias). Hasta entonces se muestran como incompletas.
+
 ---
 
 ## 0. Cómo se ha hecho

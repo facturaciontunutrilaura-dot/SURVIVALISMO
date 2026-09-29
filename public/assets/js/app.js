@@ -115,6 +115,12 @@ function montarPosicion112(n) {
   });
 }
 
+/* Aviso visible, arriba, en las fichas que aún no están completas. */
+const AVISO_REVISION = 'Ficha incompleta: solo recoge lo que el manual ya contenía. Pendiente de revisión y ampliación con fuentes clínicas. Sigue siempre las indicaciones del 112.';
+function avisoRevision(a) {
+  return a?.revision === 'pendiente' ? `<p class="aviso-revision" role="note">⚠ ${esc(AVISO_REVISION)}</p>` : '';
+}
+
 function resumenSanitaria(a) {
   return a?.body?.find((x) => x.card)?.card.lines[0] || (a?.sum || '').split('. ')[0];
 }
@@ -124,7 +130,7 @@ function vEmergenciaLista() {
     const a = ARTICULOS_MAP[s.art];
     return `<a class="sos-med" href="#/emergencia/sanitaria/${s.id}">
       <span class="ic" aria-hidden="true">${s.ic}</span>
-      <span class="tx"><b>${esc(s.t)}</b><small>${esc(resumenSanitaria(a))}</small></span>
+      <span class="tx"><b>${esc(s.t)}</b><small>${esc(resumenSanitaria(a))}</small>${a?.revision === 'pendiente' ? '<small class="rev">Ficha incompleta · pendiente de revisión</small>' : ''}</span>
     </a>`;
   }).join('');
 
@@ -252,6 +258,7 @@ function vSanitaria(id) {
   const n = el(`<div class="sos">
     ${topbar(s.t, 'SOS · Emergencia sanitaria', '#/emergencia')}
     <div class="emg-hd"><h1><span aria-hidden="true">${s.ic}</span> ${esc(s.t.toUpperCase())}</h1><p>${esc(a.sum)}</p></div>
+    ${avisoRevision(a)}
     ${boton112()}
     <div class="sp"></div>
     ${renderBlocks(a.body)}
@@ -283,6 +290,7 @@ function vArticulo(id) {
     ${topbar(a.t, sec ? sec.t : '', `#/sec/${a.sec}`)}
     <h1>${sec ? sec.ic + ' ' : ''}${esc(a.t)}</h1>
     <p>${prBadge(a.pr, PRIORIDADES)} <span class="muted">${esc(a.sum)}</span></p>
+    ${avisoRevision(a)}
     <hr>
     ${renderBlocks(a.body)}
     <hr>

@@ -367,6 +367,10 @@ export function modoCalma() {
   const numEl = n.querySelector('#ca-num');
   const cicloEl = n.querySelector('#ca-ciclo');
   let timer = null, wake = null;
+  /* Cada pulsación de «Empezar» abre una sesión nueva; parar() la invalida.
+     Pedir el wake lock es asíncrono: si mientras tanto se para o se sale de
+     la pantalla, la sesión ya no es la vigente y no debe arrancar nada. */
+  let sesion = 0;
 
   const desc = () => {
     const r = RESPIRACIONES.find((x) => x.id === sel.value);
@@ -376,6 +380,7 @@ export function modoCalma() {
   desc();
 
   function parar() {
+    sesion++;
     clearInterval(timer); timer = null;
     ring.style.transition = 'none';
     ring.style.transform = 'scale(0.55)';
@@ -387,8 +392,12 @@ export function modoCalma() {
 
   n.querySelector('#ca-start').addEventListener('click', async () => {
     parar();
+    const mia = sesion;
     const r = RESPIRACIONES.find((x) => x.id === sel.value);
-    try { wake = await navigator.wakeLock?.request('screen'); } catch { /* opcional */ }
+    let lock = null;
+    try { lock = await navigator.wakeLock?.request('screen'); } catch { /* opcional */ }
+    if (mia !== sesion) { lock?.release?.().catch(() => {}); return; }
+    wake = lock;
     let ciclo = 0, fase = 0, seg = 0;
 
     const aplica = () => {

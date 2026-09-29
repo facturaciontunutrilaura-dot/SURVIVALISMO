@@ -463,6 +463,11 @@ html[data-theme='night'] .btn-112 { background: #7A1D16; border-color: #A4473A; 
 }
 .sos-med small { font-size: .78rem; color: #E6BDB3; line-height: 1.3; margin-top: 3px; }
 html[data-theme='night'] .sos-med { background: #24110D; border-color: #4A2119; border-left-color: #8A4336; color: #D9B9AE; }
+.sos-med small.rev { color: #F4C98A; font-weight: 600; margin-top: 4px; }
+.aviso-revision {
+  margin: 0 0 12px; padding: 8px 10px; border: 1px dashed #C08A52; border-radius: var(--r);
+  background: rgba(192, 138, 82, .10); color: #F0D2A8; font-size: .85rem; line-height: 1.35;
+}
 .sos-mas { display: inline-block; margin: 10px 2px 18px; color: var(--olive3); font-weight: 700; min-height: 44px; line-height: 44px; }
 .sos-grupo { margin: 14px 0 6px; font-size: .9rem; color: var(--dim); letter-spacing: .08em; }
 .sos .row .ric { font-size: 1.35rem; width: 1.6em; text-align: center; flex: 0 0 auto; }

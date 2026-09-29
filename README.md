@@ -12,7 +12,7 @@ Aplicación web progresiva (PWA) sin dependencias externas en tiempo de ejecuci�
 npm install          # instala leaflet, es-atlas y topojson-client (solo para el build)
 npm run build        # genera geodatos, iconos y el manifiesto de precache
 npm run dev          # servidor local en http://localhost:8080
-npm test             # 257 pruebas: 22 unitarias (buscador, datos, build) + 188 end-to-end de app + 47 de sincronización, incluida la prueba offline real
+npm test             # 276 pruebas: 25 unitarias (buscador, datos, build, mapas) + 204 end-to-end de app + 47 de sincronización, incluida la prueba offline real
 ```
 
 No hay bundler, ni transpilador, ni framework. El directorio `public/` es la
@@ -304,6 +304,20 @@ solo ocurría sin conexión; con conexión pero sin teselas el mapa quedaba vac�
 
 Las teselas de versiones anteriores (OpenStreetMap / OpenTopoMap) ya no se
 muestran: el mapa ofrece borrarlas para liberar espacio.
+
+> **PENDIENTE DE VERIFICAR EN UN DISPOSITIVO REAL.** Las pruebas automáticas
+> simulan el servidor del IGN (el entorno de pruebas no tiene acceso a
+> `www.ign.es`). Comprobado por código: plantillas WMTS bien formadas, CSP,
+> atribución y comportamiento cuando las teselas fallan. Falta confirmar con
+> conexión real, en móvil y en el dominio publicado:
+> 1. Que las tres capas se ven (mapa base, MTN, PNOA) en `🗺 Mapa`.
+> 2. Que **Descargar área** guarda teselas (el contador sube). Si todas fallan,
+>    el IGN no permite leerlas desde JavaScript (CORS) y solo se verían con
+>    conexión; habría que buscar otra vía antes de darlo por bueno.
+> 3. Que, en modo avión, la zona descargada se sigue viendo.
+> 4. Que los zooms máximos (`nativo` en `TILE_SOURCES`) son correctos: si a
+>    ese zoom aparecen teselas en blanco o de error, hay que bajarlo.
+> 5. Que el formato `image/jpeg` es el que sirve cada capa.
 
 **c) Capas GeoJSON y GPX importables.**
 El usuario puede descargar capas oficiales (zonas inundables de las

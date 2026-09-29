@@ -189,3 +189,76 @@ test('el manifiesto de precache incluye todos los recursos de la app', () => {
   walk(PUB);
   assert.deepEqual(faltan, [], 'ejecuta npm run build:assets');
 });
+
+/* ------------------------- Infarto e ictus: contenido congelado -------------------------
+   Estas fichas solo pueden contener frases que ya estaban en el manual. Si
+   alguien añade o cambia texto, esta prueba falla a propósito: ampliarlas
+   requiere revisión con fuentes clínicas y actualizar esta lista a la vez. */
+const TEXTO_REVISADO = {
+  'pa-infarto': [
+    'Infarto: dolor torácico',
+    'El dolor torácico requiere atención profesional inmediata: llama al 112.',
+    'SOSPECHA DE INFARTO', 'Dolor torácico → atención profesional inmediata', 'Llama al 112',
+    'Si no responde y no respira con normalidad → RCP y DEA', 'Qué hacer',
+    'Llama al 112. No cuelgues hasta que te lo indiquen: pueden guiarte paso a paso.',
+    'Al llamar di qué ha pasado y desde cuándo, dónde estáis (dirección exacta o coordenadas) y qué le ocurre (consciencia, respiración).',
+    'Si deja de responder y no respira con normalidad: llama al 112 (manos libres), pide un desfibrilador e inicia RCP.',
+  ],
+  'pa-ictus': [
+    'Ictus: reconocerlo y avisar',
+    'Asimetría facial, debilidad en un brazo o dificultad para hablar. El tiempo es cerebro: 112 sin esperar.',
+    'SOSPECHA DE ICTUS', 'Asimetría facial', 'Debilidad en un brazo', 'Dificultad para hablar', 'El tiempo es cerebro: 112 sin esperar', 'Qué hacer',
+    'Llama al 112 sin esperar. No cuelgues hasta que te lo indiquen: pueden guiarte paso a paso.',
+    'Al llamar di qué ha pasado y desde cuándo, dónde estáis (dirección exacta o coordenadas) y qué le ocurre (consciencia, respiración).',
+    'Si deja de responder y no respira con normalidad: llama al 112 (manos libres), pide un desfibrilador e inicia RCP.',
+  ],
+};
+
+test('infarto e ictus: marcadas como incompletas y sin texto nuevo sin revisar', () => {
+  for (const [id, permitido] of Object.entries(TEXTO_REVISADO)) {
+    const a = ARTICULOS_MAP[id];
+    assert.equal(a.revision, 'pendiente', `${id} debe seguir marcada como pendiente de revisión`);
+    const textos = [a.t, a.sum];
+    for (const b of a.body) {
+      if (b.warn) continue; // el aviso de ficha pendiente
+      if (b.h) textos.push(b.h);
+      if (b.p) textos.push(b.p);
+      if (b.ul) textos.push(...b.ul);
+      if (b.ol) textos.push(...b.ol);
+      if (b.card) textos.push(b.card.t, ...b.card.lines);
+      for (const k of ['kv', 'table', 'note', 'ok', 'tool', 'check']) assert.ok(!(k in b), `${id}: bloque «${k}» no revisado`);
+    }
+    const nuevos = textos.filter((t) => !permitido.includes(t));
+    assert.deepEqual(nuevos, [], `${id} contiene texto no revisado`);
+  }
+});
+
+/* ------------------------------ Mapas IGN ------------------------------ */
+test('mapas IGN: plantillas WMTS bien formadas', async () => {
+  // maps.js importa ui.js/store.js, que no dependen del DOM al cargarse.
+  const { TILE_SOURCES, FUENTE_DEFECTO } = await imp('assets/js/maps.js');
+  assert.ok(TILE_SOURCES[FUENTE_DEFECTO]);
+  for (const [id, f] of Object.entries(TILE_SOURCES)) {
+    const url = f.url.replace('{z}', 7).replace('{x}', 62).replace('{y}', 48);
+    const u = new URL(url);
+    assert.equal(u.origin, 'https://www.ign.es', id);
+    assert.ok(!/[{}]/.test(url), `${id}: quedan marcadores sin sustituir`);
+    for (const [k, v] of [['SERVICE', 'WMTS'], ['REQUEST', 'GetTile'], ['TILEMATRIXSET', 'GoogleMapsCompatible'], ['TILEMATRIX', '7'], ['TILEROW', '48'], ['TILECOL', '62']]) {
+      assert.equal(u.searchParams.get(k), v, `${id}: ${k}`);
+    }
+    assert.ok(u.searchParams.get('LAYER'), `${id}: LAYER`);
+    assert.ok(f.nativo <= f.max, `${id}: el zoom nativo no puede superar el máximo`);
+    assert.match(f.attr, /Instituto Geográfico Nacional/, `${id}: atribución`);
+  }
+});
+
+test('mapas IGN: la CSP permite las teselas del IGN y nada más de terceros para imágenes', () => {
+  for (const f of ['netlify.toml', 'public/_headers']) {
+    const txt = fs.readFileSync(path.join(ROOT, f), 'utf8');
+    const img = txt.match(/img-src([^;]*);/)[1];
+    const con = txt.match(/connect-src([^;]*);/)[1];
+    assert.ok(img.includes('https://www.ign.es'), `${f}: img-src`);
+    assert.ok(con.includes('https://www.ign.es'), `${f}: connect-src`);
+    assert.ok(!/openstreetmap|opentopomap/.test(img + con), `${f}: restos de OSM`);
+  }
+});

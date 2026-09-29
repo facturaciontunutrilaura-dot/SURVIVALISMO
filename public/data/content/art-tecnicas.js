@@ -383,9 +383,21 @@ export const ART_TECNICAS = [
     src: ['erc'],
   },
   /* Infarto e ictus se han sacado del artículo de fracturas para que sean
-     accesibles directamente (y desde SOS). Solo contienen lo que el manual ya
-     recogía —signos del ictus, dolor torácico como urgencia, cómo avisar al
-     112 y cuándo empezar RCP—; lo que falta se declara como pendiente. */
+     accesibles directamente (y desde SOS). NO contienen pautas nuevas: cada
+     frase procede de contenido que el manual ya tenía, contrastado con sus
+     fuentes. Origen:
+       · Signos del ictus, «el tiempo es cerebro: 112 sin esperar», dolor
+         torácico y sospecha de infarto como «atención profesional
+         inmediata» → aviso final del antiguo pa-varios.
+       · «No cuelgues hasta que te lo indiquen…» y «qué ha pasado y desde
+         cuándo, dónde, qué le ocurre (consciencia, respiración)» → pa-pas,
+         apartado «Avisar (112)».
+       · «Si no responde y no respira con normalidad: 112 (manos libres),
+         desfibrilador y RCP» → pa-rcp, secuencia adulto.
+     `revision` las marca como INCOMPLETAS: la interfaz lo muestra arriba y
+     tools/test-unit.mjs falla si se añade texto sin revisar. Ampliarlas
+     exige redactar y revisar las pautas con fuentes clínicas (guías del ERC,
+     servicios de emergencias) y actualizar la prueba. */
   {
     id: 'pa-infarto',
     sec: 'primeros-auxilios',
@@ -393,6 +405,7 @@ export const ART_TECNICAS = [
     pr: 'critico',
     sum: 'El dolor torácico requiere atención profesional inmediata: llama al 112.',
     tags: ['primeros auxilios', 'infarto', 'dolor torácico', 'dolor en el pecho', 'corazón', '112'],
+    revision: 'pendiente',
     body: [
       { card: { t: 'SOSPECHA DE INFARTO', lines: ['Dolor torácico → atención profesional inmediata', 'Llama al 112', 'Si no responde y no respira con normalidad → RCP y DEA'] } },
       { h: 'Qué hacer' },
@@ -412,6 +425,7 @@ export const ART_TECNICAS = [
     pr: 'critico',
     sum: 'Asimetría facial, debilidad en un brazo o dificultad para hablar. El tiempo es cerebro: 112 sin esperar.',
     tags: ['primeros auxilios', 'ictus', 'derrame cerebral', 'accidente cerebrovascular', '112'],
+    revision: 'pendiente',
     body: [
       { card: { t: 'SOSPECHA DE ICTUS', lines: ['Asimetría facial', 'Debilidad en un brazo', 'Dificultad para hablar', 'El tiempo es cerebro: 112 sin esperar'] } },
       { h: 'Qué hacer' },

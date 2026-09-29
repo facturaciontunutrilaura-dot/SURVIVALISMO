@@ -84,6 +84,10 @@ try {
     ok(`SOS sanitaria «${id}»: enlaza al artículo original`, (await page.locator(`a[href="#/art/${art}"]`).count()) === 1);
   }
   ok('Infarto e ictus avisan de que están pendientes de ampliar', /PENDIENTE DE AMPLIAR/.test(await page.textContent('#app')));
+  ok('Infarto e ictus muestran arriba el aviso de ficha incompleta', (await page.locator('.emg-hd + .aviso-revision').count()) === 1);
+  await page.goto(BASE + '#/emergencia');
+  await page.waitForSelector('.sos-med');
+  ok('En SOS, solo infarto e ictus se marcan como incompletas', (await page.locator('.sos-med .rev').count()) === 2);
   await page.goto(BASE + '#/art/pa-varios');
   await page.waitForSelector('h1');
   ok('Infarto e ictus ya no están escondidos en «Fracturas…»', !/Asimetría facial/.test(await page.textContent('#app')));
@@ -239,11 +243,98 @@ try {
   await page.goto(BASE + '#/sec/juegos/calma');
   await page.waitForSelector('#ca-start');
   ok('El enlace «Modo calma» abre directamente esa pestaña', (await page.getAttribute('#jg-tabs [data-t="cal"]', 'aria-selected')) === 'true');
-  await page.click('#ca-start');
-  await page.waitForTimeout(300);
-  await page.goto(BASE + '#/');
-  await page.waitForTimeout(1300);
-  ok('Al salir, el modo calma no sigue corriendo en segundo plano', !consoleErrors.some((e) => /ca-|null/.test(e)));
+
+  /* ---- Modo calma: liberación REAL de recursos ----
+     Contexto aparte con instrumentación inyectada antes de cargar la app:
+       · setInterval/clearInterval → intervalos vivos y número de ticks.
+       · window.add/removeEventListener → balance de listeners por tipo.
+       · navigator.wakeLock → sustituto que cuenta bloqueos activos y puede
+         tardar en concederse (para reproducir salir durante la espera). */
+  {
+    const cc = await browser.newContext({ ...devices['Pixel 7'] });
+    await cc.addInitScript(() => {
+      const si = window.setInterval.bind(window), ci = window.clearInterval.bind(window);
+      const C = window.__calma = { vivos: new Set(), ticks: 0, locks: 0, locksTotal: 0, retraso: 0, win: {} };
+      window.setInterval = (fn, ms, ...a) => { const id = si((...x) => { C.ticks++; return fn(...x); }, ms, ...a); C.vivos.add(id); return id; };
+      window.clearInterval = (id) => { C.vivos.delete(id); return ci(id); };
+      Object.defineProperty(navigator, 'wakeLock', {
+        configurable: true,
+        value: { request: () => new Promise((res) => setTimeout(() => {
+          const l = { released: false, release: async () => { if (!l.released) { l.released = true; C.locks--; } } };
+          C.locks++; C.locksTotal++; res(l);
+        }, C.retraso)) },
+      });
+      const add = window.addEventListener.bind(window), rem = window.removeEventListener.bind(window);
+      window.addEventListener = (t, ...r) => { C.win[t] = (C.win[t] || 0) + 1; return add(t, ...r); };
+      window.removeEventListener = (t, ...r) => { C.win[t] = (C.win[t] || 0) - 1; return rem(t, ...r); };
+    });
+    const pc = await cc.newPage();
+    const estado = () => pc.evaluate(() => ({ vivos: window.__calma.vivos.size, ticks: window.__calma.ticks, locks: window.__calma.locks, total: window.__calma.locksTotal, win: { ...window.__calma.win } }));
+    const fase = () => pc.textContent('#ca-fase');
+
+    await pc.goto(BASE + '#/');
+    await pc.waitForSelector('.tile.sos');
+    const antes = await estado();
+
+    await pc.goto(BASE + '#/sec/juegos/calma');
+    await pc.waitForSelector('#ca-start');
+    await pc.click('#ca-start');
+    await pc.waitForTimeout(1300);
+    let e = await estado();
+    ok('Modo calma: al empezar hay un temporizador y la pantalla se mantiene encendida', e.vivos === 1 && e.ticks >= 1 && e.locks === 1 && (await fase()) !== 'LISTO', JSON.stringify(e));
+
+    await pc.goto(BASE + '#/');
+    await pc.waitForSelector('.tile.sos');
+    await pc.waitForTimeout(200);
+    e = await estado();
+    ok('Modo calma: al salir no queda ningún intervalo activo', e.vivos === 0, JSON.stringify(e));
+    ok('Modo calma: al salir se libera el bloqueo de pantalla', e.locks === 0, JSON.stringify(e));
+    const ticks = e.ticks;
+    await pc.waitForTimeout(2200);
+    ok('Modo calma: el temporizador deja de ejecutarse de verdad', (await estado()).ticks === ticks);
+    const despues = await estado();
+    const tipos = new Set([...Object.keys(antes.win), ...Object.keys(despues.win)]);
+    const desbalance = [...tipos].filter((t) => (antes.win[t] || 0) !== (despues.win[t] || 0));
+    ok('Modo calma: no deja listeners de window activos', desbalance.length === 0, desbalance.join(','));
+
+    await pc.goto(BASE + '#/sec/juegos/calma');
+    await pc.waitForSelector('#ca-start');
+    ok('Modo calma: al volver, la sesión empieza limpia', (await fase()) === 'LISTO');
+    await pc.click('#ca-start');
+    await pc.waitForTimeout(1300);
+    e = await estado();
+    ok('Modo calma: al volver se crea una sesión nueva', e.vivos === 1 && e.locks === 1 && e.total === 2 && (await fase()) !== 'LISTO', JSON.stringify(e));
+    await pc.click('#ca-stop');
+    e = await estado();
+    ok('Modo calma: «Parar» libera temporizador y pantalla', e.vivos === 0 && e.locks === 0, JSON.stringify(e));
+
+    await pc.click('#ca-start');
+    await pc.waitForTimeout(300);
+    await pc.click('#jg-tabs [data-t="ttt"]');
+    e = await estado();
+    ok('Modo calma: cambiar de pestaña también lo detiene', e.vivos === 0 && e.locks === 0, JSON.stringify(e));
+
+    // Salir MIENTRAS se espera el permiso de pantalla encendida: antes el
+    // temporizador arrancaba igualmente después de la limpieza.
+    await pc.click('#jg-tabs [data-t="cal"]');
+    await pc.evaluate(() => { window.__calma.retraso = 800; });
+    await pc.click('#ca-start');
+    await pc.goto(BASE + '#/');
+    await pc.waitForTimeout(1500);
+    e = await estado();
+    ok('Modo calma: salir durante la espera no deja nada activo', e.vivos === 0 && e.locks === 0, JSON.stringify(e));
+
+    // Lo mismo en SOS, que también mantiene la pantalla encendida.
+    await pc.evaluate(() => { window.__calma.retraso = 0; });
+    await pc.goto(BASE + '#/emergencia/apagon');
+    await pc.waitForSelector('.qcard');
+    await pc.waitForTimeout(200);
+    const enSos = (await estado()).locks;
+    await pc.goto(BASE + '#/');
+    await pc.waitForTimeout(200);
+    ok('SOS: mantiene la pantalla encendida y la libera al salir', enSos === 1 && (await estado()).locks === 0, `en SOS ${enSos}`);
+    await cc.close();
+  }
 
   // Brújula: solo acepta rumbos referidos al norte.
   await page.goto(BASE + '#/sec/orientacion');
@@ -550,6 +641,27 @@ try {
   const nodosCopia = (copia.stores.kv || []).find((r) => r.id === 'familia.nodos')?.v || [];
   ok('La copia de seguridad incluye el plan familiar', nodosCopia.length === 2 && nodosCopia.some((x) => x.rutas?.length === 2),
     `(${nodosCopia.length} ubicaciones)`);
+
+  // Importación en un dispositivo "nuevo" (contexto limpio): se restaura todo.
+  {
+    const ci = await browser.newContext({ ...devices['Pixel 7'] });
+    const pi = await ci.newPage();
+    pi.on('dialog', (d) => d.accept());
+    await pi.goto(BASE + '#/sec/config');
+    await pi.waitForSelector('#cfg-import');
+    await pi.setInputFiles('#cfg-file', await file.path());
+    await pi.waitForTimeout(1200);
+    ok('Importar: la app sigue en Configuración sin recargar', (await pi.locator('#cfg-import').count()) === 1);
+    await pi.goto(BASE + '#/sec/familia');
+    await pi.waitForSelector('#fa-estado .row', { timeout: 8000 });
+    ok('Importar: se restauran las ubicaciones familiares', (await pi.locator('#fa-estado .row').count()) === 2);
+    await pi.goto(BASE + '#/familia/rutas');
+    await pi.waitForSelector('#ru-out .ruta');
+    ok('Importar: se restauran las rutas', (await pi.locator('#ru-out .ruta').count()) === 2);
+    const marcas = await pi.evaluate(async () => (await (await import('./assets/js/store.js')).all('checks')).length);
+    ok('Importar: se restauran las marcas de checklist', marcas === copia.stores.checks.length && marcas > 0, `${marcas}/${copia.stores.checks.length}`);
+    await ci.close();
+  }
 
   /* --------------------- 12. Service Worker + OFFLINE --------------------- */
   console.log('\n▸ PRUEBA OFFLINE REAL');
