@@ -1669,8 +1669,24 @@ function vError(err) {
    se descarta al terminar: sin esto, podía pintarse encima de la nueva
    (dirección de una pantalla, contenido de otra). */
 let navActual = 0;
+/* Estado de carga: si una pantalla tarda más de 300 ms (mapa, Configuración,
+   Familia…), se muestra «Cargando…» y se anuncia al lector de pantalla. Las
+   rápidas no parpadean. No bloquea nada: la barra inferior (SOS) sigue
+   funcionando y, si se cambia de pantalla, la lenta se descarta. */
+let relojCarga = null;
+function empiezaCarga() {
+  clearTimeout(relojCarga);
+  app.setAttribute('aria-busy', 'true');
+  relojCarga = setTimeout(() => { const c = $('#cargando'); if (c) { c.textContent = 'Cargando…'; c.hidden = false; } }, 300);
+}
+function terminaCarga() {
+  clearTimeout(relojCarga);
+  app.removeAttribute('aria-busy');
+  const c = $('#cargando'); if (c) { c.hidden = true; c.textContent = ''; }
+}
 async function route() {
   const mia = ++navActual;
+  empiezaCarga();
   limpiarVista();
   const actual = baseRuta(location.hash);
   if (pila.length) posiciones.set(pila[pila.length - 1], window.scrollY);
@@ -1734,6 +1750,7 @@ async function route() {
   }
 
   if (mia !== navActual) return;   // el usuario ya está en otra pantalla
+  terminaCarga();
   const emg = out && out.emg;
   const node = emg ? out.node : out;
   render(node, { emg: !!emg, scroll, enfocar });

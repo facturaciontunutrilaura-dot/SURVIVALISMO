@@ -1003,6 +1003,57 @@ try {
     await cx.close();
   }
 
+  /* ------------- 11 quater. Estados de carga y conexión (fase 5) ------------- */
+  console.log('\n▸ Estados de carga y conexión');
+  {
+    const cl = await browser.newContext({ ...devices['Pixel 7'], serviceWorkers: 'block' });
+    // El módulo del mapa tarda en llegar (red lenta).
+    await cl.route('**/assets/js/maps.js', async (r) => { await new Promise((t) => setTimeout(t, 1500)); r.continue().catch(() => {}); });
+    await cl.route('https://www.ign.es/**', (r) => r.abort());
+    const pl = await cl.newPage();
+    await pl.goto(BASE + '#/'); await pl.waitForSelector('.home-bloque');
+    await pl.evaluate(() => { location.hash = '#/sec/agua'; });
+    await pl.waitForTimeout(80);
+    const rapida = await pl.evaluate(() => document.getElementById('cargando').hidden);
+    await pl.waitForTimeout(400);
+    ok('Carga: una pantalla rápida no muestra «Cargando…» (sin parpadeo)', rapida && await pl.evaluate(() => document.getElementById('cargando').hidden && !document.getElementById('app').hasAttribute('aria-busy')));
+    await pl.evaluate(() => { location.hash = '#/mapa'; });
+    await pl.waitForTimeout(700);
+    const lenta = await pl.evaluate(() => ({ visible: !document.getElementById('cargando').hidden, texto: document.getElementById('cargando').textContent, rol: document.getElementById('cargando').getAttribute('role'), busy: document.getElementById('app').getAttribute('aria-busy') }));
+    ok('Carga: una pantalla lenta muestra «Cargando…» y lo anuncia (role=status, aria-busy)', lenta.visible && /Cargando/.test(lenta.texto) && lenta.rol === 'status' && lenta.busy === 'true', JSON.stringify(lenta));
+    // Mientras carga, SOS sigue a un toque y la pantalla lenta no se pinta encima.
+    await pl.click('.bottomnav a[href="#/emergencia"]');
+    await pl.waitForSelector('.btn-112');
+    await pl.waitForTimeout(2200);
+    const trasSOS = await pl.evaluate(() => ({ sos: !!document.querySelector('.btn-112'), mapa: !!document.getElementById('map'), carga: document.getElementById('cargando').hidden, busy: document.getElementById('app').hasAttribute('aria-busy') }));
+    ok('Carga: durante una carga lenta se puede ir a SOS y la pantalla lenta no se pinta encima', trasSOS.sos && !trasSOS.mapa && trasSOS.carga && !trasSOS.busy, JSON.stringify(trasSOS));
+    await cl.close();
+
+    // Cerrar la app del todo y volver a abrirla SIN RED: datos y funciones críticas.
+    const cc = await browser.newContext({ ...devices['Pixel 7'], serviceWorkers: 'allow' });
+    await cc.route('https://www.ign.es/**', (r) => r.abort());
+    const pc1 = await cc.newPage();
+    await pc1.goto(BASE, { waitUntil: 'networkidle' });
+    await pc1.evaluate(() => navigator.serviceWorker.ready);
+    await pc1.reload({ waitUntil: 'networkidle' });
+    await pc1.waitForFunction(() => !!navigator.serviceWorker.controller, null, { timeout: 15000 });
+    await pc1.evaluate(async () => { const s = await import('./assets/js/store.js'); await s.put('contactos', { id: 'r1', n: 'Contacto tras cierre', t: '600111000', r: 'externo' }); await s.put('kv', { id: 'plan.medico', v: 'Dato médico de prueba' }); });
+    await pc1.close();                       // se cierra la única pestaña: la app queda cerrada
+    await cc.setOffline(true);
+    const pc2 = await cc.newPage();
+    await pc2.goto(BASE + '#/', { waitUntil: 'domcontentloaded' });
+    await pc2.waitForSelector('.home-bloque', { timeout: 15000 });
+    ok('Reapertura sin red: la app abre tras cerrarla del todo', await pc2.locator('.home-112[href="tel:112"]').count() === 1);
+    ok('Reapertura sin red: indica que no hay conexión', (await pc2.textContent('#netbadge')) === 'SIN CONEXIÓN');
+    await pc2.goto(BASE + '#/emergencia'); await pc2.waitForSelector('#datos-vitales');
+    await pc2.click('#datos-vitales summary'); await pc2.waitForTimeout(400);
+    ok('Reapertura sin red: SOS, 112 y los datos guardados siguen ahí', (await pc2.locator('.btn-112').count()) > 0 && /Contacto tras cierre/.test(await pc2.textContent('#datos-vitales')) && /Dato médico de prueba/.test(await pc2.textContent('#datos-vitales')));
+    // Recuperar la conexión: el indicador desaparece sin recargar.
+    await cc.setOffline(false); await pc2.waitForTimeout(300);
+    ok('Conexión recuperada: el indicador «SIN CONEXIÓN» desaparece solo', await pc2.evaluate(() => document.getElementById('netbadge').hidden));
+    await cc.close();
+  }
+
   /* --------------------- 12. Service Worker + OFFLINE --------------------- */
   console.log('\n▸ PRUEBA OFFLINE REAL');
   await page.goto(BASE, { waitUntil: 'networkidle' });
