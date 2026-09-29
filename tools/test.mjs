@@ -827,6 +827,9 @@ try {
       ['fila-rota', JSON.stringify({ ...copia, stores: { ...copia.stores, checks: [...copia.stores.checks.slice(0, 3).map((r) => ({ ...r, id: r.id + 'x' })), { estado: 'tengo' }] } })],
       ['punto-malo', JSON.stringify({ ...copia, stores: { ...copia.stores, puntos: [{ id: 'p1', nombre: 'x', lat: 'norte', lon: 3 }] } })],
       ['futura', JSON.stringify({ ...copia, version: 99 })],
+      ['truncada', JSON.stringify(copia).slice(0, Math.floor(JSON.stringify(copia).length / 2))],
+      ['sin-datos', JSON.stringify({ app: 'survival-offline', version: 1, exportado: copia.exportado })],
+      ['estructura', JSON.stringify({ ...copia, stores: { ...copia.stores, contactos: { a: 1 } } })],
     ];
     const rechazos = [];
     for (const [nombre, contenido] of casos) {
@@ -844,7 +847,25 @@ try {
     ok('Copia corrupta: un solo registro dañado rechaza la copia entera', /registro dañado/.test(rechazos[2][1]) && rechazos[2][2] === 0, rechazos[2][1].slice(0, 120));
     ok('Copia corrupta: coordenadas no válidas se detectan', /Puntos del mapa/.test(rechazos[3][1]) && rechazos[3][2] === 0);
     ok('Copia corrupta: una copia de una versión futura no se restaura', /más nueva/.test(rechazos[4][1]) && rechazos[4][2] === 0);
+    ok('Copia corrupta: un archivo cortado a la mitad se rechaza', /no se puede leer/i.test(rechazos[5][1]) && rechazos[5][2] === 0);
+    ok('Copia incompleta: sin datos se rechaza', /no contiene datos/.test(rechazos[6][1]) && rechazos[6][2] === 0);
+    ok('Copia con estructura incorrecta: se rechaza', /no es una lista/.test(rechazos[7][1]) && rechazos[7][2] === 0);
     ok('Copia corrupta: el aviso dice que los datos actuales no se han tocado', rechazos.every(([, t]) => /no se han tocado/.test(t)));
+    // Todo o nada: si la escritura falla a mitad (p. ej. sin espacio), no
+    // queda nada de la copia a medias.
+    const atomica = await pi.evaluate(async (c) => {
+      const s = await import('./assets/js/store.js');
+      const contar = async () => { let n = 0; for (const st of ['kv', 'checks', 'contactos', 'puntos']) n += (await s.all(st)).length; return n; };
+      const antes = await contar();
+      const nueva = { ...c, stores: { ...c.stores, contactos: Array.from({ length: 30 }, (_, i) => ({ id: 'nuevo' + i, n: 'N' + i })) } };
+      const put = IDBObjectStore.prototype.put;
+      let n = 0;
+      IDBObjectStore.prototype.put = function (...a) { if (++n === 20) throw new DOMException('Sin espacio', 'QuotaExceededError'); return put.apply(this, a); };
+      let error = null;
+      try { await s.importAll(nueva); } catch (e) { error = e.name || e.message; } finally { IDBObjectStore.prototype.put = put; }
+      return { error, antes, despues: await contar(), nuevos: (await s.all('contactos')).filter((r) => r.id.startsWith('nuevo')).length };
+    }, copia);
+    ok('Restauración todo o nada: un fallo a mitad no deja nada escrito', atomica.error && atomica.antes === atomica.despues && atomica.nuevos === 0, JSON.stringify(atomica));
     const despues = await pi.evaluate(async () => { const s = await import('./assets/js/store.js'); return (await s.all('checks')).length + (await s.all('kv')).length; });
     ok('Copia corrupta: los datos actuales siguen exactamente igual', antes === despues, `${antes} → ${despues}`);
 
@@ -1252,6 +1273,9 @@ try {
       ok('ACTUALIZACIÓN FALLIDA: la caché de la versión instalada sigue intacta', tras.claves.some((k) => k.includes(versionActual)), tras.claves.join(','));
       ok('ACTUALIZACIÓN FALLIDA: no queda ninguna versión esperando para aplicarse', !tras.esperando && !tras.instalando);
       ok('ACTUALIZACIÓN FALLIDA: no se ofrece actualizar a una versión incompleta', !tras.aviso);
+      await page.goto(BASE + '#/sec/config'); await page.waitForSelector('#cfg-prep .prep');
+      const nota = await page.textContent('#cfg-prep');
+      ok('ACTUALIZACIÓN FALLIDA: se informa de forma clara (sigue la versión instalada, completa)', /no se pudo descargar entera/.test(nota) && new RegExp('sigues con la versión ' + versionActual.replace(/\./g, '\\.')).test(nota), nota.slice(0, 200));
     } finally {
       fs.renameSync(juegosJs + '.bak', juegosJs);
     }
@@ -1270,6 +1294,7 @@ try {
     await actualizar();
     await page.waitForSelector('#aviso-version:not([hidden])', { timeout: 15000 }).catch(() => {});
     ok('VERSIÓN NUEVA: aparece el aviso «Actualizar ahora»', /Actualizar ahora/.test(await page.textContent('#aviso-version')));
+    ok('VERSIÓN NUEVA: al instalarse completa se retira la nota de actualización fallida', await page.evaluate(() => localStorage.getItem('survival.actualizacionFallida') === null));
     const esperando = await page.evaluate(async () => ({ claves: await caches.keys(), w: !!(await navigator.serviceWorker.getRegistration()).waiting }));
     ok('VERSIÓN NUEVA: no se aplica sola a mitad de uso', esperando.w && esperando.claves.some((k) => k.includes(versionActual)), esperando.claves.join(','));
     await page.goto(BASE + '#/emergencia');
@@ -1662,7 +1687,11 @@ try {
     await pp.waitForTimeout(1500);
     const fin = await estado();
     const tipos = new Set([...Object.keys(base0.win), ...Object.keys(fin.win)]);
-    const desbalance = [...tipos].filter((t) => (base0.win[t] || 0) !== (fin.win[t] || 0)).map((t) => `${t}:${base0.win[t] || 0}→${fin.win[t] || 0}`);
+    // Pendiente = añadido y no quitado (el recuento sube). Un recuento que
+    // baja no es un listener vivo: pasa cuando se retira uno que nunca se
+    // añadió, p. ej. la brújula en un navegador sin API de orientación (el
+    // Chromium de CI): quitarlo es inocuo.
+    const desbalance = [...tipos].filter((t) => (fin.win[t] || 0) > (base0.win[t] || 0)).map((t) => `${t}:${base0.win[t] || 0}→${fin.win[t] || 0}`);
     ok('Batería: ningún intervalo activo tras recorrer la app', fin.intervalos === 0, JSON.stringify(fin.intervalos));
     ok('Batería: ningún bloqueo de pantalla activo', fin.locks === 0, String(fin.locks));
     ok('Batería: ningún listener de window pendiente', desbalance.length === 0, desbalance.join(', '));

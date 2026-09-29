@@ -30,6 +30,14 @@ const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch { /* sin alm
 
 /* ------------------------- Fechas de copia y cambios ------------------------- */
 export function marcarCopia() { lsSet(K_COPIA, String(Date.now())); }
+
+/* Actualización que no se pudo completar (faltó algún archivo). No es un
+   problema de la versión instalada, que sigue completa: solo se informa. */
+const K_ACT = 'survival.actualizacionFallida';
+export function actualizacionFallida(si) {
+  if (si === undefined) { const v = Number(lsGet(K_ACT)); return v || null; }
+  if (si) lsSet(K_ACT, String(Date.now())); else { try { localStorage.removeItem(K_ACT); } catch { /* sin localStorage */ } }
+}
 export function ultimaCopia() { const v = Number(lsGet(K_COPIA)); return v || null; }
 function ultimoCambio() { const v = Number(lsGet(K_CAMBIO)); return v || null; }
 
@@ -164,8 +172,12 @@ export function fechaCorta(ts) {
 const OK = '<span class="prep-ic ok" aria-hidden="true">✔</span>';
 const AV = '<span class="prep-ic av" aria-hidden="true">⚠</span>';
 
+function notaActualizacion() {
+  const f = actualizacionFallida();
+  return f ? `<br><span class="muted">La última actualización (${esc(fechaCorta(f))}) no se pudo descargar entera, así que no se ha instalado: sigues con la versión ${esc(VERSION)}, completa. Se volverá a intentar sola cuando haya buena conexión.</span>` : '';
+}
 function filaRecursos(r) {
-  if (r.estado === 'ok') return { ok: true, t: `${OK}<div><b>Funciona sin conexión.</b> Todo lo necesario está guardado en este dispositivo (${r.total} archivos).</div>` };
+  if (r.estado === 'ok') return { ok: true, t: `${OK}<div><b>Funciona sin conexión.</b> Todo lo necesario está guardado en este dispositivo (${r.total} archivos).${notaActualizacion()}</div>` };
   if (r.estado === 'preparando') return { ok: true, t: `${OK}<div><b>Preparando la copia sin conexión…</b> Mantén la conexión unos segundos la primera vez.</div>` };
   if (r.estado === 'no-disponible') return { ok: false, t: `${AV}<div><b>Este navegador no guarda la app para usarla sin conexión</b> (por ejemplo, en navegación privada). Ábrela en el navegador normal.</div>` };
   const n = r.faltan.length + r.danados.length;

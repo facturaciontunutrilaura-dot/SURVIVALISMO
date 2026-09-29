@@ -14,7 +14,7 @@ Aplicación web progresiva (PWA) sin dependencias externas en tiempo de ejecuci�
 npm install          # instala leaflet, es-atlas y topojson-client (solo para el build)
 npm run build        # genera geodatos, iconos y el manifiesto de precache
 npm run dev          # servidor local en http://localhost:8080
-npm test             # 349 pruebas: 26 unitarias (buscador, datos, build, mapas, portada) + 276 end-to-end de app + 47 de sincronización, incluida la prueba offline real
+npm test             # 435 pruebas: 28 unitarias (buscador, datos, build, mapas, portada, copias, checklists) + 360 end-to-end de app + 47 de sincronización, incluida la prueba offline real
 ```
 
 No hay bundler, ni transpilador, ni framework. El directorio `public/` es la
@@ -827,6 +827,7 @@ el papel no se queda sin batería.
 ## 9. Diseño y accesibilidad
 
 > La auditoría de uso móvil y bajo estrés, con lo implementado y medido, está en `docs/FASE-3-UX.md`.
+> La fiabilidad sin conexión y la recuperación ante fallos (fase 4) están en `docs/FASE-4-DIAGNOSTICO.md` y `docs/FASE-4-VERIFICACION.md`.
 
 - **Mobile-first**, usable con una mano: objetivos táctiles de 44–52 px,
   navegación inferior fija de cinco destinos, botones grandes.

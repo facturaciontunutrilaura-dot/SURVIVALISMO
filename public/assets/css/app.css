@@ -355,6 +355,8 @@ label { display: block; font-family: var(--fb); font-size: .8rem; letter-spacing
 .blk-ok { background: rgba(111, 156, 74, .09); border-color: var(--green); }
 .blk-warn::before { content: '⚠ '; font-weight: 700; }
 .blk-note::before { content: 'ℹ '; font-weight: 700; }
+/* Si el aviso empieza con un párrafo, el icono va a su lado y no en una línea sola. */
+.blk-warn:has(> p:first-child)::before, .blk-note:has(> p:first-child)::before { float: left; margin-right: .3em; }
 
 .qcard {
   border: 2px solid var(--olive2); border-radius: var(--r);
@@ -922,7 +924,8 @@ ul.planes .badge { margin-left: 4px; vertical-align: middle; }
 .prep-fila .btn { margin-left: 30px; }
 .prep-ic { flex: 0 0 20px; font-weight: 700; text-align: center; }
 .prep-ic.ok { color: var(--olive3); }
-.prep-ic.av { color: var(--amber); }
+.prep-ic.av { color: #D9A066; }   /* 5,4:1 sobre --panel (la variable --amber daba 4,1:1) */
+html[data-theme='night'] .prep-ic.av { color: #A87A48; }   /* 4,6:1 en modo noche (antes 2,6:1) */
 .prep-salida:not(:empty) { margin-top: 8px; }
 .prep-aviso { border: 1px solid var(--amber); border-left-width: 4px; border-radius: var(--r); background: var(--panel); padding: 10px 12px; }
 .prep-aviso p { margin: 0 0 4px; }
