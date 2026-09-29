@@ -860,6 +860,8 @@ async function vBuscar(inicial = '') {
   }
 
   function buscar() {
+    // Una búsqueda pendiente no puede tocar la dirección si ya se ha salido.
+    if (!n.isConnected && !n.dataset.montando) return;
     const q = input.value.trim();
     // La consulta queda en la dirección: al volver atrás desde un resultado
     // se recupera la búsqueda en vez de empezar de cero.
@@ -876,9 +878,12 @@ async function vBuscar(inicial = '') {
   }
 
   let to;
+  alSalir(() => clearTimeout(to));
   input.addEventListener('input', () => { clearTimeout(to); to = setTimeout(buscar, 120); });
   input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { clearTimeout(to); buscar(); input.blur(); } });
+  n.dataset.montando = '1';   // aún no está en el DOM: primera búsqueda
   if (inicial) buscar(); else pintaSug();
+  delete n.dataset.montando;
   if (!inicial) setTimeout(() => input.focus(), 60);
   return n;
 }

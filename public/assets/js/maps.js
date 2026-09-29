@@ -504,7 +504,15 @@ export async function mapView() {
   });
 
   // --- Descarga de área ---
+  /* Una sola descarga a la vez. Se cancela con su botón, al cerrar el panel
+     o al salir del mapa: lo ya descargado se conserva. AbortController corta
+     también la petición que esté en curso. */
+  let descarga = null;
+  const cancelarDescarga = () => { if (descarga) { descarga.cancelada = true; descarga.ctrl.abort(); } };
+  alSalir(cancelarDescarga);
+
   n.querySelector('#m-dl').addEventListener('click', () => {
+    if (descarga) return;
     const panel = n.querySelector('#m-panel');
     panel.innerHTML = `<div class="card"><h3>Descargar área para uso offline</h3>
       <p class="muted">Se descargan las teselas del área visible y se guardan en este dispositivo. Hazlo con Wi-Fi antes de necesitarlo.</p>
@@ -525,7 +533,7 @@ export async function mapView() {
       <div class="blk-note">Descarga solo el área que realmente necesitas. Las teselas proceden de los servicios públicos del Instituto Geográfico Nacional: no los satures. Para cartografía de provincias enteras, el IGN ofrece descargas completas en su Centro de Descargas (centrodedescargas.cnig.es).</div>
     </div>`;
     panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    panel.querySelector('#dl-x').addEventListener('click', () => { panel.innerHTML = ''; });
+    panel.querySelector('#dl-x').addEventListener('click', () => { cancelarDescarga(); panel.innerHTML = ''; });
 
     const lonlat2tile = (lon, lat, z) => {
       const n2 = 2 ** z;
@@ -562,7 +570,8 @@ export async function mapView() {
     panel.addEventListener('input', showEst);
     showEst();
 
-    panel.querySelector('#dl-go').addEventListener('click', async () => {
+    panel.querySelector('#dl-go').addEventListener('click', async (ev) => {
+      if (descarga) { cancelarDescarga(); return; }
       const src = panel.querySelector('#dl-src').value;
       const cfg = TILE_SOURCES[src];
       const tiles = listTiles();
@@ -577,26 +586,41 @@ export async function mapView() {
       }
       const bar = panel.querySelector('#dl-bar');
       const log = panel.querySelector('#dl-log');
+      const boton = ev.currentTarget;
+      descarga = { cancelada: false, ctrl: new AbortController() };
+      const d = descarga;
+      boton.textContent = '✕ Cancelar descarga';
+      boton.classList.add('danger');
       let ok = 0, skip = 0, err = 0;
       for (let i = 0; i < tiles.length; i++) {
+        if (d.cancelada) break;
         const [z, x, y] = tiles[i];
         try {
           if (await getTile(src, z, x, y)) { skip++; }
           else {
-            const r = await fetch(urlTesela(cfg, z, x, y), { mode: 'cors' });
+            const r = await fetch(urlTesela(cfg, z, x, y), { mode: 'cors', signal: d.ctrl.signal });
             if (r.ok) { await saveTile(src, z, x, y, await r.blob()); ok++; }
             else err++;
           }
-        } catch { err++; }
+        } catch { if (!d.cancelada) err++; }
         if (i % 5 === 0 || i === tiles.length - 1) {
           bar.style.width = `${((i + 1) / tiles.length) * 100}%`;
           log.textContent = `${i + 1}/${tiles.length} · nuevas ${ok} · ya guardadas ${skip} · fallidas ${err}`;
           await new Promise((r) => setTimeout(r, 0));
         }
       }
+      descarga = null;
+      boton.textContent = 'Descargar';
+      boton.classList.remove('danger');
+      if (d.cancelada) {
+        log.innerHTML = `<b>Descarga cancelada.</b> Se conservan las ${ok} teselas nuevas ya guardadas.`;
+        if (n.isConnected) { toast(`Descarga cancelada · ${ok} teselas guardadas`, { tipo: 'info' }); await refreshStatus(); }
+        return;
+      }
       log.innerHTML = ok + skip === 0 && err
         ? `<span style="color:var(--red)"><b>No se ha podido guardar ninguna tesela</b> (${err} fallidas). El servidor del IGN no ha respondido o no permite la descarga desde este navegador. Inténtalo más tarde.</span>`
         : `<b>Descarga terminada.</b> Nuevas: ${ok} · ya guardadas: ${skip} · fallidas: ${err}. Ya puedes usar esta zona sin conexión.`;
+      toast(ok + skip === 0 && err ? 'No se pudo descargar la zona' : `Zona descargada · ${ok + skip} teselas`, { tipo: ok + skip === 0 && err ? 'error' : 'ok' });
       await refreshStatus();
       await store.persistStorage();
     });

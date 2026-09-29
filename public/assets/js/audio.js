@@ -255,5 +255,9 @@ export async function audioView() {
   }));
 
   await pinta(); await espacio();
+  // Al salir de la pantalla el audio se detiene: sin sus controles no habría
+  // forma de pararlo, y seguiría gastando batería.
+  alSalir(parar);
+
   return n;
 }

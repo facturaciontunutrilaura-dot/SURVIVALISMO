@@ -193,6 +193,13 @@ try {
   await page.goBack();
   await page.waitForSelector('#res .row');
   ok('Al volver atrás se conserva la búsqueda', (await page.inputValue('#q')) === 'corte de luz');
+  // Escribir y salir enseguida: la búsqueda pendiente no debe reescribir la dirección.
+  await page.fill('#q', 'hipotermia');
+  await page.evaluate(() => { location.hash = '#/sec/agua'; });
+  await page.waitForTimeout(400);
+  ok('Salir del buscador con una búsqueda pendiente no cambia la pantalla nueva', (await page.evaluate(() => location.hash)) === '#/sec/agua');
+  await page.goto(BASE + '#/buscar');
+  await page.waitForSelector('#q');
   await page.fill('#q', 'hemoragia'); await page.waitForTimeout(400);
   ok('Una errata se corrige sola y muestra resultados', (await page.locator('.corregida').count()) === 1 && /hemorragia/i.test(await page.locator('#res .row b').first().textContent()));
 
@@ -623,6 +630,47 @@ try {
   ignCaido = false;
   await page.evaluate(async () => { const u = await import('./assets/js/ubicacion.js'); await u.olvidar(); });
 
+  // Descarga de área: se puede cancelar y se detiene al salir del mapa.
+  {
+    const cd = await browser.newContext({ ...devices['Pixel 7'], serviceWorkers: 'block' });
+    let pedidas = 0;
+    await cd.route('https://www.ign.es/**', async (route) => {
+      pedidas++;
+      await new Promise((r) => setTimeout(r, 120));
+      route.fulfill({ status: 200, contentType: 'image/png', body: PNG_1PX, headers: { 'Access-Control-Allow-Origin': '*' } }).catch(() => {});
+    });
+    const pd = await cd.newPage();
+    const abrirDescarga = async () => {
+      await pd.goto(BASE + '#/mapa');
+      await pd.waitForSelector('#map.leaflet-container');
+      await pd.waitForTimeout(800);
+      await pd.evaluate(async () => (await import('./assets/js/store.js')).clear('tiles'));
+      await pd.click('#m-dl');
+      await pd.fill('#dl-z0', '6'); await pd.fill('#dl-z1', '8');
+      await pd.click('#dl-go');
+      await pd.waitForTimeout(700);
+    };
+    await abrirDescarga();
+    ok('Descarga: está descargando de verdad', pedidas > 0, `(${pedidas} peticiones)`);
+    ok('Descarga: el botón pasa a «Cancelar»', /Cancelar/i.test(await pd.textContent('#dl-go')));
+    await pd.click('#dl-go');
+    await pd.waitForTimeout(400);
+    const n1 = pedidas;
+    await pd.waitForTimeout(1200);
+    ok('Descarga: «Cancelar» detiene las peticiones', pedidas === n1, `${n1} → ${pedidas}`);
+    ok('Descarga: informa de lo guardado al cancelar', /cancelada/i.test(await pd.textContent('#dl-log')));
+
+    await abrirDescarga();
+    ok('Descarga: vuelve a empezar tras cancelar', /Cancelar/i.test(await pd.textContent('#dl-go')));
+    await pd.goto(BASE + '#/');
+    await pd.waitForSelector('.tile.sos');
+    await pd.waitForTimeout(400);
+    const n2 = pedidas;
+    await pd.waitForTimeout(1500);
+    ok('Descarga: salir del mapa la detiene', pedidas === n2, `${n2} → ${pedidas}`);
+    await cd.close();
+  }
+
   /* ------------------------ 10 bis. Audio offline ------------------------ */
   console.log('\n▸ Audio offline');
   await page.goto(BASE + '#/sec/audio');
@@ -658,6 +706,17 @@ try {
     const st = await import('./assets/js/store.js');
     return !st.SYNC_STORES.includes('audio');
   }));
+
+  // Al salir de la pantalla el audio se detiene y no queda nada sonando.
+  await page.evaluate(() => { window.__audio = document.querySelector('#au-el'); });
+  ok('Antes de salir, el audio está sonando', await page.evaluate(() => !window.__audio.paused));
+  await page.goto(BASE + '#/');
+  await page.waitForSelector('.tile.sos');
+  const trasSalir = await page.evaluate(() => ({ pausado: window.__audio.paused, src: window.__audio.getAttribute('src'), sonando: [...document.querySelectorAll('audio')].some((a) => !a.paused) }));
+  ok('Al salir, el audio se detiene y libera el archivo', trasSalir.pausado && !trasSalir.src && !trasSalir.sonando, JSON.stringify(trasSalir));
+  await page.goto(BASE + '#/sec/audio');
+  await page.waitForSelector('#au-lista .row');
+  ok('Al volver, el reproductor empieza limpio', await page.locator('#au-player').isHidden());
 
   // Una grabación familiar puede ser irrecuperable: borrar y deshacer.
   await page.click('[data-del="test1"]');
