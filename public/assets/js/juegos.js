@@ -452,14 +452,16 @@ export function modoCalma() {
 /* --------------------------- Vista de la sección --------------------------- */
 export function juegosView(inicial) {
   const n = el(`<div>
-    <div class="blk-note">Los juegos no son solo entretenimiento. En un aislamiento prolongado, y muy especialmente con niños o adolescentes, tener actividades sencillas que ocupen la atención reduce el estrés, el aburrimiento y la tensión del grupo. Todo funciona sin conexión y sin gastar apenas batería.</div>
-    <div class="tabs" role="tablist" id="jg-tabs">
+    <div class="tabs tabs-grid" role="tablist" id="jg-tabs" aria-label="Juegos y modo calma">
       <button role="tab" data-t="ttt" aria-selected="true">Tres en raya</button>
       <button role="tab" data-t="mem" aria-selected="false">Memory</button>
       <button role="tab" data-t="ret" aria-selected="false">Reto</button>
       <button role="tab" data-t="cal" aria-selected="false">🧘 Modo calma</button>
     </div>
     <div id="jg-body"></div>
+    <details class="card jg-info"><summary>¿Para qué sirven los juegos?</summary><div>
+      <p>Los juegos no son solo entretenimiento. En un aislamiento prolongado, y muy especialmente con niños o adolescentes, tener actividades sencillas que ocupen la atención reduce el estrés, el aburrimiento y la tensión del grupo. Todo funciona sin conexión y sin gastar apenas batería.</p>
+    </div></details>
   </div>`);
 
   const body = n.querySelector('#jg-body');

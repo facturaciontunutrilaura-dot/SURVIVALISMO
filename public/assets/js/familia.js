@@ -510,7 +510,7 @@ export async function rutasView(preset = {}) {
 
       <div class="card"><h3>📇 Teléfonos de emergencia</h3>
         <div class="tw"><table><thead><tr><th>Servicio</th><th>Teléfono</th></tr></thead>
-        <tbody>${SERVICIOS_VERIFICADOS.map((v) => `<tr><td>${esc(v.nombre)}</td><td class="mono"><a href="tel:${esc(v.tel)}">${esc(v.tel)}</a></td></tr>`).join('')}</tbody></table></div>
+        <tbody>${SERVICIOS_VERIFICADOS.map((v) => `<tr><td>${esc(v.nombre)}</td><td><a class="btn ghost tel" href="tel:${esc(v.tel)}" aria-label="Llamar al ${esc(v.tel)}, ${esc(v.nombre)}">📞 ${esc(v.tel)}</a></td></tr>`).join('')}</tbody></table></div>
         <div class="muted">Anota los teléfonos locales (policía municipal, centro de salud…) en tus contactos del plan familiar.</div>
       </div>`;
   }

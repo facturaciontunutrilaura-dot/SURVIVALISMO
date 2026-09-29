@@ -26,12 +26,44 @@ function setNav(route, sub = '') {
   });
 }
 
-function render(node, { emg = false } = {}) {
+function render(node, { emg = false, scroll = 0 } = {}) {
   document.body.classList.toggle('emg', emg);
   app.replaceChildren(node);
   mountTools(app);
-  window.scrollTo(0, 0);
+  ocultarTituloRepetido(node);
+  window.scrollTo(0, scroll);
 }
+
+/* La cabecera fija ya muestra el título de la pantalla. Si el H1 de debajo
+   dice lo mismo y la cabecera lo muestra ENTERO (sin «…»), el H1 se oculta a
+   la vista pero se conserva para lectores de pantalla: se ganan ~70 px. */
+const soloLetras = (t) => String(t).toLowerCase().normalize('NFD').replace(/[^a-z0-9ñ]/g, '');
+function ocultarTituloRepetido(node) {
+  const tit = node.querySelector?.('.topbar .title');
+  const h1 = [...node.querySelectorAll?.('h1') || []].find((h) => !h.closest('.emg-hd, .brand, .topbar'));
+  if (!tit || !h1) return;
+  const a = soloLetras(tit.firstChild?.textContent || ''), b = soloLetras(h1.textContent);
+  // Se mide solo el texto del título (no el subtítulo, que puede recortarse).
+  const rango = document.createRange();
+  rango.selectNodeContents(tit.firstChild);
+  const completo = rango.getBoundingClientRect().width <= tit.clientWidth + 1;
+  if (a && completo && (a === b || b.endsWith(a) || a.endsWith(b))) h1.classList.add('vh', 'h1-en-barra');
+}
+
+/* ---------------- Historial propio: «←» y posición de desplazamiento ----------------
+   pila: rutas visitadas en esta sesión (sin la parte ?consulta).
+   «←» vuelve atrás de verdad si hay una pantalla anterior de la app; si se
+   entró directamente (enlace, atajo), va a la pantalla padre. Al volver se
+   recupera la posición en la que estaba la lista. */
+const pila = [];
+const posiciones = new Map();
+const baseRuta = (h) => (h || '#/').split('?')[0];
+document.addEventListener('click', (e) => {
+  const a = e.target.closest?.('[data-volver]');
+  if (!a || pila.length < 2) return;
+  e.preventDefault();
+  history.back();
+});
 
 function netBadge() {
   const b = $('#netbadge');
@@ -172,6 +204,7 @@ function vEmergenciaLista() {
       <h2 id="sos-h-prot">Otros protocolos</h2>
       ${protocolos}
     </section>
+    ${barra112()}
   </div>`);
   montarPosicion112(n);
   return { node: n, emg: true };
@@ -315,7 +348,8 @@ async function vSeccion(id, sub) {
   if (id === 'manual') return vManual();
   if (id === 'juegos') {
     const { juegosView } = await import('./juegos.js');
-    const w = el(`<div>${topbar(s.t, s.desc)}<h1>${s.ic} ${esc(s.t)}</h1></div>`);
+    const calma = sub === 'calma';
+    const w = el(`<div>${topbar(calma ? 'Modo calma' : s.t, calma ? 'Respiración y grounding' : s.desc)}<h1>${calma ? '🧘 Modo calma' : `${s.ic} ${esc(s.t)}`}</h1></div>`);
     w.appendChild(juegosView(sub));
     return w;
   }
@@ -860,7 +894,10 @@ async function vBuscar(inicial = '') {
     ${topbar('Buscar')}
     <div class="searchbar" role="search">
       <label for="q" class="vh">Buscar en el manual</label>
-      <input id="q" type="search" placeholder="sangrado, apagón, incendio, RCP…" autocomplete="off" enterkeyhint="search" value="${esc(inicial)}">
+      <div class="q-caja">
+        <input id="q" type="search" placeholder="sangrado, apagón, incendio, RCP…" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" value="${esc(inicial)}">
+        <button type="button" id="q-limpiar" class="q-limpiar" aria-label="Borrar la búsqueda"${inicial ? '' : ' hidden'}>✕</button>
+      </div>
       <div class="filtros-busq" id="fb" role="group" aria-label="Filtrar resultados"></div>
     </div>
     <div id="res" aria-live="polite"></div>
@@ -965,7 +1002,9 @@ async function vBuscar(inicial = '') {
 
   let to;
   alSalir(() => clearTimeout(to));
-  input.addEventListener('input', () => { clearTimeout(to); to = setTimeout(buscar, 120); });
+  const limpiar = n.querySelector('#q-limpiar');
+  input.addEventListener('input', () => { limpiar.hidden = !input.value; clearTimeout(to); to = setTimeout(buscar, 120); });
+  limpiar.addEventListener('click', () => { input.value = ''; limpiar.hidden = true; buscar(); input.focus(); });
   input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { clearTimeout(to); buscar(); input.blur(); } });
   n.dataset.montando = '1';   // aún no está en el DOM: primera búsqueda
   if (inicial) buscar(); else pintaSug();
@@ -1363,6 +1402,12 @@ function v404() {
 /* ================================ ROUTER ================================ */
 async function route() {
   limpiarVista();
+  const actual = baseRuta(location.hash);
+  if (pila.length) posiciones.set(pila[pila.length - 1], window.scrollY);
+  let scroll = 0;
+  if (pila.length > 1 && pila[pila.length - 2] === actual) { pila.pop(); scroll = posiciones.get(actual) || 0; }
+  else if (pila[pila.length - 1] === actual) scroll = window.scrollY;     // repintar la misma pantalla
+  else pila.push(actual);
   const hash = location.hash.replace(/^#/, '') || '/';
   const [ruta, consulta = ''] = hash.split('?');
   const [, a, b, c] = ruta.split('/');
@@ -1416,7 +1461,7 @@ async function route() {
 
   const emg = out && out.emg;
   const node = emg ? out.node : out;
-  render(node, { emg: !!emg });
+  render(node, { emg: !!emg, scroll });
   store.setSetting('lastRoute', location.hash || '#/');
 }
 

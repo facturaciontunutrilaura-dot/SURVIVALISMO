@@ -1059,6 +1059,109 @@ try {
   ok('Solo se guarda el código de provincia y el modo', /"cod":"05"/.test(guardado) && /"modo":"manual"/.test(guardado), guardado);
   ok('No se guarda ninguna coordenada', !/lat|lon|coord|accuracy|precision/i.test(guardado), guardado);
 
+  /* ------------- 13 quater. Uso con una mano y navegación (Fase 3) ------------- */
+  console.log('\n▸ Uso con una mano, mapa, modo calma y navegación');
+  {
+    const cm = await browser.newContext({ viewport: { width: 375, height: 667 }, isMobile: true, hasTouch: true });
+    const pm = await cm.newPage();
+    const ir = async (r, sel) => { await pm.goto(BASE + '#' + r); await pm.waitForSelector(sel); await pm.waitForTimeout(250); };
+
+    // Tamaño táctil de todo control visible en las pantallas de uso frecuente.
+    const pequenos = () => pm.evaluate(() => [...document.querySelectorAll('#app button, #app a.btn, #app a.row, #app a.tile, #app summary, #app [role=tab], #app select, #app input:not([type=hidden]), .leaflet-bar a, .bottomnav a, .sos-bar a')]
+      .filter((e) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && !e.closest('.chk-fecha[hidden]'); })
+      .filter((e) => { const r = e.getBoundingClientRect(); return Math.min(r.width, r.height) < 44; })
+      .map((e) => `${(e.textContent || e.getAttribute('aria-label') || e.tagName).trim().slice(0, 18)} ${Math.round(e.getBoundingClientRect().width)}×${Math.round(e.getBoundingClientRect().height)}`));
+    const fallos = [];
+    for (const [r, sel] of [['/emergencia', '.btn-112'], ['/emergencia/incendio-forestal', '.qcard'], ['/emergencia/sanitaria/hemorragia', '.qcard, .emg-hd'], ['/buscar', '#q'], ['/mapa', '#map.leaflet-container'], ['/sec/orientacion', '#cp-start'], ['/sec/juegos/calma', '#ca-start'], ['/check/nivel2', '.chk-item']]) {
+      await ir(r, sel);
+      fallos.push(...(await pequenos()).map((x) => `${r}: ${x}`));
+    }
+    ok('Una mano: todos los controles de las pantallas frecuentes miden ≥ 44 px', fallos.length === 0, fallos.slice(0, 6).join(' | '));
+
+    await ir('/emergencia', '.btn-112');
+    const barra = await pm.evaluate(() => { const r = document.querySelector('.sos-bar a[href="tel:112"]').getBoundingClientRect(); return r.bottom <= innerHeight && r.top > innerHeight / 2; });
+    ok('Una mano: la lista SOS también tiene el 112 abajo, al alcance del pulgar', barra);
+
+    // Foco visible con teclado.
+    const cd = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+    const pdk = await cd.newPage();
+    await pdk.goto(BASE + '#/emergencia'); await pdk.waitForSelector('.btn-112');
+    let foco = null;
+    for (let i = 0; i < 6 && !foco; i++) {
+      await pdk.keyboard.press('Tab');
+      foco = await pdk.evaluate(() => { const e = document.activeElement; return e?.classList.contains('btn-112') || e?.classList.contains('sos-med') ? getComputedStyle(e).outlineWidth + ' ' + getComputedStyle(e).outlineStyle : null; });
+    }
+    ok('Teclado: el foco se ve claramente (contorno ≥ 3 px)', !!foco && parseFloat(foco) >= 3 && !/none/.test(foco), String(foco));
+    await cd.close();
+
+    // Buscador: botón propio para limpiar.
+    await ir('/buscar', '#q');
+    await pm.fill('#q', 'agua'); await pm.waitForTimeout(250);
+    await pm.click('#q-limpiar');
+    ok('Buscador: «✕» limpia la búsqueda y deja el foco en el campo', (await pm.inputValue('#q')) === '' && (await pm.evaluate(() => document.activeElement.id)) === 'q');
+
+    // Mapa: acciones en una fila, estado visible, mapa que no queda bajo la navegación.
+    await ir('/mapa', '#map.leaflet-container');
+    await pm.waitForTimeout(800);
+    const geo = await pm.evaluate(() => {
+      const r = (s) => document.querySelector(s).getBoundingClientRect();
+      const bs = [...document.querySelectorAll('.mapa-acciones .btn')].map((b) => b.getBoundingClientRect().top);
+      return { fila: new Set(bs.map(Math.round)).size === 1, estadoArriba: r('#m-status').bottom <= r('#map').top + 1, estadoVisible: r('#m-status').top < innerHeight, mapaSobreNav: r('#map').bottom <= r('.bottomnav').top + 2 };
+    });
+    ok('Mapa: las cuatro acciones en una sola fila', geo.fila);
+    ok('Mapa: el estado se ve encima del mapa sin desplazarse', geo.estadoArriba && geo.estadoVisible);
+    ok('Mapa: el mapa no queda tapado por la navegación', geo.mapaSobreNav, JSON.stringify(geo));
+
+    // Modo calma en un móvil pequeño.
+    const cs = await browser.newContext({ viewport: { width: 320, height: 568 }, isMobile: true, hasTouch: true });
+    const ps = await cs.newPage();
+    await ps.goto(BASE + '#/sec/juegos/calma'); await ps.waitForSelector('#ca-start');
+    const calma = await ps.evaluate(() => ({
+      tabs: [...document.querySelectorAll('#jg-tabs button')].every((b) => { const r = b.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth + 1; }),
+      info: !document.querySelector('.jg-info').open,
+      antes: document.querySelector('#ca-sel').getBoundingClientRect().top,
+    }));
+    ok('Modo calma a 320 px: las cuatro pestañas visibles', calma.tabs);
+    ok('Modo calma: el ejercicio aparece antes que el texto informativo', calma.info && calma.antes < 568, JSON.stringify(calma));
+    await cs.close();
+
+    // Navegación: «←» vuelve de verdad y recupera la posición.
+    await ir('/emergencia', '.btn-112');
+    await pm.evaluate(() => window.scrollTo(0, 900));
+    await pm.waitForTimeout(150);
+    const y0 = await pm.evaluate(() => window.scrollY);
+    await pm.click('a[href="#/emergencia/nevada"]');
+    await pm.waitForSelector('.qcard');
+    await pm.click('.topbar [data-volver]');
+    await pm.waitForSelector('.btn-112');
+    await pm.waitForTimeout(250);
+    const y1 = await pm.evaluate(() => window.scrollY);
+    ok('Volver: «←» regresa a la lista SOS en la misma posición', Math.abs(y1 - y0) < 30 && (await pm.evaluate(() => location.hash)) === '#/emergencia', `${y0} → ${y1}`);
+
+    await ir('/buscar', '#q');
+    await pm.fill('#q', 'hipotermia'); await pm.waitForTimeout(300);
+    await pm.locator('#res .row').first().click();
+    await pm.waitForSelector('.topbar [data-volver]');
+    await pm.click('.topbar [data-volver]');
+    await pm.waitForSelector('#res .row');
+    ok('Volver: «←» desde un resultado vuelve a la búsqueda', (await pm.inputValue('#q')) === 'hipotermia');
+
+    const cdl = await browser.newContext({ viewport: { width: 375, height: 667 } });
+    const pdl = await cdl.newPage();
+    await pdl.goto(BASE + '#/art/pa-rcp'); await pdl.waitForSelector('.topbar');
+    await pdl.click('.topbar [data-volver]');
+    await pdl.waitForTimeout(300);
+    ok('Volver: entrando por enlace directo, «←» va a la sección padre', (await pdl.evaluate(() => location.hash)) === '#/sec/primeros-auxilios');
+    await cdl.close();
+
+    // Título: sin duplicar cuando la cabecera lo muestra entero.
+    await ir('/sec/familia', '#fa-nodos');
+    ok('Título: el H1 repetido se oculta (sigue para lectores de pantalla)', (await pm.locator('h1.h1-en-barra').count()) === 1);
+    await ir('/check/nivel2', '.chk-item');
+    ok('Título: si la cabecera lo corta, el H1 completo se mantiene visible', (await pm.locator('h1.h1-en-barra').count()) === 0);
+    await cm.close();
+  }
+
   /* ------------------ 13 ter. Temas: modo noche y contraste ------------------ */
   console.log('\n▸ Temas: modo noche, contraste alto y elementos fijos');
   {

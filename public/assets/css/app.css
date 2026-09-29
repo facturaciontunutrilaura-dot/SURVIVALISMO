@@ -282,7 +282,7 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.4em 0; }
 .btn.ghost { background: transparent; color: var(--txt); border-color: var(--line2); }
 .btn.danger { background: #52201a; border-color: var(--red); color: #ffd9d2; }
 .btn.wide { width: 100%; }
-.btn.sm { min-height: 36px; padding: 6px 10px; font-size: .8rem; }
+.btn.sm { min-height: 44px; padding: 6px 12px; font-size: .82rem; }   /* 44 px: tamaño mínimo táctil */
 .btnrow { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
 
 input, select, textarea {
@@ -291,7 +291,10 @@ input, select, textarea {
   color: var(--txt); font: inherit; font-size: 1rem;
 }
 textarea { min-height: 90px; resize: vertical; }
-input:focus, select, textarea:focus { outline: 2px solid var(--olive2); outline-offset: 1px; }
+input:focus, select:focus, textarea:focus { outline: 2px solid var(--olive2); outline-offset: 1px; }
+/* Foco visible para teclado en todo control, bien marcado sobre el fondo oscuro. */
+:focus-visible { outline: 3px solid var(--olive3); outline-offset: 2px; }
+a:focus-visible, button:focus-visible, summary:focus-visible { outline: 3px solid var(--olive3); outline-offset: 2px; border-radius: 2px; }
 label { display: block; font-family: var(--fb); font-size: .7rem; letter-spacing: .1em; text-transform: uppercase; color: var(--dim); margin: 10px 0 4px; }
 .fieldrow { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
@@ -428,6 +431,17 @@ body.emg { --bg: #0A0E06; }
 
 /* ------------------------------ MAPA ------------------------------ */
 #map { height: 62vh; min-height: 340px; border: 1px solid var(--line2); border-radius: var(--r); background: var(--bg2); }
+/* Pantalla de mapa: acciones en una fila y mapa que llega justo hasta la
+   navegación inferior (cabecera ~74 px + acciones ~52 + estado ~40 + nav 58). */
+.mapa-acciones { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-bottom: 6px; }
+.mapa-acciones .btn { flex-direction: column; gap: 0; padding: 4px 2px; min-height: 52px; font-size: .8rem; letter-spacing: 0; line-height: 1.1; text-transform: none; }
+.mapa-acciones .btn span { display: block; margin-top: 2px; }
+.mapa-estado { font-size: .85rem; color: var(--dim); min-height: 22px; margin: 2px 0 6px; line-height: 1.35; }
+.mapa-vista #map { height: calc(100dvh - 250px - env(safe-area-inset-bottom)); min-height: 280px; }
+@media (min-width: 760px) { .mapa-acciones .btn { flex-direction: row; gap: 6px; font-size: .85rem; } .mapa-acciones .btn span { margin: 0; } }
+/* Controles de Leaflet a tamaño táctil. */
+.leaflet-touch .leaflet-bar a, .leaflet-bar a { width: 44px !important; height: 44px !important; line-height: 44px !important; font-size: 1.3rem !important; }
+.leaflet-touch .leaflet-control-layers-toggle, .leaflet-control-layers-toggle { width: 44px !important; height: 44px !important; }
 .leaflet-container { background: #0f1512; font-family: var(--ft); }
 .leaflet-control-attribution { background: rgba(0,0,0,.6) !important; color: var(--dim2) !important; font-size: 9px !important; }
 .leaflet-control-attribution a { color: var(--dim) !important; }
@@ -554,6 +568,10 @@ body.emg #app { padding-bottom: 170px; }
 
 /* Pestañas de SOS: rejilla, nunca desplazamiento horizontal. En móvil
    3 columnas × 2 filas; en pantallas anchas, una sola fila. */
+/* Pestañas en rejilla (Juegos): 2×2 en móvil, una fila en pantallas anchas. */
+.tabs.tabs-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; overflow: visible; }
+.tabs.tabs-grid button { min-height: 48px; white-space: normal; line-height: 1.15; }
+@media (min-width: 600px) { .tabs.tabs-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 .tabs.tabs-sos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; overflow: visible; }
 .tabs.tabs-sos button { min-height: 50px; padding: 6px 4px; white-space: normal; line-height: 1.15; font-size: .8rem; letter-spacing: .03em; }
 .tabs.tabs-sos button.no { color: #F0A89C; border-color: #6A2A20; }
@@ -562,6 +580,15 @@ body.emg #app { padding-bottom: 170px; }
 
 /* ------------------------------ BUSCADOR ------------------------------ */
 .searchbar { position: sticky; top: 62px; z-index: 30; background: var(--bg); padding-bottom: 10px; }
+.q-caja { position: relative; }
+.q-caja input { padding-right: 52px; font-size: 1.05rem; min-height: 52px; }
+.q-caja input::-webkit-search-cancel-button { display: none; }
+.q-limpiar {
+  position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+  width: 44px; height: 44px; border: 0; border-radius: var(--r); cursor: pointer;
+  background: transparent; color: var(--dim); font-size: 1.2rem;
+}
+.btn.tel { min-height: 44px; padding: 4px 10px; font-family: var(--fb); text-transform: none; }
 .sr-empty { color: var(--dim); font-size: .95rem; padding: 10px 0; }
 .sugs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
 .sugs .btn { text-transform: none; letter-spacing: 0; font-family: var(--ft); font-weight: 600; }

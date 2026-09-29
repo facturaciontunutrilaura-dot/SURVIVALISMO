@@ -58,7 +58,7 @@ export async function borrarConDeshacer({ que, f = false, hecho, recuperado, bor
 
 export function topbar(title, sub = '', backHref = '#/') {
   return `<header class="topbar">
-    <a class="btn-ico" href="${backHref}" aria-label="Volver">←</a>
+    <a class="btn-ico" href="${backHref}" data-volver aria-label="Volver">←</a>
     <div class="title">${esc(title)}${sub ? `<small>${esc(sub)}</small>` : ''}</div>
     <a class="btn-ico" href="#/buscar" aria-label="Buscar">🔍</a>
   </header>`;

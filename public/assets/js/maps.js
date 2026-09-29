@@ -242,15 +242,18 @@ const tipoMap = Object.fromEntries(TIPOS_PUNTO.map((t) => [t.id, t]));
 
 /* ------------------------------ Vista mapa ------------------------------ */
 export async function mapView() {
-  const n = el(`<div>
-    <div class="btnrow">
-      <button class="btn sm" id="m-add" type="button">📍 Añadir punto aquí</button>
-      <button class="btn sm ghost" id="m-me" type="button">🎯 Mi posición</button>
-      <button class="btn sm ghost" id="m-dl" type="button">⬇ Descargar área</button>
-      <button class="btn sm ghost" id="m-layers" type="button">🗂 Capas</button>
+  /* Una sola fila de acciones y el estado ENCIMA del mapa: así los avisos
+     («sin teselas», «sin conexión», progreso de descarga) se ven sin
+     desplazarse, y el mapa no queda por debajo de la navegación. */
+  const n = el(`<div class="mapa-vista">
+    <div class="mapa-acciones" role="toolbar" aria-label="Acciones del mapa">
+      <button class="btn sm" id="m-add" type="button" aria-label="Añadir un punto en el centro del mapa">📍<span>Punto</span></button>
+      <button class="btn sm ghost" id="m-me" type="button" aria-label="Ir a mi posición">🎯<span>Mi posición</span></button>
+      <button class="btn sm ghost" id="m-dl" type="button" aria-label="Descargar el área visible para usarla sin conexión">⬇<span>Descargar</span></button>
+      <button class="btn sm ghost" id="m-layers" type="button" aria-label="Capas e importación">🗂<span>Capas</span></button>
     </div>
+    <div class="mapa-estado" id="m-status" role="status" aria-live="polite"></div>
     <div id="map"></div>
-    <div class="muted" id="m-status" style="margin-top:6px"></div>
     <div id="m-panel"></div>
   </div>`);
 
@@ -417,8 +420,8 @@ export async function mapView() {
   const status = n.querySelector('#m-status');
   async function refreshStatus() {
     const c = await store.count('tiles');
-    const aviso = modoRaster ? '' : ' · <b>sin teselas en esta zona: se muestra el mapa vectorial</b>';
-    status.innerHTML = `${c} teselas guardadas offline · capa vectorial IGN siempre disponible · ${navigator.onLine ? 'con conexión' : '<b>sin conexión</b>'}${aviso}`;
+    const aviso = modoRaster ? '' : '<br><b>⚠ Sin teselas en esta zona: se muestra el mapa vectorial</b>';
+    status.innerHTML = `${c} teselas guardadas · ${navigator.onLine ? 'con conexión' : '<b>SIN CONEXIÓN</b>'}${aviso}`;
   }
   await refreshStatus();
   statusListo = true;
@@ -606,6 +609,8 @@ export async function mapView() {
         if (i % 5 === 0 || i === tiles.length - 1) {
           bar.style.width = `${((i + 1) / tiles.length) * 100}%`;
           log.textContent = `${i + 1}/${tiles.length} · nuevas ${ok} · ya guardadas ${skip} · fallidas ${err}`;
+          // El progreso también se ve arriba, junto al mapa.
+          status.innerHTML = `⬇ <b>Descargando ${Math.round(((i + 1) / tiles.length) * 100)} %</b> · ${i + 1}/${tiles.length} teselas`;
           await new Promise((r) => setTimeout(r, 0));
         }
       }
