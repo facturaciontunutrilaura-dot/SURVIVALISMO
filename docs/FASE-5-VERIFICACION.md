@@ -301,4 +301,16 @@ Todas: **PENDIENTE DE PRUEBA REAL**. Pasos y resultado esperado en
 
 ### CI de GitHub
 
-_Se completa tras el push de este documento._
+| Ejecución | Commit | Resultado |
+|---|---|---|
+| #5–#10 | `e99b7c1` … `81c12a4` (bloques 1–5 y revisión profesional) | ✅ todas en verde |
+| **#12 · run 36620981003** | **`11f252c`** (código final 1.6.0 + documentación) | ✅ **Correcto**: lista de archivos offline al día, unitarias, **app 394/394**, **sincronización 47/47** |
+
+Solo quedan los avisos informativos (Node 20 en las acciones de GitHub,
+`DEP0040 punycode`). El commit que añade esta tabla solo cambia este
+documento.
+
+**Estado:**
+- fase 5 técnicamente terminada, **pendiente de la prueba y la aprobación
+  de la propietaria**;
+- **no desplegada en Netlify**.
