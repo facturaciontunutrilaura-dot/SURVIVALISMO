@@ -806,7 +806,6 @@ try {
   await dpage.waitForSelector('details');
   ok('Escritorio: índice del manual', (await dpage.locator('details').count()) >= 8);
   await dctx.close();
-  srv2.kill();
 
   /* --------------------- 13 bis. Ubicación y territorio --------------------- */
   console.log('\n▸ Ámbito MI ZONA: ubicación y planificación oficial');
@@ -916,6 +915,53 @@ try {
   });
   ok('Solo se guarda el código de provincia y el modo', /"cod":"05"/.test(guardado) && /"modo":"manual"/.test(guardado), guardado);
   ok('No se guarda ninguna coordenada', !/lat|lon|coord|accuracy|precision/i.test(guardado), guardado);
+
+  /* ------------------ 13 ter. Temas: modo noche y contraste ------------------ */
+  console.log('\n▸ Temas: modo noche, contraste alto y elementos fijos');
+  {
+    // Contraste WCAG de todo texto visible contra su fondo efectivo.
+    const contraste = (pg) => pg.evaluate(() => {
+      const lum = (c) => { const m = c.match(/[\d.]+/g).map(Number); const [r, g, b] = m.slice(0, 3).map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+      const fondo = (e) => { while (e) { const c = getComputedStyle(e).backgroundColor; const m = c.match(/[\d.]+/g); if (m && (m.length < 4 || +m[3] > 0.5)) return c; e = e.parentElement; } return getComputedStyle(document.documentElement).backgroundColor; };
+      const malos = [];
+      for (const e of document.querySelectorAll('#app *, .bottomnav *')) {
+        const r = e.getBoundingClientRect();
+        if (!r.width || !r.height || ![...e.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim().length > 1)) continue;
+        if (e.closest('.leaflet-container, input, select, textarea, .skip')) continue;
+        const cs = getComputedStyle(e); const fs = parseFloat(cs.fontSize);
+        const a = lum(cs.color), b = lum(fondo(e)); const cr = (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+        const grande = fs >= 24 || (fs >= 18.66 && +cs.fontWeight >= 700);
+        if (cr < (grande ? 3 : 4.5)) malos.push(`${cr.toFixed(2)} «${e.textContent.trim().slice(0, 30)}»`);
+      }
+      return [...new Set(malos)];
+    });
+    for (const [tema, cont] of [['dark', 'normal'], ['night', 'normal'], ['dark', 'high'], ['night', 'high']]) {
+      const ct = await browser.newContext({ viewport: { width: 375, height: 667 }, isMobile: true, hasTouch: true });
+      await ct.addInitScript(([t, c]) => localStorage.setItem('survival.settings', JSON.stringify({ theme: t, contrast: c })), [tema, cont]);
+      const pt = await ct.newPage();
+      await pt.goto(BASE + '#/emergencia/incendio-forestal');
+      await pt.waitForSelector('.sos-bar');
+      await pt.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+      await pt.evaluate(async () => (await import('./assets/js/ui.js')).toast('Prueba de aviso'));
+      const pos = await pt.evaluate(() => {
+        const dentro = (sel) => { const r = document.querySelector(sel).getBoundingClientRect(); return r.top >= 0 && r.bottom <= innerHeight + 1; };
+        return { nav: dentro('.bottomnav'), bar: dentro('.sos-bar'), toast: dentro('.toast') };
+      });
+      ok(`Tema ${tema}/${cont}: navegación, 112 y avisos siguen en pantalla`, pos.nav && pos.bar && pos.toast, JSON.stringify(pos));
+      const malos = [];
+      for (const r of ['/', '/emergencia', '/emergencia/incendio-forestal', '/check/nivel2', '/sec/familia']) {
+        await pt.goto(BASE + '#' + r); await pt.waitForTimeout(250);
+        malos.push(...(await contraste(pt)).map((m) => r + ' ' + m));
+      }
+      await pt.goto(BASE + '#/buscar'); await pt.waitForSelector('#q');
+      await pt.fill('#q', 'sangra mucho'); await pt.waitForTimeout(300);
+      malos.push(...(await contraste(pt)).map((m) => '/buscar ' + m));
+      ok(`Tema ${tema}/${cont}: todo el texto cumple contraste AA`, malos.length === 0, malos.slice(0, 5).join(' | '));
+      await ct.close();
+    }
+  }
+
+  srv2.kill();
 
   /* ------------------------------ 14. Consola ------------------------------ */
   console.log('\n▸ Errores de consola');

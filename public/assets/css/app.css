@@ -26,9 +26,10 @@
 
   /* Texto: desde ◆#C5B199 (beige) y ◆#B09779 */
   --txt: #E6DCCB;
-  --dim: #B09779;      /* ◆ */
-  --dim2: #AD9670;     /* tinte entre ◆#8B7752 y ◆#B09779: sobre el verde nuevo
-                          el ◆ original se quedaba en 2,99:1 y no se leía */
+  /* Aclarados sobre ◆#B09779 para superar 4,5:1 (WCAG AA) sobre --panel:
+     los originales daban 4,46 y 4,36. */
+  --dim: #C0A988;      /* 5,5:1 sobre panel */
+  --dim2: #B8A07E;     /* 4,9:1 sobre panel */
 
   /* Verdes de campo */
   --olive: #565E35;    /* ◆ verde bosque */
@@ -71,14 +72,16 @@ html[data-theme='night'] {
   --panel2: #1E2416;
   --line: #2A2620;
   --line2: #3A342A;
-  --txt: #A9906B;
-  --dim: #85704F;
-  --dim2: #5F513A;
+  /* Textos calculados para ≥ 4,5:1 sobre los fondos nocturnos sin aclarar
+     los fondos (antes el secundario daba 2,2:1 y no se leía). */
+  --txt: #B39A72;      /* 6,4:1 sobre panel */
+  --dim: #A38C66;      /* 5,4:1 */
+  --dim2: #9E8862;     /* 5,1:1 */
   --olive: #3A3F24;
   --olive2: #4A472F;
-  --olive3: #6E7046;
+  --olive3: #939460;   /* títulos: 5,5:1 */
   --khaki: #736C47;
-  --sand: #7E6E51;
+  --sand: #A89168;     /* subtítulos h3: 5,7:1 (antes 3,5:1) */
   --slate: #3B3E36;
   --red: #6E3422;
   --amber: #7A5430;
@@ -89,7 +92,10 @@ html[data-theme='night'] {
   --brown2: #40352A;
   --rust: #4E3123;
 }
-html[data-theme='night'] body { filter: brightness(0.86) saturate(0.85); }
+/* OJO: el modo noche NO puede usar `filter` en <body>. Un filtro convierte al
+   body en el bloque contenedor de todo `position: fixed`, y la navegación, la
+   barra del 112 y los avisos acababan al final de la página en vez de en
+   pantalla. La baja luminosidad se consigue solo con la paleta. */
 html[data-theme='night'] img,
 html[data-theme='night'] .leaflet-container { filter: brightness(0.7) saturate(0.6); }
 
@@ -97,8 +103,16 @@ html[data-theme='night'] .leaflet-container { filter: brightness(0.7) saturate(0
 html[data-contrast='high'] {
   --txt: #ffffff;
   --dim: #d5d9d2;
+  --dim2: #d5d9d2;
   --line: #5b6b5d;
   --panel: #1A2013;
+}
+/* Contraste alto también en modo noche: más luz en el texto, fondos intactos. */
+html[data-theme='night'][data-contrast='high'] {
+  --txt: #D0B48A;
+  --dim: #BCA27A;
+  --dim2: #B39A72;
+  --panel: #171C11;
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
