@@ -6,7 +6,7 @@
 import { el, esc, toast } from './ui.js';
 import * as store from './store.js';
 import {
-  RIESGOS, NIVELES, TENDENCIAS, EVIDENCIA, ZONAS, ZONAS_FAMILIA, ANIOS,
+  RIESGOS, NIVELES, TENDENCIAS, EVIDENCIA, ZONAS, ZONAS_PROVINCIALES, ANIOS,
   CATEGORIAS_RIESGO, COMPARADOR, conf, CONFIANZA_T,
   RIESGOS_ACTUALIZADO, RIESGOS_PROXIMA_REVISION,
 } from '../../data/content/riesgos.js';
@@ -138,11 +138,11 @@ function ficha(r, zonaId) {
      2. Un aviso explícito de que no hay evaluación específica para tu zona.
      3. La evaluación de ámbito ESTADO, que sí está sostenida por fuentes.
 
-   Excepción: la provincia de Ávila (05) sí tiene evaluación propia en la
-   app, así que ahí se usa esa en vez de la estatal.
+   Excepción: las provincias con evaluación propia en la app
+   (ZONAS_PROVINCIALES) usan esa en vez de la estatal.
    ========================================================================= */
 
-const ZONA_LOCAL = { '05': 'avila' };
+const ZONA_LOCAL = Object.fromEntries(Object.entries(ZONAS_PROVINCIALES).map(([cod, z]) => [cod, z.id]));
 
 function marcaVerif(v) {
   return v === 2
@@ -223,7 +223,10 @@ function panelUbicacion(prov, modo) {
 
 /* ------------------------------- Vista principal ------------------------------- */
 export async function riesgosView() {
-  const zonaGuardada = await kv('riesgos.zona', 'avila');
+  /* Versiones anteriores guardaban 'avila' como pestaña fija; ahora esa
+     evaluación se muestra dentro de MI ZONA. */
+  const zonaLeida = await kv('riesgos.zona', 'mizona');
+  const zonaGuardada = ['mizona', ...ZONAS.map((z) => z.id)].includes(zonaLeida) ? zonaLeida : 'mizona';
   const fechas = await kv('riesgos.fechas', { act: RIESGOS_ACTUALIZADO, prox: RIESGOS_PROXIMA_REVISION });
 
   /* MI ZONA se antepone a los ámbitos fijos: es el que responde a "dónde
@@ -256,7 +259,7 @@ export async function riesgosView() {
       <div class="muted">Puedes modificar estas fechas cuando revises los contenidos con Internet.</div>
     </div>
 
-    <a class="btn wide ghost" href="#/riesgos/comparar" style="margin-bottom:10px">📊 Comparar Ávila · Terrassa · Getafe</a>
+    <a class="btn wide ghost" href="#/riesgos/comparar" style="margin-bottom:10px">📊 Comparar mis ubicaciones</a>
     <div class="filtros">
       <button class="btn sm" id="r-todos" type="button">Todos</button>
       ${Object.entries(CATEGORIAS_RIESGO).map(([k, v]) => `<button class="btn sm ghost" data-cat="${k}" type="button">${v.ic} ${esc(v.t)}</button>`).join('')}
@@ -380,41 +383,68 @@ export async function riesgosView() {
 }
 
 /* ------------------------------- Comparador ------------------------------- */
+/* Compara las ubicaciones que el usuario ha configurado en el centro
+   familiar. Para cada una usa su provincia (código INE):
+     · si la provincia tiene evaluación propia en la app, se muestra ese nivel;
+     · si no, se muestra el hecho administrativo comprobable (si su comunidad
+       tiene plan autonómico propio ante ese riesgo) y, como referencia, el
+       nivel de ámbito ESPAÑA, marcado como tal.
+   Nunca se inventa un nivel municipal o provincial. */
 export async function compararView() {
+  const { nodos } = await import('./familia.js');
+  const ubicaciones = (await nodos()).map((nd) => ({ nd, prov: nd.cod ? ubi.provincia(nd.cod) : null }));
   const filas = COMPARADOR.map((id) => RIESGO_MAP[id]).filter(Boolean);
   const verif = await kv('riesgos.verif', {});
 
-  const celda = (r, z) => {
-    const d = r.z[z];
-    if (!d) return '<td><span class="muted">—</span></td>';
-    const v = verif[`${r.id}::${z}`];
-    const nivel = v?.nivel || d.nivel;
-    const t = TENDENCIAS[d.tend] || TENDENCIAS.nd;
-    return `<td>${chip(nivel)}<div class="muted" style="margin-top:3px">${t.ic} ${conf(d.conf)}${v?.nivel ? ' ·<b> tuyo</b>' : ''}${d.pend && !v?.nivel ? ' · <span style="color:var(--amber)">pend.</span>' : ''}</div></td>`;
+  if (!ubicaciones.length) {
+    return el(`<div>
+      <div class="blk-note">Todavía no has configurado ninguna ubicación. Añade tu casa y las de tu familia en el centro familiar, indicando la provincia de cada una, y aquí podrás compararlas.</div>
+      <a class="btn wide" href="#/sec/familia">👨‍👩‍👧 Configurar ubicaciones</a>
+    </div>`);
+  }
+
+  const planAutonomico = (r, prov) => {
+    const c = CCAA[prov.ccaa];
+    if ((c?.pe || []).some((x) => x.r === r.id)) return '<span class="badge ok">✔ plan autonómico</span>';
+    if ((c?.sp || []).includes(r.id)) return '<span class="badge">sin plan propio</span>';
+    return '<span class="badge warn">plan: sin datos</span>';
+  };
+
+  const celda = (r, { prov }) => {
+    if (!prov) return '<td><span class="muted">Sin provincia</span></td>';
+    const local = ZONA_LOCAL[prov.cod];
+    if (local && r.z[local]) {
+      const d = r.z[local];
+      const v = verif[`${r.id}::${local}`];
+      const nivel = v?.nivel || d.nivel;
+      const t = TENDENCIAS[d.tend] || TENDENCIAS.nd;
+      return `<td>${chip(nivel)}<div class="muted" style="margin-top:3px">${t.ic} ${conf(d.conf)} · provincial${v?.nivel ? ' ·<b> tuyo</b>' : ''}${d.pend && !v?.nivel ? ' · <span style="color:var(--amber)">pend.</span>' : ''}</div></td>`;
+    }
+    const d = r.z.espana;
+    return `<td>${planAutonomico(r, prov)}${d ? `<div class="muted" style="margin-top:3px">Ref. España: ${chip(d.nivel)}</div>` : ''}</td>`;
   };
 
   return el(`<div>
-    <div class="blk-note">Comparación de las tres ubicaciones familiares.
-      <b>Ávila</b> se apoya en INFOCAL, AEMET, IGN y el plan provincial PLATEA.
-      <b>Terrassa</b>, en su DUPROCIM homologado (aprobado el 31/03/2023): en Cataluña, que un municipio esté obligado a redactar un Plan de Actuación Municipal para un riesgo significa que el plan autonómico lo identifica como afectado, así que es un indicador oficial.
-      <b>Getafe</b> se apoya en el marco autonómico (PLATERCAM y planes especiales), porque su plan de emergencias municipal seguía pendiente de aprobación según información pública de septiembre de 2025.
-      Lo que lleva la marca <b>"pend."</b> sigue sin contrastar. Puedes verificarlo tú y anotar el valor en cada ficha: se guarda en tu dispositivo y aparece aquí como "tuyo".</div>
+    <div class="blk-note">Comparación de <b>tus ubicaciones</b>, según la provincia que hayas indicado en cada una.
+      Donde la aplicación tiene una evaluación provincial propia, se muestra su nivel. Donde no la tiene, <b>no se inventa</b>: se indica si la comunidad autónoma tiene plan de protección civil propio ante ese riesgo (un hecho administrativo comprobable, no una probabilidad) y, como referencia, el nivel de ámbito ESPAÑA.</div>
     <div class="tw"><table class="cmp">
-      <thead><tr><th>Riesgo</th>${ZONAS_FAMILIA.map((z) => `<th>${z.ic} ${esc(z.t)}</th>`).join('')}</tr></thead>
+      <thead><tr><th>Riesgo</th>${ubicaciones.map(({ nd, prov }) => `<th>${esc(nd.ic || '📍')} ${esc(nd.nombre)}${prov ? `<br><span class="muted">${esc(prov.nombre)}</span>` : ''}</th>`).join('')}</tr></thead>
       <tbody>${filas.map((r) => `<tr>
         <th class="rn">${r.ic} ${esc(r.t)}</th>
-        ${ZONAS_FAMILIA.map((z) => celda(r, z.id)).join('')}
+        ${ubicaciones.map((u) => celda(r, u)).join('')}
       </tr>`).join('')}</tbody>
     </table></div>
+    ${ubicaciones.some((u) => !u.prov) ? '<div class="blk-warn">Hay ubicaciones sin provincia. Indícala en Familia → Ubicaciones para poder compararlas.</div>' : ''}
     <div class="card"><h3>Cómo leer la tabla</h3>
       <div class="kv">
         <div>Chip de color</div><div>Nivel cualitativo de riesgo, no una probabilidad</div>
-        <div>Flecha</div><div>Tendencia esperada en el horizonte 2026–2036</div>
-        <div>Estrellas</div><div>Confianza en la valoración</div>
-        <div>"pend."</div><div>Nivel pendiente de verificar contra fuente oficial municipal</div>
+        <div>"provincial"</div><div>Evaluación propia de la aplicación para esa provincia</div>
+        <div>"✔ plan autonómico"</div><div>La comunidad tiene plan especial aprobado ante ese riesgo: lo reconoce como relevante, pero no dice cuánto</div>
+        <div>"Ref. España"</div><div>Nivel de ámbito estatal, como referencia general</div>
+        <div>"pend."</div><div>Nivel pendiente de verificar contra fuente oficial</div>
         <div>"tuyo"</div><div>Valor que has verificado y anotado tú</div>
       </div>
     </div>
-    <div class="btnrow"><a class="btn ghost" href="#/sec/riesgos">← Volver a las fichas</a></div>
+    <div class="btnrow"><a class="btn ghost" href="#/sec/familia">👨‍👩‍👧 Editar ubicaciones</a><a class="btn ghost" href="#/sec/riesgos">← Volver a las fichas</a></div>
   </div>`);
 }

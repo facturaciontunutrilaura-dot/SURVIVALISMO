@@ -9,8 +9,11 @@
       (paquete es-atlas, MIT). Pesa ~390 KB y va en el precache del Service
       Worker: funciona sin Internet desde la primera carga, siempre.
 
-   2) TESELAS RÁSTER BAJO DEMANDA, GUARDADAS EN INDEXEDDB
-      El usuario descarga el área que le interesa mientras tiene conexión.
+   2) TESELAS RÁSTER DEL IGN BAJO DEMANDA, GUARDADAS EN INDEXEDDB
+      Servicios WMTS del Instituto Geográfico Nacional (mapa base, mapa
+      topográfico MTN y ortofoto PNOA), de uso libre con atribución
+      (CC BY 4.0). El usuario descarga el área que le interesa mientras
+      tiene conexión.
       Las teselas se guardan como Blob en IndexedDB y una TileLayer propia
       las sirve desde ahí. Sin conexión y sin tesela cacheada, se muestra la
       capa vectorial debajo.
@@ -33,6 +36,7 @@
 
 import * as store from './store.js';
 import { el, esc, toast, uid, fmtBytes } from './ui.js';
+import * as ubi from './ubicacion.js';
 
 let L = null;
 
@@ -50,20 +54,37 @@ export function loadLeaflet() {
 }
 
 /* ------------------------- Fuentes de teselas ------------------------- */
+/* Servicios WMTS del IGN en la rejilla GoogleMapsCompatible (EPSG:3857), la
+   misma que usa Leaflet. Licencia CC BY 4.0: basta con citar al IGN.
+   Documentación: https://www.ign.es/web/ign/portal/ide-area-nodo-ide-ign
+   `nativo` es el zoom máximo que sirve el IGN; por encima, Leaflet amplía la
+   última tesela disponible en vez de pedir teselas que no existen. */
+const IGN_ATTR = '© <a href="https://www.ign.es" target="_blank" rel="noopener">Instituto Geográfico Nacional</a> (CC BY 4.0)';
+const wmts = (servicio, capa) =>
+  `https://www.ign.es/wmts/${servicio}?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=${capa}` +
+  '&STYLE=default&TILEMATRIXSET=GoogleMapsCompatible&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&FORMAT=image/jpeg';
+
 export const TILE_SOURCES = {
-  osm: {
-    t: 'OpenStreetMap estándar',
-    url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-    max: 19,
-    attr: '© colaboradores de OpenStreetMap',
+  'ign-base': {
+    t: 'IGN · Mapa base',
+    url: wmts('ign-base', 'IGNBaseTodo'),
+    nativo: 17, max: 19, kb: 22,
+    attr: IGN_ATTR,
   },
-  topo: {
-    t: 'OpenTopoMap (topográfico, curvas de nivel)',
-    url: 'https://a.tile.opentopomap.org/{z}/{x}/{y}.png',
-    max: 17,
-    attr: 'Cartografía © OpenTopoMap (CC-BY-SA) · Datos © OpenStreetMap',
+  'ign-mtn': {
+    t: 'IGN · Mapa topográfico (MTN)',
+    url: wmts('mapa-raster', 'MTN'),
+    nativo: 16, max: 18, kb: 35,
+    attr: IGN_ATTR,
+  },
+  'ign-pnoa': {
+    t: 'IGN · Ortofoto PNOA',
+    url: wmts('pnoa-ma', 'OI.OrthoimageCoverage'),
+    nativo: 19, max: 19, kb: 30,
+    attr: IGN_ATTR,
   },
 };
+export const FUENTE_DEFECTO = 'ign-base';
 
 const tileKey = (src, z, x, y) => `${src}/${z}/${x}/${y}`;
 
@@ -78,10 +99,19 @@ async function getTile(src, z, x, y) {
 async function saveTile(src, z, x, y, blob) {
   return store.put('tiles', { id: tileKey(src, z, x, y), blob, src, z, ts: Date.now() });
 }
+const urlTesela = (cfg, z, x, y) => cfg.url.replace('{z}', z).replace('{x}', x).replace('{y}', y);
 
-/** TileLayer que lee de IndexedDB y, si hay red, completa y cachea. */
-function makeOfflineLayer(Lf, srcId) {
+/** TileLayer que lee de IndexedDB y, si hay red, completa y cachea.
+ *  Informa de cada tesela con `onTesela(ok)` para que la vista sepa si el
+ *  ráster se está viendo de verdad o hay que rellenar la capa vectorial. */
+function makeOfflineLayer(Lf, srcId, onTesela = () => {}) {
   const cfg = TILE_SOURCES[srcId];
+  const pinta = (img, done, blob) => {
+    img.src = URL.createObjectURL(blob);
+    img.onload = () => { URL.revokeObjectURL(img.src); onTesela(true); done(null, img); };
+    img.onerror = () => { URL.revokeObjectURL(img.src); vacia(img, done); };
+  };
+  const vacia = (img, done) => { img.onload = img.onerror = null; img.src = BLANK; onTesela(false); done(null, img); };
   return Lf.TileLayer.extend({
     createTile(coords, done) {
       const img = document.createElement('img');
@@ -89,26 +119,90 @@ function makeOfflineLayer(Lf, srcId) {
       const { z, x, y } = coords;
       getTile(srcId, z, x, y)
         .then((blob) => {
-          if (blob) {
-            img.src = URL.createObjectURL(blob);
-            img.onload = () => { URL.revokeObjectURL(img.src); done(null, img); };
-            return;
-          }
-          if (!navigator.onLine) { img.src = BLANK; done(null, img); return; }
-          const url = cfg.url.replace('{z}', z).replace('{x}', x).replace('{y}', y);
+          if (blob) return pinta(img, done, blob);
+          if (!navigator.onLine) return vacia(img, done);
+          const url = urlTesela(cfg, z, x, y);
           fetch(url, { mode: 'cors' })
             .then((r) => (r.ok ? r.blob() : Promise.reject(new Error('HTTP ' + r.status))))
             .then((b) => {
               saveTile(srcId, z, x, y, b).catch(() => {});
-              img.src = URL.createObjectURL(b);
-              img.onload = () => { URL.revokeObjectURL(img.src); done(null, img); };
+              pinta(img, done, b);
             })
-            .catch(() => { img.src = BLANK; done(null, img); });
+            .catch(() => {
+              /* Si el servidor no permite leer la tesela desde JavaScript
+                 (CORS), al menos se muestra como imagen normal, sin guardarla. */
+              img.onload = () => { onTesela(true); done(null, img); };
+              img.onerror = () => vacia(img, done);
+              img.src = url;
+            });
         })
-        .catch(() => { img.src = BLANK; done(null, img); });
+        .catch(() => vacia(img, done));
       return img;
     },
   });
+}
+
+/** Capa ráster offline lista para añadir a un mapa. */
+export function crearCapaRaster(Lf, srcId = FUENTE_DEFECTO, onTesela) {
+  const cfg = TILE_SOURCES[srcId];
+  const Cls = makeOfflineLayer(Lf, srcId, onTesela);
+  return new Cls('', { maxZoom: cfg.max, maxNativeZoom: cfg.nativo, attribution: cfg.attr });
+}
+
+/* --------------------------- Utilidades geográficas --------------------------- */
+/** Distancia de círculo máximo en km (fórmula del haverseno). */
+export function distanciaKm(lat1, lon1, lat2, lon2) {
+  const R = 6371, rad = Math.PI / 180;
+  const dLat = (lat2 - lat1) * rad, dLon = (lon2 - lon1) * rad;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * rad) * Math.cos(lat2 * rad) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+/** Longitud en km de todas las líneas de un GeoJSON. */
+export function longitudKm(geo) {
+  let km = 0;
+  const linea = (cs) => { for (let i = 1; i < cs.length; i++) km += distanciaKm(cs[i - 1][1], cs[i - 1][0], cs[i][1], cs[i][0]); };
+  const geom = (g) => {
+    if (!g) return;
+    if (g.type === 'LineString') linea(g.coordinates);
+    else if (g.type === 'MultiLineString') g.coordinates.forEach(linea);
+    else if (g.type === 'GeometryCollection') g.geometries.forEach(geom);
+  };
+  const feats = geo.type === 'FeatureCollection' ? geo.features : geo.type === 'Feature' ? [geo] : [{ geometry: geo }];
+  feats.forEach((f) => geom(f.geometry));
+  return km;
+}
+
+/** Convierte un GPX (tracks y rutas) en GeoJSON. Sin dependencias. */
+export function gpxAGeojson(texto) {
+  const doc = new DOMParser().parseFromString(texto, 'application/xml');
+  if (doc.querySelector('parsererror')) throw new Error('El archivo GPX no es válido');
+  const pts = (nodos) => [...nodos].map((p) => [parseFloat(p.getAttribute('lon')), parseFloat(p.getAttribute('lat'))])
+    .filter(([lo, la]) => Number.isFinite(lo) && Number.isFinite(la));
+  const features = [];
+  doc.querySelectorAll('trkseg').forEach((seg) => {
+    const c = pts(seg.querySelectorAll('trkpt'));
+    if (c.length > 1) features.push({ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: c } });
+  });
+  doc.querySelectorAll('rte').forEach((r) => {
+    const c = pts(r.querySelectorAll('rtept'));
+    if (c.length > 1) features.push({ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: c } });
+  });
+  doc.querySelectorAll('wpt').forEach((w) => {
+    const [c] = pts([w]);
+    if (c) features.push({ type: 'Feature', properties: { nombre: w.querySelector('name')?.textContent || '' }, geometry: { type: 'Point', coordinates: c } });
+  });
+  if (!features.length) throw new Error('El GPX no contiene tracks, rutas ni puntos');
+  return { type: 'FeatureCollection', features };
+}
+
+/** Lee un archivo GeoJSON o GPX elegido por el usuario. */
+export async function leerCapa(file) {
+  const texto = await file.text();
+  if (/\.gpx$/i.test(file.name) || /^\s*<\?xml|<gpx[\s>]/i.test(texto.slice(0, 300))) return gpxAGeojson(texto);
+  const data = JSON.parse(texto);
+  if (!data.type) throw new Error('No parece GeoJSON');
+  return data;
 }
 
 /* ------------------------- Capas vectoriales ------------------------- */
@@ -166,9 +260,14 @@ export async function mapView() {
   }
 
   const Lf = L;
-  const st = store.settings();
   const map = Lf.map(n.querySelector('#map'), { zoomControl: true, attributionControl: true })
-    .setView([40.6565, -4.6818], 9);
+    .setView([40.2, -3.7], 6);
+  map.attributionControl.setPrefix('Leaflet');
+
+  /* Si el usuario ha indicado su provincia (Riesgos → Mi zona), el mapa se
+     abre sobre ella y la resalta. Si no, muestra toda España. */
+  const miProv = await ubi.guardada().catch(() => null);
+  if (miProv?.bbox) map.fitBounds([[miProv.bbox[1], miProv.bbox[0]], [miProv.bbox[3], miProv.bbox[2]]]);
 
   // --- Capa vectorial base (siempre offline) ---
   //
@@ -182,13 +281,13 @@ export async function mapView() {
   let modoRaster = true;
 
   const estiloProv = (f) => {
-    const esAvila = f.properties.cod === '05';
+    const esMia = miProv && f.properties.cod === miProv.cod;
     return {
-      color: esAvila ? '#a1a265' : modoRaster ? '#8b7752' : '#554e3e',
-      weight: esAvila ? 2.5 : modoRaster ? 1.2 : 1,
+      color: esMia ? '#a1a265' : modoRaster ? '#8b7752' : '#554e3e',
+      weight: esMia ? 2.5 : modoRaster ? 1.2 : 1,
       opacity: modoRaster ? 0.85 : 1,
-      fillColor: esAvila ? '#565e35' : '#1b1917',
-      fillOpacity: modoRaster ? (esAvila ? 0.12 : 0) : 0.75,
+      fillColor: esMia ? '#565e35' : '#1b1917',
+      fillOpacity: modoRaster ? (esMia ? 0.12 : 0) : 0.75,
     };
   };
   const estiloMun = () => ({
@@ -228,14 +327,24 @@ export async function mapView() {
     overlays['Municipios de Ávila (IGN)'] = capaMun;
   } catch (e) { /* opcional */ }
 
-  // --- Capas ráster offline ---
+  // --- Capas ráster offline (IGN) ---
+  // Se cuentan las teselas que se ven de verdad. Si en una vista no llega
+  // ninguna (sin descargar, servidor caído o bloqueado), el vectorial se
+  // rellena para que el mapa nunca quede en blanco, haya o no conexión.
+  let teselasOk = 0, teselasKo = 0, statusListo = false;
+  const onTesela = (ok) => { if (ok) teselasOk++; else teselasKo++; };
   const rasterLayers = {};
   for (const [id, cfg] of Object.entries(TILE_SOURCES)) {
-    const Cls = makeOfflineLayer(Lf, id);
-    rasterLayers[cfg.t] = new Cls('', { maxZoom: cfg.max, attribution: cfg.attr, crossOrigin: true });
+    const capa = crearCapaRaster(Lf, id, onTesela);
+    capa.on('loading', () => { teselasOk = 0; teselasKo = 0; });
+    capa.on('load', () => {
+      const hayRaster = teselasOk > 0 || teselasKo === 0;
+      if (hayRaster !== modoRaster) { modoRaster = hayRaster; refrescarVector(); }
+      if (statusListo) refreshStatus();
+    });
+    rasterLayers[cfg.t] = capa;
   }
-  const defaultRaster = rasterLayers[TILE_SOURCES.osm.t];
-  defaultRaster.addTo(map);
+  rasterLayers[TILE_SOURCES[FUENTE_DEFECTO].t].addTo(map);
 
   // --- Capas GeoJSON importadas por el usuario ---
   const userGeo = await store.all('geo');
@@ -300,23 +409,31 @@ export async function mapView() {
     refrescarVector();
   });
 
-  // Si no hay ninguna tesela guardada y tampoco hay conexión, el mapa ráster
-  // se vería completamente negro: en ese caso el vectorial se rellena solo.
-  (async () => {
-    const hayTeselas = await store.count('tiles');
-    if (!hayTeselas && !navigator.onLine) {
-      modoRaster = false;
-      refrescarVector();
-    }
-  })();
 
   // --- Estado ---
   const status = n.querySelector('#m-status');
   async function refreshStatus() {
     const c = await store.count('tiles');
-    status.innerHTML = `${c} teselas guardadas offline · capa vectorial IGN siempre disponible · ${navigator.onLine ? 'con conexión' : '<b>sin conexión</b>'}`;
+    const aviso = modoRaster ? '' : ' · <b>sin teselas en esta zona: se muestra el mapa vectorial</b>';
+    status.innerHTML = `${c} teselas guardadas offline · capa vectorial IGN siempre disponible · ${navigator.onLine ? 'con conexión' : '<b>sin conexión</b>'}${aviso}`;
   }
   await refreshStatus();
+  statusListo = true;
+
+  // Teselas de versiones anteriores (OpenStreetMap / OpenTopoMap): ya no se
+  // muestran. Se ofrece borrarlas para liberar espacio.
+  (async () => {
+    const prefijos = Object.keys(TILE_SOURCES).map((k) => k + '/');
+    const viejas = (await store.keys('tiles')).filter((k) => !prefijos.some((p) => String(k).startsWith(p)));
+    if (!viejas.length) return;
+    const aviso = el(`<div class="blk-note">Tienes ${viejas.length} teselas de una versión anterior (OpenStreetMap / OpenTopoMap) que ya no se usan: ahora los mapas son del IGN. Vuelve a descargar tu zona con la fuente del IGN.
+      <div class="btnrow"><button class="btn sm ghost" type="button">Borrar teselas antiguas</button></div></div>`);
+    aviso.querySelector('button').addEventListener('click', async () => {
+      for (const k of viejas) await store.delRaw('tiles', k);
+      aviso.remove(); refreshStatus(); toast('Teselas antiguas borradas');
+    });
+    status.after(aviso);
+  })().catch(() => {});
 
   // --- Añadir punto ---
   n.querySelector('#m-add').addEventListener('click', () => {
@@ -362,7 +479,8 @@ export async function mapView() {
     });
   });
 
-  // --- Mi posición ---
+  // --- Mi posición (un único marcador que se reutiliza) ---
+  const posicion = { circulo: null, punto: null };
   n.querySelector('#m-me').addEventListener('click', () => {
     if (!navigator.geolocation) return toast('Geolocalización no disponible');
     toast('Buscando posición…');
@@ -370,8 +488,10 @@ export async function mapView() {
       (p) => {
         const ll = [p.coords.latitude, p.coords.longitude];
         map.setView(ll, 14);
-        Lf.circle(ll, { radius: p.coords.accuracy, color: '#4f7f96', weight: 1, fillOpacity: 0.12 }).addTo(map);
-        Lf.circleMarker(ll, { radius: 6, color: '#9cb768', fillColor: '#9cb768', fillOpacity: 1 })
+        posicion.circulo?.remove();
+        posicion.punto?.remove();
+        posicion.circulo = Lf.circle(ll, { radius: p.coords.accuracy, color: '#4f7f96', weight: 1, fillOpacity: 0.12 }).addTo(map);
+        posicion.punto = Lf.circleMarker(ll, { radius: 6, color: '#9cb768', fillColor: '#9cb768', fillOpacity: 1 })
           .bindPopup(`Tu posición<br><span class="mono">${ll[0].toFixed(5)}, ${ll[1].toFixed(5)}</span><br>±${p.coords.accuracy.toFixed(0)} m`)
           .addTo(map).openPopup();
       },
@@ -385,11 +505,11 @@ export async function mapView() {
     const panel = n.querySelector('#m-panel');
     panel.innerHTML = `<div class="card"><h3>Descargar área para uso offline</h3>
       <p class="muted">Se descargan las teselas del área visible y se guardan en este dispositivo. Hazlo con Wi-Fi antes de necesitarlo.</p>
-      <label>Fuente</label>
+      <label for="dl-src">Fuente</label>
       <select id="dl-src">${Object.entries(TILE_SOURCES).map(([k, v]) => `<option value="${k}">${esc(v.t)}</option>`).join('')}</select>
       <div class="fieldrow">
-        <div><label>Zoom mínimo</label><input id="dl-z0" type="number" value="${Math.max(6, Math.round(map.getZoom()) - 1)}" min="4" max="17"></div>
-        <div><label>Zoom máximo</label><input id="dl-z1" type="number" value="${Math.min(15, Math.round(map.getZoom()) + 3)}" min="4" max="17"></div>
+        <div><label for="dl-z0">Zoom mínimo</label><input id="dl-z0" type="number" value="${Math.max(6, Math.round(map.getZoom()) - 1)}" min="4" max="19"></div>
+        <div><label for="dl-z1">Zoom máximo</label><input id="dl-z1" type="number" value="${Math.min(15, Math.round(map.getZoom()) + 3)}" min="4" max="19"></div>
       </div>
       <div class="sp"></div>
       <div id="dl-est" class="muted"></div>
@@ -399,7 +519,7 @@ export async function mapView() {
       </div>
       <div class="progress"><i id="dl-bar" style="width:0"></i></div>
       <div id="dl-log" class="muted"></div>
-      <div class="blk-note">Descarga solo el área que realmente necesitas. Las teselas proceden de servidores comunitarios con políticas de uso justo: descargar regiones enteras a zoom alto no está permitido y puede bloquear el acceso.</div>
+      <div class="blk-note">Descarga solo el área que realmente necesitas. Las teselas proceden de los servicios públicos del Instituto Geográfico Nacional: no los satures. Para cartografía de provincias enteras, el IGN ofrece descargas completas en su Centro de Descargas (centrodedescargas.cnig.es).</div>
     </div>`;
     panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     panel.querySelector('#dl-x').addEventListener('click', () => { panel.innerHTML = ''; });
@@ -414,8 +534,11 @@ export async function mapView() {
 
     const listTiles = () => {
       const b = map.getBounds();
+      const cfg = TILE_SOURCES[panel.querySelector('#dl-src').value];
+      // Por encima del zoom nativo el IGN no tiene teselas: Leaflet amplía
+      // la última, así que no tiene sentido descargar más.
       const z0 = Math.max(1, parseInt(panel.querySelector('#dl-z0').value, 10));
-      const z1 = Math.min(17, parseInt(panel.querySelector('#dl-z1').value, 10));
+      const z1 = Math.min(cfg.nativo, parseInt(panel.querySelector('#dl-z1').value, 10));
       const out = [];
       for (let z = z0; z <= z1; z++) {
         const [x0, y0] = lonlat2tile(b.getWest(), b.getNorth(), z);
@@ -429,7 +552,8 @@ export async function mapView() {
     const est = panel.querySelector('#dl-est');
     const showEst = () => {
       const t = listTiles();
-      est.innerHTML = `Área visible: <b>${t.length}</b> teselas · tamaño estimado ≈ <b>${fmtBytes(t.length * 18000)}</b>`;
+      const kb = TILE_SOURCES[panel.querySelector('#dl-src').value].kb;
+      est.innerHTML = `Área visible: <b>${t.length}</b> teselas · tamaño estimado ≈ <b>${fmtBytes(t.length * kb * 1024)}</b>`;
       return t;
     };
     panel.addEventListener('input', showEst);
@@ -456,8 +580,7 @@ export async function mapView() {
         try {
           if (await getTile(src, z, x, y)) { skip++; }
           else {
-            const url = cfg.url.replace('{z}', z).replace('{x}', x).replace('{y}', y);
-            const r = await fetch(url);
+            const r = await fetch(urlTesela(cfg, z, x, y), { mode: 'cors' });
             if (r.ok) { await saveTile(src, z, x, y, await r.blob()); ok++; }
             else err++;
           }
@@ -468,7 +591,9 @@ export async function mapView() {
           await new Promise((r) => setTimeout(r, 0));
         }
       }
-      log.innerHTML = `<b>Descarga terminada.</b> Nuevas: ${ok} · ya guardadas: ${skip} · fallidas: ${err}. Ya puedes usar esta zona sin conexión.`;
+      log.innerHTML = ok + skip === 0 && err
+        ? `<span style="color:var(--red)"><b>No se ha podido guardar ninguna tesela</b> (${err} fallidas). El servidor del IGN no ha respondido o no permite la descarga desde este navegador. Inténtalo más tarde.</span>`
+        : `<b>Descarga terminada.</b> Nuevas: ${ok} · ya guardadas: ${skip} · fallidas: ${err}. Ya puedes usar esta zona sin conexión.`;
       await refreshStatus();
       await store.persistStorage();
     });
@@ -483,12 +608,12 @@ export async function mapView() {
       <ul>
         <li>Provincias de España (IGN vía es-atlas)</li>
         <li>Comunidades autónomas (IGN vía es-atlas)</li>
-        <li>Municipios de la provincia de Ávila (IGN vía es-atlas)</li>
+        <li>Municipios de la provincia de Ávila (IGN vía es-atlas, guía provincial)</li>
         <li>Tus puntos personales</li>
       </ul>
-      <h4>Importar capa oficial (GeoJSON)</h4>
-      <p class="muted">Puedes descargar capas oficiales (zonas inundables de la Confederación Hidrográfica, cartografía de riesgo de la Junta de Castilla y León, capas del IGN…) y añadirlas aquí. Quedan guardadas en el dispositivo y disponibles sin conexión.</p>
-      <input type="file" id="gi-f" accept=".geojson,.json,application/geo+json,application/json">
+      <h4>Importar capa (GeoJSON o GPX)</h4>
+      <p class="muted">Puedes añadir capas oficiales (zonas inundables de las confederaciones hidrográficas, cartografía de riesgo autonómica, capas del IGN…) o trazas GPX de tus rutas. Quedan guardadas en el dispositivo y disponibles sin conexión.</p>
+      <input type="file" id="gi-f" accept=".geojson,.json,.gpx,application/geo+json,application/json,application/gpx+xml">
       <label>Nombre de la capa</label><input id="gi-n" placeholder="Ej. Zonas inundables T=100 (CHD)">
       <div class="btnrow" style="margin-top:8px"><button class="btn" id="gi-go" type="button">Importar</button>
       <button class="btn ghost" id="gi-x" type="button">Cerrar</button></div>
@@ -505,8 +630,7 @@ export async function mapView() {
       const f = panel.querySelector('#gi-f').files?.[0];
       if (!f) return toast('Selecciona un archivo');
       try {
-        const data = JSON.parse(await f.text());
-        if (!data.type) throw new Error('No parece GeoJSON');
+        const data = await leerCapa(f);
         await store.put('geo', {
           id: uid(),
           nombre: panel.querySelector('#gi-n').value.trim() || f.name,

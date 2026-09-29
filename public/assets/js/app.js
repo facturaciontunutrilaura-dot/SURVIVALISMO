@@ -56,7 +56,7 @@ function vHome() {
   return el(`<div>
     <div class="brand">
       <h1>SURVIVAL OFFLINE</h1>
-      <div class="sub">Manual de campo · España · Ávila · v${VERSION}</div>
+      <div class="sub">Manual de campo · España · v${VERSION}</div>
     </div>
     <a class="row" href="#/buscar" style="margin-bottom:12px">
       <span>🔍</span><div class="rt"><b>Buscar en todo el manual</b><span>Escribe "agua", "apagón", "incendio"…</span></div><span class="chev">›</span>
@@ -192,7 +192,7 @@ async function vSeccion(id) {
   }
   if (id === 'familia') {
     const { familiaView } = await import('./familia.js');
-    const w = el(`<div>${topbar('Centro familiar', 'Ávila · Terrassa · Getafe')}<h1>${s.ic} CENTRO FAMILIAR</h1></div>`);
+    const w = el(`<div>${topbar('Centro familiar', 'Tus ubicaciones y rutas')}<h1>${s.ic} CENTRO FAMILIAR</h1></div>`);
     w.appendChild(await familiaView());
     return w;
   }
@@ -217,7 +217,7 @@ async function vSeccion(id) {
       <a class="btn sm" href="#/sec/juegos">🎮 Abrir juegos</a>
       <a class="btn sm ghost" href="#/sec/juegos">🧘 Modo calma</a>
     </div></div>`);
-  if (id === 'avila') extra.push(`<div class="card"><h3>Herramientas de Ávila</h3>
+  if (id === 'avila') extra.push(`<div class="card"><h3>Herramientas de la guía de Ávila</h3>
     <div class="btnrow">
       <a class="btn sm" href="#/check/avila">☑ Checklist Plan Ávila</a>
       <a class="btn sm ghost" href="#/mapa">🗺 Mapa de la provincia</a>
@@ -1062,7 +1062,7 @@ async function route() {
     }
     else if (a === 'riesgos' && b === 'comparar') {
       const { compararView } = await import('./riesgos.js');
-      const wrap = el(`<div>${topbar('Comparar ubicaciones', 'Ávila · Terrassa · Getafe', '#/sec/riesgos')}
+      const wrap = el(`<div>${topbar('Comparar ubicaciones', 'Tus ubicaciones', '#/sec/riesgos')}
         <h1>📊 COMPARAR UBICACIONES</h1></div>`);
       wrap.appendChild(await compararView());
       out = wrap;
@@ -1070,7 +1070,7 @@ async function route() {
     else if (a === 'familia') {
       const F = await import('./familia.js');
       const sub = {
-        rutas: ['Rutas offline', 'Ávila ⇄ Terrassa · Ávila ⇄ Getafe', F.rutasView],
+        rutas: ['Rutas offline', 'Tus rutas por situación', F.rutasView],
         ir: ['Quiero llegar a mi familia', 'Asistente de ruta', F.irView],
         mapa: ['Mapa familiar', 'Nodos y rutas offline', F.mapaFamiliarView],
         plan72: ['Plan familiar 72 h', 'Cálculo por ubicación', F.plan72View],

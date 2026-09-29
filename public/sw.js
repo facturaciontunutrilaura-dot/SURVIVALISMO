@@ -2,13 +2,13 @@
    sw.js — Service Worker de SURVIVAL OFFLINE
    Estrategia:
      · Precache completo del app shell + contenido + geodatos en la instalación.
-     · Navegaciones: red primero, con vuelta a la caché (y a index.html) si falla.
+     · Navegaciones: caché primero, con revalidación en segundo plano.
      · Recursos propios: caché primero (son inmutables por versión).
      · Peticiones a terceros (teselas de mapa): pasan de largo; la app las
        guarda ella misma en IndexedDB.
    ========================================================================= */
 
-const VERSION = '1.4.0';
+const VERSION = '1.5.0';
 const STATIC = `survival-static-v${VERSION}`;
 const RUNTIME = `survival-runtime-v${VERSION}`;
 
@@ -55,9 +55,6 @@ const CORE = [
   './data/geo/es-ccaa.geojson',
   './data/geo/avila-municipios.geojson',
   './data/geo/avila-centroides.geojson',
-  './data/geo/rutas.geojson',
-  './data/geo/nodos-familia.geojson',
-  './data/geo/municipios-familia.geojson',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/maskable-512.png',

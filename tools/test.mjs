@@ -32,6 +32,16 @@ const CHROME = ['/opt/pw-browsers/chromium-1194/chrome-linux/chrome', '/usr/bin/
 const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
 const ctx = await browser.newContext({ ...devices['Pixel 7'], serviceWorkers: 'allow' });
 const page = await ctx.newPage();
+page.on('dialog', (d) => d.accept());
+
+// Teselas del IGN simuladas: las pruebas no dependen de Internet ni del
+// estado del servidor. Con `ignCaido = true` se simula el servidor caído.
+const PNG_1PX = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
+let ignCaido = false;
+await ctx.route('https://www.ign.es/**', (route) => {
+  if (ignCaido) return route.abort();
+  return route.fulfill({ status: 200, contentType: 'image/png', body: PNG_1PX, headers: { 'Access-Control-Allow-Origin': '*' } });
+});
 
 const consoleErrors = [];
 page.on('console', (m) => { if (m.type() === 'error') consoleErrors.push(m.text()); });
@@ -193,9 +203,13 @@ try {
   /* ---------------------- 9 ter. NUEVO: Riesgos 2036 ---------------------- */
   console.log('\n▸ Riesgos 2026–2036');
   await page.goto(BASE + '#/sec/riesgos');
+  await page.waitForSelector('#rz button');
+  ok('MI ZONA es el ámbito por defecto', (await page.locator('#rz button[data-z="mizona"]').getAttribute('aria-pressed')) === 'true');
+  ok('No hay pestañas fijas de ubicaciones concretas', (await page.locator('#rz button[data-z="avila"]').count()) === 0);
+  await page.click('#rz button[data-z="espana"]');
   await page.waitForSelector('.riesgo');
   const nRiesgos = await page.locator('.riesgo').count();
-  ok('Fichas de riesgo para Ávila', nRiesgos >= 15, `(${nRiesgos})`);
+  ok('Fichas de riesgo de ámbito España', nRiesgos >= 15, `(${nRiesgos})`);
   ok('Separa situación actual y proyecciones', (await page.locator('.bloque-actual').count()) >= 10 && (await page.locator('.bloque-2036').count()) >= 10);
   ok('Muestra nivel, tendencia y confianza', (await page.locator('.riesgo .lvl').count()) >= 15 && (await page.textContent('body')).includes('★'));
   ok('Dibuja la gráfica 2026–2036', (await page.locator('.chart svg').count()) >= 5);
@@ -210,18 +224,69 @@ try {
   await page.waitForTimeout(400);
   ok('Cambio de zona a Europa', (await page.locator('.riesgo').count()) >= 10);
   await page.goto(BASE + '#/riesgos/comparar');
-  await page.waitForSelector('table.cmp');
-  ok('Comparador con 3 ubicaciones', (await page.locator('table.cmp thead th').count()) === 4);
-  ok('Comparador marca lo pendiente de verificar', (await page.textContent('table.cmp')).includes('pend.'));
+  await page.waitForSelector('#app h1');
+  ok('Comparador sin ubicaciones invita a configurarlas', (await page.textContent('#app')).includes('Configurar ubicaciones'));
 
-  /* --------------------- 9 quater. NUEVO: Familia --------------------- */
+  /* --------------------- 9 quater. Centro familiar --------------------- */
   console.log('\n▸ Centro de coordinación familiar');
   await page.goto(BASE + '#/sec/familia');
+  await page.waitForSelector('#fa-nodos');
+  ok('Sin ubicaciones precargadas', (await page.locator('#fa-estado').count()) === 0 && (await page.textContent('#app')).includes('Configura tu plan familiar'));
+  const fuentesApp = await page.evaluate(async () => {
+    const txt = [];
+    for (const f of ['./data/content/familia.js', './data/content/riesgos.js', './data/content/index.js', './data/content/sources.js', './assets/js/familia.js', './assets/js/riesgos.js']) {
+      txt.push(await (await fetch(f)).text());
+    }
+    return txt.join('\n');
+  });
+  ok('El código distribuido no contiene los datos personales anteriores', !/\b(terrassa|getafe|carlos)\b|padres de mi pareja/i.test(fuentesApp));
+
+  await page.click('#fa-ejemplo');
   await page.waitForSelector('#fa-estado .row');
-  ok('Tres nodos familiares', (await page.locator('#fa-estado .row').count()) === 3);
-  const txtFam = await page.textContent('body');
-  ok('Incluye Ávila, Terrassa y Getafe', txtFam.includes('Ávila') && txtFam.includes('Terrassa') && txtFam.includes('Getafe'));
-  await page.locator('[data-est="terrassa"]').click();
+  ok('El ejemplo carga dos ubicaciones', (await page.locator('#fa-estado .row').count()) === 2);
+  ok('El ejemplo se señala como ficticio', (await page.textContent('#fa-top')).includes('EJEMPLO'));
+  await page.click('#fa-borrar-ej');
+  await page.waitForSelector('#fa-add-base');
+  ok('El ejemplo se puede borrar', (await page.locator('details.nodo').count()) === 0);
+
+  // Configuración propia: una base y un destino, con posición y rutas.
+  await page.click('#fa-add-base');
+  await page.waitForSelector('details.nodo');
+  const nBase = page.locator('details.nodo').nth(0);
+  await nBase.locator('[data-f="nombre"]').fill('Casa');
+  await nBase.locator('[data-f="cod"]').selectOption('28');
+  await nBase.locator('[data-c="lat"]').fill('40.4168');
+  await nBase.locator('[data-c="lon"]').fill('-3.7038');
+  await page.waitForTimeout(500);
+  await page.click('#fa-add');
+  await page.waitForTimeout(400);
+  const nDest = page.locator('details.nodo').nth(1);
+  await nDest.locator('[data-f="nombre"]').fill('Abuelos');
+  await nDest.locator('[data-f="persona"]').fill('Abuela');
+  await nDest.locator('[data-f="cod"]').selectOption('08');
+  await nDest.locator('[data-c="lat"]').fill('41.3874');
+  await nDest.locator('[data-c="lon"]').fill('2.1686');
+  await nDest.locator('[data-addruta]').click();
+  await page.waitForTimeout(300);
+  await nDest.locator('[data-r="via"]').first().fill('A-2');
+  await nDest.locator('[data-r="km"]').first().fill('620');
+  await nDest.locator('[data-addruta]').click();
+  await page.waitForTimeout(300);
+  await nDest.locator('[data-r="km"]').nth(1).fill('700');
+  await page.waitForTimeout(600);
+  ok('Solo puede haber una base', (await page.locator('details.nodo .badge', { hasText: 'base' }).count()) === 1);
+
+  // Traza GPX importada para la ruta principal.
+  const gpx = `<?xml version="1.0"?><gpx version="1.1" creator="test"><trk><trkseg>
+    <trkpt lat="40.4168" lon="-3.7038"/><trkpt lat="41.6488" lon="-0.8891"/><trkpt lat="41.3874" lon="2.1686"/></trkseg></trk></gpx>`;
+  await nDest.locator('input[data-importar]').first().setInputFiles({ name: 'ruta.gpx', mimeType: 'application/gpx+xml', buffer: Buffer.from(gpx) });
+  await page.waitForTimeout(700);
+  ok('Importa una traza GPX para la ruta', (await nDest.locator('[data-traza]').first().textContent()).includes('Traza importada'));
+
+  await page.reload();
+  await page.waitForSelector('#fa-estado .row');
+  ok('Las ubicaciones se guardan', (await page.locator('#fa-estado .row').count()) === 2);
+  await page.locator('#fa-estado [data-est]').nth(1).click();
   await page.waitForTimeout(200);
   await page.locator('[data-se="ayuda"]').click();
   await page.waitForTimeout(300);
@@ -229,17 +294,14 @@ try {
 
   await page.goto(BASE + '#/familia/rutas');
   await page.waitForSelector('.ruta');
-  ok('Tres rutas por corredor', (await page.locator('.ruta').count()) === 3);
-  const txtRuta = await page.textContent('body');
-  ok('La ruta lista localidades reales', txtRuta.includes('Zaragoza') && txtRuta.includes('Lleida') && txtRuta.includes('Medinaceli'));
-  ok('Distancia Ávila–Terrassa realista', /6[0-9]{2} km/.test(txtRuta), txtRuta.match(/\d+ km/)?.[0]);
-  ok('Advierte que el estado de las vías es desconocido', txtRuta.includes('REFERENCIA DE PLANIFICACIÓN'));
+  ok('Muestra las rutas definidas por el usuario', (await page.locator('#ru-out .ruta').count()) === 2);
+  const txtRuta = await page.textContent('#ru-out');
+  ok('Usa los km anotados y calcula el tiempo', txtRuta.includes('620 km') && /6 h 53 min/.test(txtRuta), txtRuta.match(/\d+ h \d+ min/)?.[0]);
+  ok('Indica la distancia en línea recta', /\d+ km en línea recta/.test(txtRuta));
+  ok('Advierte que el estado de las vías es desconocido', (await page.textContent('body')).includes('REFERENCIA DE PLANIFICACIÓN'));
   await page.selectOption('#ru-sit', 'nieve');
   await page.waitForTimeout(300);
   ok('La situación cambia la información', (await page.textContent('#ru-out')).includes('quitanieves'));
-  await page.selectOption('#ru-cor', 'getafe');
-  await page.waitForTimeout(300);
-  ok('Corredor a Getafe', (await page.textContent('#ru-out')).includes('Getafe'));
 
   await page.goto(BASE + '#/familia/ir');
   await page.waitForSelector('#w-quien button');
@@ -248,11 +310,15 @@ try {
   await page.locator('#w-sit button[data-s="incendio"]').click();
   await page.click('#w-go');
   await page.waitForSelector('#w-out .ruta', { timeout: 10000 });
-  ok('Asistente "llegar a mi familia" genera plan', (await page.locator('#w-out .ruta').count()) === 3);
+  ok('Asistente "llegar a mi familia" genera plan', (await page.locator('#w-out .ruta').count()) === 2);
 
   await page.goto(BASE + '#/familia/plan72');
   await page.waitForSelector('.card .kv');
   ok('Plan 72 h calcula por ubicación', (await page.textContent('body')).includes('litros'));
+
+  await page.goto(BASE + '#/familia/reunion');
+  await page.waitForSelector('.list .row');
+  ok('Reunificación con un punto por ubicación', (await page.locator('.list .row', { hasText: 'PUNTO' }).count()) === 2);
 
   await page.goto(BASE + '#/familia/offline');
   await page.waitForSelector('.sim');
@@ -263,18 +329,27 @@ try {
 
   await page.goto(BASE + '#/familia/mapa');
   await page.waitForSelector('#map.leaflet-container', { timeout: 15000 });
-  await page.waitForTimeout(1800);
-  ok('Mapa familiar dibuja nodos', (await page.locator('.fmk').count()) === 3);
-  await page.selectOption('#mf-cor', 'terrassa');
-  await page.waitForTimeout(900);
-  ok('Mapa familiar dibuja las rutas', (await page.locator('#map path').count()) > 40);
+  await page.waitForTimeout(1500);
+  ok('Mapa familiar dibuja las ubicaciones', (await page.locator('.fmk').count()) === 2);
+  ok('Mapa familiar dibuja la traza importada', (await page.textContent('#mf-st')).includes('1 trazas'));
+
+  await page.goto(BASE + '#/riesgos/comparar');
+  await page.waitForSelector('table.cmp');
+  ok('Comparador con las ubicaciones del usuario', (await page.locator('table.cmp thead th').count()) === 3);
+  const txtCmp = await page.textContent('table.cmp');
+  ok('Comparador usa hechos oficiales sin inventar niveles', /plan autonómico|sin plan propio|plan: sin datos/.test(txtCmp) && txtCmp.includes('Ref. España'));
 
   /* ------------------------------ 10. Mapa ------------------------------ */
   console.log('\n▸ Mapa offline');
+  // Provincia elegida en MI ZONA: el mapa la resalta.
+  await page.evaluate(async () => { const u = await import('./assets/js/ubicacion.js'); await u.guardar('46', 'manual'); });
   await page.goto(BASE + '#/mapa');
   await page.waitForSelector('#map.leaflet-container', { timeout: 15000 });
   await page.waitForTimeout(1500);
   ok('Leaflet inicializado', (await page.locator('.leaflet-container').count()) === 1);
+  const pedidasIgn = await page.evaluate(() => performance.getEntriesByType('resource').filter((e) => e.name.startsWith('https://www.ign.es/wmts/')).length);
+  ok('Las teselas se piden al servicio WMTS del IGN', pedidasIgn > 0, `(${pedidasIgn})`);
+  ok('Atribución al IGN visible', (await page.textContent('.leaflet-control-attribution')).includes('Instituto Geográfico Nacional'));
   const paths = await page.locator('#map path').count();
   ok('Capa vectorial IGN dibujada', paths > 40, `(${paths} polígonos)`);
   ok('Control de capas presente', (await page.locator('.leaflet-control-layers').count()) === 1);
@@ -286,7 +361,7 @@ try {
     els.map((e) => parseFloat(e.getAttribute('fill-opacity') || '0')));
   const opacos = rellenos.filter((v) => v > 0.3).length;
   ok('Con teselas activas el vectorial NO tapa el mapa', opacos === 0, `(${opacos} polígonos con relleno opaco)`);
-  ok('Ávila sigue resaltada pero translúcida', rellenos.some((v) => v > 0 && v <= 0.2), JSON.stringify([...new Set(rellenos)]));
+  ok('Tu provincia sigue resaltada pero translúcida', rellenos.some((v) => v > 0 && v <= 0.2), JSON.stringify([...new Set(rellenos)]));
 
   // Al pasar a "Solo vectorial" el relleno vuelve, que es lo que hace legible
   // el mapa cuando no hay teselas debajo.
@@ -299,6 +374,22 @@ try {
     els.map((e) => parseFloat(e.getAttribute('fill-opacity') || '0')));
   ok('En modo solo vectorial el relleno vuelve', rellenos2.filter((v) => v > 0.5).length > 40,
     `(${rellenos2.filter((v) => v > 0.5).length})`);
+
+  // REGRESIÓN: con conexión pero sin teselas (servidor caído o bloqueado)
+  // el mapa quedaba en blanco. Ahora el vectorial debe rellenarse solo.
+  await page.evaluate(async () => { const s = await import('./assets/js/store.js'); await s.clear('tiles'); });
+  ignCaido = true;
+  await page.goto(BASE + '#/');
+  await page.goto(BASE + '#/mapa');
+  await page.waitForSelector('#map.leaflet-container', { timeout: 15000 });
+  await page.waitForTimeout(2000);
+  const rellenos3 = await page.locator('#map path').evaluateAll((els) =>
+    els.map((e) => parseFloat(e.getAttribute('fill-opacity') || '0')));
+  ok('Con el servidor de teselas caído el mapa no queda en blanco', rellenos3.filter((v) => v > 0.5).length > 40,
+    `(${rellenos3.filter((v) => v > 0.5).length})`);
+  ok('Y lo explica al usuario', (await page.textContent('#m-status')).includes('se muestra el mapa vectorial'));
+  ignCaido = false;
+  await page.evaluate(async () => { const u = await import('./assets/js/ubicacion.js'); await u.olvidar(); });
 
   /* ------------------------ 10 bis. Audio offline ------------------------ */
   console.log('\n▸ Audio offline');
@@ -352,6 +443,10 @@ try {
   await page.click('#cfg-export');
   const file = await dl;
   ok('Exportación descarga un JSON', file.suggestedFilename().endsWith('.json'));
+  const copia = JSON.parse(fs.readFileSync(await file.path(), 'utf8'));
+  const nodosCopia = (copia.stores.kv || []).find((r) => r.id === 'familia.nodos')?.v || [];
+  ok('La copia de seguridad incluye el plan familiar', nodosCopia.length === 2 && nodosCopia.some((x) => x.rutas?.length === 2),
+    `(${nodosCopia.length} ubicaciones)`);
 
   /* --------------------- 12. Service Worker + OFFLINE --------------------- */
   console.log('\n▸ PRUEBA OFFLINE REAL');
@@ -445,9 +540,9 @@ try {
     await page.waitForTimeout(300);
     await page.goto(BASE + '#/sec/familia');
     await page.waitForSelector('#fa-nodos details');
-    await page.locator('#fa-nodos details').nth(1).click();
+    await page.locator('#fa-nodos details summary').nth(1).click();
     await page.waitForTimeout(200);
-    await page.fill('[data-f="1::tel"]', '600111222');
+    await page.locator('#fa-nodos details').nth(1).locator('[data-f="tel"]').fill('600111222');
     await page.waitForTimeout(600);
 
     fs.writeFileSync(swPath, swOriginal.replace(/const VERSION = '[^']+'/, "const VERSION = '9.9.9-test'"));
@@ -467,10 +562,10 @@ try {
       (await page.locator('.chk-item').nth(1).locator('button[data-s="comprar"]').getAttribute('aria-pressed')) === 'true');
     await page.goto(BASE + '#/sec/familia');
     await page.waitForSelector('#fa-nodos details');
-    await page.locator('#fa-nodos details').nth(1).click();
+    await page.locator('#fa-nodos details summary').nth(1).click();
     await page.waitForTimeout(300);
     ok('TRAS ACTUALIZAR: los datos familiares siguen ahí',
-      (await page.inputValue('[data-f="1::tel"]')) === '600111222');
+      (await page.locator('#fa-nodos details').nth(1).locator('[data-f="tel"]').inputValue()) === '600111222');
   } finally {
     fs.writeFileSync(swPath, swOriginal);
   }
@@ -601,7 +696,7 @@ try {
   /* ------------------------------ 14. Consola ------------------------------ */
   console.log('\n▸ Errores de consola');
   const relevantes = consoleErrors.filter((e) =>
-    !/favicon|ERR_INTERNET_DISCONNECTED|ERR_TUNNEL_CONNECTION_FAILED|ERR_NAME_NOT_RESOLVED|Failed to fetch|tile\.|opentopomap|ERR_FAILED/i.test(e)
+    !/favicon|ERR_INTERNET_DISCONNECTED|ERR_TUNNEL_CONNECTION_FAILED|ERR_NAME_NOT_RESOLVED|Failed to fetch|ign\.es|ERR_FAILED/i.test(e)
   );
   ok('Sin errores de consola relevantes', relevantes.length === 0, relevantes.slice(0, 5).join(' | '));
 

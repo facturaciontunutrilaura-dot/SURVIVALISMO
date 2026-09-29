@@ -5,6 +5,19 @@ Alcance: fases 1–3 (diagnóstico, propuesta, priorización). **No se ha modifi
 
 ---
 
+## Estado de ejecución
+
+| Fecha | Cambio | Puntos de la auditoría |
+|---|---|---|
+| 29/09/2026 | Proyecto descomprimido en el repositorio; el ZIP se conserva como referencia | H1 |
+| 29/09/2026 | **App genérica**: sin datos personales distribuidos; centro familiar configurable por cada usuario (ubicaciones, rutas propias, trazas GPX/GeoJSON, ejemplo ficticio); comparador de riesgos sobre las ubicaciones del usuario; MI ZONA por defecto | §1.13, pregunta 2 |
+| 29/09/2026 | **Mapas del IGN** (WMTS: mapa base, MTN, PNOA) en sustitución de OSM/OpenTopoMap; CSP actualizada | A6, M2 |
+| 29/09/2026 | La copia de seguridad incluye el plan familiar (`kv`) | A1, E5 |
+| 29/09/2026 | El mapa ya no queda en blanco con conexión pero sin teselas; un único marcador de posición; teselas corruptas gestionadas | A2, A3 (parcial: sin seguimiento continuo), A9, M1, M3, M9 |
+| 29/09/2026 | Importación de GPX además de GeoJSON | parte de D6 |
+
+---
+
 ## 0. Cómo se ha hecho
 
 - Se ha descomprimido `survival-offline.zip` (es **el único contenido real del repositorio**) y se han leído todos los módulos JS, el CSS, el Service Worker, la configuración de despliegue, el README, los datos y las herramientas de build/test.

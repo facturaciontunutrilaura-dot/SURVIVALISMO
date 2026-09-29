@@ -53,17 +53,18 @@ export const EVIDENCIA = {
 export const conf = (n) => '★'.repeat(n) + '☆'.repeat(5 - n);
 export const CONFIANZA_T = { 5: 'Muy alta', 4: 'Alta', 3: 'Media', 2: 'Baja', 1: 'Muy baja' };
 
+/* Ámbitos fijos que se muestran como pestañas. */
 export const ZONAS = [
-  { id: 'avila', t: 'ÁVILA', ic: '📍', d: 'Provincia y ciudad de Ávila' },
   { id: 'espana', t: 'ESPAÑA', ic: '🇪🇸', d: 'Conjunto del Estado' },
   { id: 'europa', t: 'EUROPA', ic: '🇪🇺', d: 'Unión Europea y entorno' },
 ];
 
-export const ZONAS_FAMILIA = [
-  { id: 'avila', t: 'Ávila', ic: '🏠' },
-  { id: 'terrassa', t: 'Terrassa', ic: '👨‍👩‍👧' },
-  { id: 'getafe', t: 'Getafe', ic: '👨‍👩‍👧' },
-];
+/* Evaluaciones provinciales propias. No son pestañas: se usan desde MI ZONA
+   cuando la provincia del usuario (código INE) tiene evaluación específica.
+   Para el resto de provincias se muestra la de ámbito ESPAÑA. */
+export const ZONAS_PROVINCIALES = {
+  '05': { id: 'avila', t: 'Ávila', d: 'Provincia de Ávila' },
+};
 
 /* Serie temporal cualitativa 2026 → 2036 (índice de nivel 0–4, o null).
    Solo se rellena cuando existe una proyección científica o una serie
@@ -119,13 +120,6 @@ export const RIESGOS = [
         prep: ['Consultar avisos del país de destino antes de desplazarse.'],
         src: ['ue-eea'],
       },
-      terrassa: { nivel: 'moderado', tend: 'up', ev: 'evaluacion', conf: 3,
-        actual: 'VERIFICADO: el DUPROCIM de Terrassa, homologado por la Generalitat y aprobado el 31 de marzo de 2023, incluye el incendio forestal entre los riesgos con Plan de Actuación Municipal OBLIGATORIO. En Cataluña esa obligación deriva de que el plan especial autonómico (INFOCAT) identifica al municipio como afectado, así que se trata de un riesgo reconocido oficialmente, no de una suposición. Terrassa limita con masa forestal en su entorno.',
-        h2036: 'Misma tendencia al alza que en el conjunto del sur de Europa por el aumento de días con condiciones favorables a la propagación.',
-        src: ['terrassa-pc', 'aemet-cc'] },
-      getafe: { nivel: 'bajo', tend: 'flat', ev: 'evaluacion', conf: 3,
-        actual: 'La Comunidad de Madrid cuenta con Plan Especial de Incendios Forestales, aplicable a todo el territorio. El entorno de Getafe es mayoritariamente urbano, industrial y agrícola, con escasa masa forestal continua, por lo que el riesgo se sitúa muy por debajo del de la sierra madrileña. Getafe no tiene todavía plan de emergencias municipal aprobado, así que el marco aplicable es el autonómico (PLATERCAM).',
-        src: ['madrid-pc', 'getafe-ayto'] },
     },
   },
 
@@ -171,14 +165,6 @@ export const RIESGOS = [
         prep: ['Seguro adecuado y documentación duplicada.'],
         src: ['ue-eea'],
       },
-      terrassa: { nivel: 'alto', tend: 'up', ev: 'evaluacion', conf: 3,
-        actual: 'VERIFICADO: la inundación es el primero de los riesgos con Plan de Actuación Municipal OBLIGATORIO en el DUPROCIM de Terrassa. Esa obligación deriva de que el plan especial autonómico (INUNCAT) identifica al municipio como afectado. El término está atravesado por rieras de régimen torrencial y la comarca tiene antecedentes históricos graves de avenida. La cota concreta de tu domicilio debe consultarse en la cartografía de la Agència Catalana de l\'Aigua.',
-        h2036: 'Al alza por la mayor intensidad de los episodios de lluvia concentrada, común a toda la fachada mediterránea.',
-        src: ['terrassa-pc', 'aemet-cc'] },
-      getafe: { nivel: 'moderado', tend: 'up', ev: 'evaluacion', conf: 3,
-        actual: 'VERIFICADO: la Comunidad de Madrid dispone del plan especial INUNCAM, que cubre inundaciones y rotura de presas en toda la región. El término municipal está recorrido por el arroyo Culebro, incluido en programas oficiales de restauración fluvial y adaptación al cambio climático del MITECO. El nivel concreto de tu calle debe consultarse en la cartografía de zonas inundables del sistema nacional.',
-        h2036: 'Al alza por el aumento de la lluvia torrencial y la impermeabilización del suelo metropolitano.',
-        src: ['madrid-pc', 'getafe-ayto', 'aemet-cc'] },
     },
   },
 
@@ -224,12 +210,6 @@ export const RIESGOS = [
         prep: ['Reserva doméstica.'],
         src: ['ue-eea'],
       },
-      terrassa: { nivel: 'nd', tend: 'nd', ev: 'evaluacion', conf: 1, pend: true,
-        actual: 'Zona históricamente sujeta a episodios de sequía con restricciones en el sistema de abastecimiento de la cuenca interna de Cataluña. NIVEL PENDIENTE DE VERIFICAR contra la Agència Catalana de l\'Aigua y el ayuntamiento.',
-        src: ['terrassa-pc'] },
-      getafe: { nivel: 'nd', tend: 'nd', ev: 'evaluacion', conf: 1, pend: true,
-        actual: 'Abastecimiento integrado en el sistema regional. NIVEL PENDIENTE DE VERIFICAR contra el Canal de Isabel II y la Comunidad de Madrid.',
-        src: ['madrid-pc'] },
     },
   },
 
@@ -275,12 +255,6 @@ export const RIESGOS = [
         prep: ['Hidratación y evitar esfuerzo en horas centrales.'],
         src: ['ue-eea'],
       },
-      terrassa: { nivel: 'moderado', tend: 'up', ev: 'proyeccion', conf: 3, pend: true,
-        actual: 'Clima mediterráneo prelitoral con veranos calurosos y efecto de isla de calor urbana. La tendencia al alza es común a toda España según AEMET. NIVEL LOCAL PENDIENTE DE VERIFICAR contra el plan municipal y los umbrales de aviso del Meteocat para la zona.',
-        src: ['terrassa-pc', 'aemet-cc'] },
-      getafe: { nivel: 'alto', tend: 'up', ev: 'proyeccion', conf: 3, pend: true,
-        actual: 'Área metropolitana de Madrid: veranos continentales muy cálidos e isla de calor urbana marcada. El municipio dispone de Plan de Acción para el Clima y la Energía Sostenible. NIVEL LOCAL PENDIENTE DE VERIFICAR contra el PACES y el plan de calor de la Comunidad de Madrid.',
-        src: ['getafe-paces', 'madrid-pc', 'aemet-cc'] },
     },
   },
 
@@ -326,14 +300,6 @@ export const RIESGOS = [
         prep: ['Ropa técnica y sistema de calor seguro.'],
         src: ['ue-eea'],
       },
-      terrassa: { nivel: 'moderado', tend: 'down', ev: 'evaluacion', conf: 3,
-        actual: 'VERIFICADO: las nevadas figuran entre los riesgos con Plan de Actuación Municipal OBLIGATORIO en el DUPROCIM de Terrassa, por identificación del plan autonómico NEUCAT. Son poco frecuentes, pero muy disruptivas cuando ocurren en el área metropolitana, precisamente porque la ciudad no está adaptada a ellas.',
-        h2036: 'Menor frecuencia media por la tendencia térmica, sin que desaparezcan los episodios extremos puntuales.',
-        src: ['terrassa-pc'] },
-      getafe: { nivel: 'moderado', tend: 'down', ev: 'evaluacion', conf: 3,
-        actual: 'VERIFICADO: la Comunidad de Madrid cuenta con Plan Especial de Inclemencias Invernales para nevadas y fenómenos meteorológicos adversos. Las nevadas son infrecuentes en Getafe pero con antecedentes de episodios de gran impacto en el área metropolitana, con colapso de la movilidad durante días.',
-        h2036: 'Menor frecuencia media, con episodios extremos que se mantienen.',
-        src: ['madrid-pc'] },
     },
   },
 
@@ -375,10 +341,6 @@ export const RIESGOS = [
         sube: ['Mayor contenido de humedad atmosférica.'], baja: ['Códigos de edificación y aviso temprano.'],
         ciudad: ['Seguir los avisos nacionales.'], prep: ['Plan de refugio en interior.'],
         src: ['ue-eea'] },
-      terrassa: { nivel: 'moderado', tend: 'flat', ev: 'evaluacion', conf: 3,
-        actual: 'VERIFICADO: el viento figura entre los riesgos con Plan de Actuación Municipal OBLIGATORIO en el DUPROCIM de Terrassa, por identificación del plan autonómico VENTCAT.', src: ['terrassa-pc'] },
-      getafe: { nivel: 'bajo', tend: 'flat', ev: 'evaluacion', conf: 2, pend: true,
-        actual: 'El viento y las tormentas se gestionan a través del plan territorial PLATERCAM y del plan de inclemencias invernales; no existe un plan especial propio de viento en la Comunidad de Madrid. NIVEL CONCRETO PENDIENTE DE VERIFICAR.', src: ['madrid-pc'] },
     },
   },
 
@@ -419,12 +381,6 @@ export const RIESGOS = [
         sube: ['Vulnerabilidad estructural.'], baja: ['Normativa sismorresistente.'],
         ciudad: ['Informarse al viajar a zonas de alta peligrosidad.'], prep: ['Conocer la conducta básica.'],
         src: ['ign'] },
-      terrassa: { nivel: 'bajo', tend: 'flat', ev: 'estadistica', conf: 4,
-        actual: 'VERIFICADO: el riesgo sísmico figura entre los que exigen Plan de Actuación Municipal OBLIGATORIO en el DUPROCIM de Terrassa, por identificación del plan autonómico SISMICAT. Es un dato relevante: significa que Cataluña sí considera al municipio dentro del ámbito de aplicación, a diferencia de lo que ocurre en Ávila o Getafe. Aun así, la peligrosidad sísmica del Vallès es baja según el IGN; los valores más altos de Cataluña están en el Pirineo.',
-        src: ['ign', 'terrassa-pc'] },
-      getafe: { nivel: 'muy-bajo', tend: 'flat', ev: 'estadistica', conf: 4,
-        actual: 'La Comunidad de Madrid se sitúa en una zona de peligrosidad sísmica muy baja según el IGN y NO dispone de plan especial de riesgo sísmico, a diferencia de lo que ocurre en Cataluña. El valor de aceleración básica del municipio puede consultarse en la norma NCSE.',
-        src: ['ign', 'madrid-pc'] },
     },
   },
 
@@ -463,8 +419,6 @@ export const RIESGOS = [
         sube: ['Degradación del permafrost.'], baja: ['Vigilancia geotécnica.'],
         ciudad: ['Informarse antes de actividades en alta montaña.'], prep: ['Formación técnica.'],
         src: ['ue-eea'] },
-      terrassa: { nivel: 'nd', tend: 'nd', ev: 'incertidumbre', conf: 1, pend: true, actual: 'DATOS NO DISPONIBLES.', src: ['terrassa-pc'] },
-      getafe: { nivel: 'muy-bajo', tend: 'flat', ev: 'evaluacion', conf: 2, pend: true, actual: 'Relieve llano de la campiña del Tajo-Manzanares. Riesgo residual. PENDIENTE DE VERIFICAR.', src: ['madrid-pc'] },
     },
   },
 
@@ -511,10 +465,6 @@ export const RIESGOS = [
         ciudad: ['Adaptación de la vivienda y del entorno urbano.'], prep: ['Planes de calor.'],
         src: ['ue-eea'],
       },
-      terrassa: { nivel: 'moderado', tend: 'up', ev: 'proyeccion', conf: 4,
-        actual: 'La señal de calentamiento es común a toda la península. El detalle local requiere consultar las proyecciones del Servei Meteorològic de Catalunya.', src: ['aemet-cc'] },
-      getafe: { nivel: 'alto', tend: 'up', ev: 'proyeccion', conf: 4,
-        actual: 'Interior peninsular con isla de calor metropolitana. El municipio dispone de PACES con diagnóstico climático propio.', src: ['aemet-cc', 'getafe-paces'] },
     },
   },
 
@@ -552,8 +502,6 @@ export const RIESGOS = [
         sube: ['Mayor contenido de humedad atmosférica.'], baja: ['Adaptación urbana y de cuenca.'],
         ciudad: ['Informarse del riesgo pluvial urbano local.'], prep: ['Seguro y documentación.'],
         src: ['ue-eea'] },
-      terrassa: { nivel: 'nd', tend: 'nd', ev: 'proyeccion', conf: 2, pend: true, actual: 'Régimen mediterráneo con episodios torrenciales de otoño. DETALLE LOCAL PENDIENTE DE VERIFICAR.', src: ['terrassa-pc'] },
-      getafe: { nivel: 'nd', tend: 'nd', ev: 'proyeccion', conf: 2, pend: true, actual: 'DETALLE LOCAL PENDIENTE DE VERIFICAR en el PACES municipal.', src: ['getafe-paces'] },
     },
   },
 
@@ -598,10 +546,6 @@ export const RIESGOS = [
         sube: ['Ciberamenazas y sabotaje de infraestructuras.'], baja: ['Interconexión y reservas estratégicas.'],
         ciudad: ['Autonomía doméstica básica.'], prep: ['Kit de 72 h.'],
         src: ['dsn'] },
-      terrassa: { nivel: 'moderado', tend: 'flat', ev: 'evaluacion', conf: 4,
-        actual: 'VERIFICADO: el FALLO DE SUMINISTRO ELÉCTRICO es uno de los planes específicos propios que Terrassa ha elaborado dentro de su DUPROCIM, además de los obligatorios. Que un ayuntamiento redacte un plan propio para un riesgo que no está obligado a cubrir indica que lo considera relevante.', src: ['terrassa-pc'] },
-      getafe: { nivel: 'moderado', tend: 'flat', ev: 'evaluacion', conf: 2, pend: true,
-        actual: 'Los cortes de suministro se gestionan a través del plan territorial PLATERCAM. Getafe no dispone todavía de plan de emergencias municipal aprobado, según información pública de septiembre de 2025, por lo que el marco aplicable es el autonómico. NIVEL MUNICIPAL PENDIENTE DE VERIFICAR.', src: ['madrid-pc', 'getafe-ayto'] },
     },
   },
 
@@ -639,8 +583,6 @@ export const RIESGOS = [
         sube: ['Amenazas híbridas sobre infraestructura crítica.'], baja: ['Vigilancia y redundancia de rutas.'],
         ciudad: ['Alternativas de comunicación acordadas.'], prep: ['Radio y plan familiar en papel.'],
         src: ['dsn'] },
-      terrassa: { nivel: 'nd', tend: 'nd', ev: 'evaluacion', conf: 1, pend: true, actual: 'PENDIENTE DE VERIFICAR.', src: ['terrassa-pc'] },
-      getafe: { nivel: 'nd', tend: 'nd', ev: 'evaluacion', conf: 1, pend: true, actual: 'PENDIENTE DE VERIFICAR.', src: ['madrid-pc'] },
     },
   },
 
@@ -678,8 +620,6 @@ export const RIESGOS = [
         sube: ['Sequía estival prolongada.'], baja: ['Gestión de la demanda.'],
         ciudad: ['Informarse de restricciones locales.'], prep: ['Reserva doméstica.'],
         src: ['ue-eea'] },
-      terrassa: { nivel: 'nd', tend: 'nd', ev: 'evaluacion', conf: 1, pend: true, actual: 'PENDIENTE DE VERIFICAR.', src: ['terrassa-pc'] },
-      getafe: { nivel: 'nd', tend: 'nd', ev: 'evaluacion', conf: 1, pend: true, actual: 'PENDIENTE DE VERIFICAR.', src: ['madrid-pc'] },
     },
   },
 
@@ -716,12 +656,6 @@ export const RIESGOS = [
         sube: ['Concentración industrial y transporte.'], baja: ['Regulación e inspección.'],
         ciudad: ['Conocer el plan local.'], prep: ['Material para confinamiento.'],
         src: ['pc-es'] },
-      terrassa: { nivel: 'moderado', tend: 'flat', ev: 'evaluacion', conf: 4,
-        actual: 'VERIFICADO: el DUPROCIM de Terrassa incluye DOS planes de actuación obligatorios en este ámbito: riesgo QUÍMICO (plan autonómico PLASEQCAT) y TRANSPORTE DE MERCANCÍAS PELIGROSAS por carretera (TRANSCAT). Es el riesgo tecnológico mejor documentado de las tres ubicaciones familiares, y el más alto de las tres en esta categoría.',
-        src: ['terrassa-pc'] },
-      getafe: { nivel: 'moderado', tend: 'flat', ev: 'evaluacion', conf: 3,
-        actual: 'VERIFICADO: la Comunidad de Madrid cuenta con Plan Especial de Transporte de Mercancías Peligrosas por carretera y ferrocarril, y con planes de emergencia exterior para instalaciones sujetas a la normativa SEVESO. Getafe tiene polígonos industriales y corredores viarios y ferroviarios de primer orden. La lista concreta de establecimientos afectados debe consultarse en la Comunidad de Madrid.',
-        src: ['madrid-pc'] },
     },
   },
 
@@ -759,10 +693,6 @@ export const RIESGOS = [
         sube: ['Conflicto armado en el entorno de instalaciones nucleares.'], baja: ['Desescalada y supervisión internacional.'],
         ciudad: ['Seguir exclusivamente fuentes oficiales y no cadenas de mensajes.'], prep: ['Radio a pilas y material para confinamiento.'],
         src: ['dsn'] },
-      terrassa: { nivel: 'bajo', tend: 'flat', ev: 'evaluacion', conf: 3,
-        actual: 'VERIFICADO: el riesgo radiológico figura entre los que exigen Plan de Actuación Municipal OBLIGATORIO en el DUPROCIM de Terrassa, por identificación del plan autonómico RADCAT. Se refiere a fuentes radiactivas de uso industrial y sanitario y a su transporte, no a instalaciones nucleares: no hay ninguna en el municipio.', src: ['terrassa-pc'] },
-      getafe: { nivel: 'bajo', tend: 'flat', ev: 'evaluacion', conf: 3,
-        actual: 'VERIFICADO: la Comunidad de Madrid dispone del plan especial RADCAM de riesgo radiológico, referido a fuentes de uso industrial, sanitario y de investigación y a su transporte. No hay instalaciones nucleares en la región.', src: ['madrid-pc'] },
     },
   },
 
@@ -801,10 +731,6 @@ export const RIESGOS = [
         sube: ['Tensiones geopolíticas sobre rutas energéticas.'], baja: ['Diversificación e interconexión.'],
         ciudad: ['Reserva doméstica básica.'], prep: ['Despensa y combustible.'],
         src: ['dsn'] },
-      terrassa: { nivel: 'moderado', tend: 'flat', ev: 'evaluacion', conf: 3,
-        actual: 'VERIFICADO: además del plan obligatorio de transporte de mercancías peligrosas, el DUPROCIM de Terrassa contempla la EMERGENCIA AERONÁUTICA como riesgo recomendado. El municipio cuenta con servicio ferroviario y está en un nudo viario denso del Vallès.', src: ['terrassa-pc'] },
-      getafe: { nivel: 'moderado', tend: 'flat', ev: 'evaluacion', conf: 3,
-        actual: 'VERIFICADO: la Comunidad de Madrid dispone de plan especial de transporte de mercancías peligrosas por carretera y ferrocarril. Getafe está atravesado por ejes viarios y ferroviarios de primer orden del área metropolitana sur.', src: ['madrid-pc'] },
     },
   },
 
@@ -845,10 +771,6 @@ export const RIESGOS = [
         sube: ['Crisis económica o energética severa.'], baja: ['Cohesión social y estabilidad.'],
         ciudad: ['Informarse antes de viajar.'], prep: ['Documentación y efectivo.'],
         src: ['dsn'] },
-      terrassa: { nivel: 'nd', tend: 'nd', ev: 'evaluacion', conf: 1, pend: true,
-        actual: 'Las concentraciones de personas figuran entre los riesgos contemplados por la protección civil municipal. NIVEL PENDIENTE DE VERIFICAR.', src: ['terrassa-pc'] },
-      getafe: { nivel: 'nd', tend: 'nd', ev: 'evaluacion', conf: 1, pend: true,
-        actual: 'Grandes concentraciones contempladas en la planificación municipal. NIVEL PENDIENTE DE VERIFICAR.', src: ['getafe-ayto'] },
     },
   },
 
@@ -884,8 +806,6 @@ export const RIESGOS = [
         sube: ['Tensiones comerciales y geopolíticas.'], baja: ['Autonomía estratégica y diversificación.'],
         ciudad: ['Reserva doméstica.'], prep: ['Despensa rotada.'],
         src: ['dsn'] },
-      terrassa: { nivel: 'nd', tend: 'nd', ev: 'incertidumbre', conf: 1, pend: true, actual: 'DATOS NO DISPONIBLES.', src: [] },
-      getafe: { nivel: 'nd', tend: 'nd', ev: 'incertidumbre', conf: 1, pend: true, actual: 'DATOS NO DISPONIBLES.', src: [] },
     },
   },
 
@@ -942,8 +862,6 @@ export const RIESGOS = [
         ciudad: ['Informarse por fuentes oficiales y prepararse para efectos indirectos.'],
         prep: ['Autonomía doméstica y documentación.'],
         src: ['dsn'] },
-      terrassa: { nivel: 'nd', tend: 'nd', ev: 'incertidumbre', conf: 1, actual: 'NO EXISTE UNA ESTIMACIÓN FIABLE a escala municipal.', src: [] },
-      getafe: { nivel: 'nd', tend: 'nd', ev: 'incertidumbre', conf: 1, actual: 'NO EXISTE UNA ESTIMACIÓN FIABLE a escala municipal.', src: [] },
     },
   },
 
@@ -997,8 +915,6 @@ export const RIESGOS = [
         sube: ['Concentración de proveedores.'], baja: ['Diversificación y eficiencia.'],
         ciudad: ['Eficiencia doméstica.'], prep: ['Autonomía básica.'],
         src: ['dsn'] },
-      terrassa: { nivel: 'nd', tend: 'nd', ev: 'incertidumbre', conf: 1, actual: 'Efecto equivalente al del conjunto de España.', src: [] },
-      getafe: { nivel: 'nd', tend: 'nd', ev: 'incertidumbre', conf: 1, actual: 'Efecto equivalente al del conjunto de España.', src: [] },
     },
   },
 
@@ -1038,8 +954,6 @@ export const RIESGOS = [
         baja: ['Normativa común y cooperación entre CERT.'],
         ciudad: ['Higiene digital y alternativas analógicas.'], prep: ['Efectivo y documentación en papel.'],
         src: ['dsn'] },
-      terrassa: { nivel: 'nd', tend: 'nd', ev: 'evaluacion', conf: 1, actual: 'Efecto equivalente al del conjunto de España.', src: [] },
-      getafe: { nivel: 'nd', tend: 'nd', ev: 'evaluacion', conf: 1, actual: 'Efecto equivalente al del conjunto de España.', src: [] },
     },
   },
 ];
@@ -1052,7 +966,7 @@ export const CATEGORIAS_RIESGO = {
   geopolitico: { t: 'Geopolíticos', ic: '🌐' },
 };
 
-/* Filas del comparador familiar */
+/* Riesgos que se muestran en el comparador de ubicaciones */
 export const COMPARADOR = [
   'incendio-forestal', 'inundacion', 'frio-nieve', 'ola-calor', 'viento-tormenta',
   'apagon', 'quimico', 'radiologico', 'sismico', 'disturbios', 'telecom', 'agua-suministro',

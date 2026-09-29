@@ -1,29 +1,49 @@
 /* =========================================================================
    CENTRO DE COORDINACIÓN FAMILIAR
    ---------------------------------------------------------------------------
-   Los nodos por defecto son EDITABLES por el usuario y se guardan solo en el
-   dispositivo (IndexedDB). Aquí únicamente viven los valores iniciales y los
-   metadatos de rutas, que se combinan con la geometría de data/geo/rutas.geojson.
+   Las ubicaciones, personas y rutas las define cada usuario y se guardan solo
+   en su dispositivo (IndexedDB). Aquí únicamente viven las plantillas, los
+   datos de ejemplo ficticios y el contenido de planificación genérico.
    ========================================================================= */
 
-export const NODOS_DEFECTO = [
+/* Ya no se distribuye ninguna ubicación precargada: cada usuario crea las
+   suyas. PLANTILLA_NODO define los campos de una ubicación nueva.
+     rol   → 'base' (desde donde se parte) o 'familia' (a donde se quiere llegar)
+     cod   → código INE de provincia (lo usan riesgos y el comparador)
+     lat/lon → OPCIONALES; solo si el usuario las fija. Recomendación: un punto
+             de referencia público (plaza, centro del pueblo), no el portal.
+     rutas → rutas desde la base definidas por el usuario (ver RUTA_PLANTILLA) */
+export const PLANTILLA_NODO = {
+  nombre: '', rol: 'familia', ic: '👨‍👩‍👧',
+  persona: '', cod: '', municipio: '', lat: null, lon: null,
+  tel: '', dir: '', encuentro: '', notas: '',
+  personas: { adultos: 1, ninos: 0, mayores: 0, mascotas: 0 },
+  rutas: [],
+};
+
+/* Una ruta es texto de planificación del usuario: nunca navegación.
+   geoId → capa GeoJSON importada (almacén 'geo') con la traza real, opcional. */
+export const RUTA_PLANTILLA = { nombre: '', tipo: 'principal', via: '', km: null, notas: '', geoId: null };
+
+export const ICONOS_NODO = ['🏠', '👨‍👩‍👧', '👵', '🧒', '🏢', '🏫', '🏡', '⛺'];
+
+/* Datos de ejemplo FICTICIOS para ver cómo funciona el centro familiar. No
+   corresponden a ninguna persona real, no tienen coordenadas y se marcan
+   como ejemplo en la interfaz para que el usuario los sustituya o borre. */
+export const EJEMPLO_NODOS = [
   {
-    id: 'avila', nombre: 'Ávila', rol: 'base', ic: '🏠',
-    persona: '', cp: '05001', prov: 'Ávila',
-    tel: '', dir: '', encuentro: '', notas: 'Base principal del plan familiar.',
-    personas: { adultos: 2, ninos: 0, mayores: 0, mascotas: 0 },
+    nombre: 'Casa (ejemplo)', rol: 'base', ic: '🏠', persona: 'Nosotros',
+    encuentro: 'Ejemplo: parque junto al colegio', ejemplo: true,
+    personas: { adultos: 2, ninos: 1, mayores: 0, mascotas: 1 },
   },
   {
-    id: 'terrassa', nombre: 'Terrassa', rol: 'familia', ic: '👨‍👩‍👧',
-    persona: 'Carlos', cp: '08224', prov: 'Barcelona',
-    tel: '', dir: '', encuentro: '', notas: '',
-    personas: { adultos: 2, ninos: 0, mayores: 0, mascotas: 0 },
-  },
-  {
-    id: 'getafe', nombre: 'Getafe', rol: 'familia', ic: '👨‍👩‍👧',
-    persona: 'Padres de mi pareja', cp: '28903', prov: 'Madrid',
-    tel: '', dir: '', encuentro: '', notas: '',
-    personas: { adultos: 2, ninos: 0, mayores: 2, mascotas: 0 },
+    nombre: 'Abuelos (ejemplo)', rol: 'familia', ic: '👵', persona: 'Abuela y abuelo',
+    encuentro: 'Ejemplo: plaza del ayuntamiento', ejemplo: true,
+    personas: { adultos: 0, ninos: 0, mayores: 2, mascotas: 0 },
+    rutas: [
+      { nombre: 'Ruta habitual (ejemplo)', tipo: 'principal', via: 'Autovía habitual', km: 120, notas: 'Ejemplo ficticio: sustitúyelo por tu ruta real.' },
+      { nombre: 'Alternativa (ejemplo)', tipo: 'alternativa', via: 'Carretera nacional', km: 140, notas: '' },
+    ],
   },
 ];
 
@@ -42,23 +62,6 @@ export const PREPARACION_ESTADO = [
 ];
 
 /* ------------------------------- RUTAS ------------------------------- */
-/* Las claves coinciden con las properties.id de data/geo/rutas.geojson.
-   kmEstimados y localidades se leen del propio GeoJSON: aquí solo van los
-   metadatos que no son geometría. */
-
-export const CORREDORES = [
-  {
-    id: 'terrassa', origen: 'avila', destino: 'terrassa',
-    t: 'Ávila ⇄ Terrassa', ic: '🛣️',
-    rutas: ['avila-terrassa-A', 'avila-terrassa-B', 'avila-terrassa-C'],
-  },
-  {
-    id: 'getafe', origen: 'avila', destino: 'getafe',
-    t: 'Ávila ⇄ Getafe', ic: '🛣️',
-    rutas: ['avila-getafe-A', 'avila-getafe-B', 'avila-getafe-C'],
-  },
-];
-
 /** Velocidad media conservadora para estimar tiempos, por situación.
  *  NO es un tiempo de navegación: es una referencia de planificación. */
 export const VELOCIDADES = {
@@ -78,7 +81,7 @@ export const SITUACIONES = [
   {
     id: 'normal', t: 'Normal', ic: '✅', vel: 'normal',
     resumen: 'Desplazamiento ordinario. La ruta principal suele ser la más rápida.',
-    ruta: 'Ruta A (principal).',
+    ruta: 'La ruta principal que hayáis acordado.',
     antes: ['Comprobar el estado de las carreteras en la DGT.', 'Depósito lleno o por encima de la mitad.', 'Móvil cargado y power bank.'],
     ojo: ['Nada específico. Descansa cada 2 horas.'],
     capas: ['transporte', 'abastecimiento'],
@@ -86,7 +89,7 @@ export const SITUACIONES = [
   {
     id: 'incendio', t: 'Incendio forestal', ic: '🔥', vel: 'dificil',
     resumen: 'El humo reduce la visibilidad a cero y las carreteras se cortan sin previo aviso. La prioridad es NO entrar en la zona afectada, aunque suponga un rodeo largo.',
-    ruta: 'Elegir la ruta que se aleje del frente y del viento dominante. En el corredor a Terrassa, la Ruta B (por Segovia y Soria) evita el eje central; en el corredor a Getafe, valorar la Ruta B por el sur si el fuego está en la sierra.',
+    ruta: 'Elegir la ruta que se aleje del frente y del viento dominante, aunque sea más larga. Revisa qué alternativa de las que has definido evita las zonas forestales.',
     antes: ['Consultar el 112 de la comunidad autónoma y los avisos oficiales.', 'Comprobar dirección e intensidad del viento.', 'Llevar mascarillas FFP2/FFP3 y agua.', 'No salir si la única ruta atraviesa la zona con humo.'],
     ojo: ['Nunca atravesar una columna de humo denso en coche.', 'Si el fuego te sorprende en carretera: no continuar, dar la vuelta si es seguro.', 'Ventanillas cerradas y recirculación de aire.', 'Las evacuaciones saturan las vías: sal pronto o no salgas.'],
     capas: ['emergencias', 'sanitaria', 'transporte'],
@@ -101,8 +104,8 @@ export const SITUACIONES = [
   },
   {
     id: 'nieve', t: 'Nieve y hielo', ic: '❄️', vel: 'muy_dificil',
-    resumen: 'Los puertos del Sistema Central se cierran o exigen cadenas varias veces cada invierno. El corredor Ávila–Madrid atraviesa el Alto del León.',
-    ruta: 'Verificar el estado de los puertos antes de elegir. Si el eje de la sierra está cerrado, las alternativas por el sur (N-403 hacia Maqueda) o por el norte pueden ser la única opción.',
+    resumen: 'Los puertos de montaña se cierran o exigen cadenas con frecuencia en invierno. Identifica qué tramos de montaña atraviesan tus rutas.',
+    ruta: 'Verificar el estado de los puertos antes de elegir. Si el paso de montaña de tu ruta principal está cerrado, una alternativa por menor altitud puede ser la única opción.',
     antes: ['Estado de carreteras en la DGT: es imprescindible, no opcional.', 'Cadenas homologadas y PROBADAS previamente en seco.', 'Depósito lleno, manta, agua, comida, pala y frontal.', 'Avisar a alguien de la ruta y la hora prevista.'],
     ojo: ['No adelantar a las máquinas quitanieves.', 'Si quedas atrapado, permanecer en el vehículo y comprobar que el tubo de escape está libre de nieve antes de arrancar.', 'Señalizar la posición y racionar la batería.', 'El hielo negro al amanecer es el mayor riesgo, no la nieve visible.'],
     capas: ['emergencias', 'sanitaria', 'abastecimiento', 'alojamiento'],
@@ -126,7 +129,7 @@ export const SITUACIONES = [
   {
     id: 'disturbios', t: 'Disturbios', ic: '🚨', vel: 'degradada',
     resumen: 'El objetivo es evitar por completo las zonas de concentración, aunque el rodeo sea largo.',
-    ruta: 'Priorizar los itinerarios que eviten atravesar núcleos urbanos grandes. En el corredor a Terrassa, la Ruta B evita Madrid; el paso por Zaragoza y Barcelona puede sustituirse por circunvalaciones.',
+    ruta: 'Priorizar los itinerarios que eviten atravesar núcleos urbanos grandes, usando circunvalaciones cuando existan.',
     antes: ['Informarse por medios oficiales de las zonas afectadas.', 'Valorar seriamente aplazar el viaje.', 'Depósito lleno y móvil cargado.'],
     ojo: ['No detenerse ni grabar.', 'No atravesar un cordón policial ni discutir con agentes.', 'Si te encuentras con una concentración, dar la vuelta con calma.', 'Circular con las puertas bloqueadas.'],
     capas: ['emergencias', 'transporte'],
@@ -152,7 +155,7 @@ export const SITUACIONES = [
     resumen: 'La prioridad es el centro sanitario más cercano, no el destino final. Llama al 112 antes de mover a nadie.',
     ruta: 'La que pase por la localidad con hospital más próxima, que no siempre está en el sentido de la marcha.',
     antes: ['Llamar al 112 y seguir sus indicaciones.', 'Localizar el hospital de referencia más cercano.', 'Llevar tarjeta sanitaria y listado de medicación.'],
-    ojo: ['No conducir a velocidad excesiva: un accidente empeora la situación.', 'En autovía, el 112 puede coordinar el encuentro con una ambulancia.', 'Las capitales de provincia del itinerario cuentan con hospital de referencia.'],
+    ojo: ['No conducir a velocidad excesiva: un accidente empeora la situación.', 'En autovía, el 112 puede coordinar el encuentro con una ambulancia.', 'Las capitales de provincia cuentan con hospital público de referencia.'],
     capas: ['sanitaria', 'emergencias'],
   },
   {
@@ -180,19 +183,17 @@ export const SITUACIONES = [
    verificarlos contra una fuente oficial en formato de datos. Inventarlos
    sería exactamente lo que el proyecto prohíbe.
    Lo que sí ofrece:
-     · las localidades REALES de cada ruta, con geometría del IGN;
-     · la marca de qué localidades son capital de provincia (dato objetivo),
-       que es donde se encuentra el hospital de referencia provincial;
+     · la cartografía del IGN (vectorial precargada y teselas descargables);
      · un editor para que el usuario añada sus propios puntos verificados;
-     · importación de capas GeoJSON oficiales desde el mapa. */
+     · importación de capas GeoJSON oficiales y de trazas de ruta desde el mapa. */
 
 export const CAPAS_POI = [
   { id: 'sanitaria', t: 'Sanitaria', ic: '🏥', d: 'Hospitales, centros de salud y urgencias', estado: 'usuario' },
   { id: 'emergencias', t: 'Emergencias', ic: '🚓', d: 'Bomberos, Policía, Guardia Civil, Mossos, Protección Civil', estado: 'parcial' },
   { id: 'abastecimiento', t: 'Abastecimiento', ic: '⛽', d: 'Estaciones de servicio, supermercados, farmacias, fuentes', estado: 'usuario' },
-  { id: 'transporte', t: 'Transporte', ic: '🚉', d: 'Estaciones, aeropuertos y ejes viarios', estado: 'parcial' },
+  { id: 'transporte', t: 'Transporte', ic: '🚉', d: 'Estaciones, aeropuertos y ejes viarios', estado: 'usuario' },
   { id: 'alojamiento', t: 'Alojamiento', ic: '🛏', d: 'Hoteles, albergues e instalaciones públicas', estado: 'usuario' },
-  { id: 'familia', t: 'Familia', ic: '👨‍👩‍👧', d: 'Ávila, Terrassa, Getafe y tus puntos de encuentro', estado: 'incluida' },
+  { id: 'familia', t: 'Familia', ic: '👨‍👩‍👧', d: 'Tus ubicaciones y puntos de encuentro', estado: 'usuario' },
 ];
 
 export const CAPAS_ESTADO = {
@@ -201,24 +202,13 @@ export const CAPAS_ESTADO = {
   usuario: { t: 'La rellenas tú', ic: '⚪' },
 };
 
-/* Servicios de emergencia verificados contra fuente oficial (Ayuntamiento de
-   Ávila, consultado el 15/08/2026). Sin coordenadas: solo dirección y teléfono
-   publicados. Se muestran como directorio, no como puntos del mapa. */
+/* Teléfonos de emergencia de ámbito estatal. Los servicios locales dependen
+   de dónde viva cada usuario: se anotan como contactos del plan familiar. */
 export const SERVICIOS_VERIFICADOS = [
-  { zona: 'avila', capa: 'emergencias', nombre: 'Policía Local de Ávila', dir: 'C/ Molino del Carril, 1', tel: '920 35 24 24', src: 'avila-emergencias' },
-  { zona: 'avila', capa: 'emergencias', nombre: 'Bomberos — Servicio de Extinción de Incendios', dir: 'C/ Jorge Ruiz de Santayana, s/n', tel: '920 21 10 80', src: 'avila-emergencias' },
-  { zona: 'avila', capa: 'emergencias', nombre: 'Protección Civil — Ayuntamiento de Ávila', dir: 'C/ Jorge Ruiz de Santayana, s/n', tel: '920 35 40 35 · 630 36 53 04', src: 'avila-emergencias' },
-  { zona: 'avila', capa: 'sanitaria', nombre: 'Complejo Asistencial de Ávila — Hospital Nuestra Señora de Sonsoles', dir: 'Dirección pendiente de verificar contra fuente oficial en formato de datos', tel: '112 para urgencias', src: 'sacyl-avila' },
-  { zona: 'todas', capa: 'emergencias', nombre: 'Emergencias (todas)', dir: '—', tel: '112', src: 'pc-es' },
-  { zona: 'todas', capa: 'emergencias', nombre: 'Guardia Civil', dir: '—', tel: '062', src: 'pc-es' },
-  { zona: 'todas', capa: 'emergencias', nombre: 'Policía Nacional', dir: '—', tel: '091', src: 'pc-es' },
-  { zona: 'terrassa', capa: 'emergencias', nombre: 'Mossos d\'Esquadra / Policia Municipal de Terrassa', dir: 'DATOS NO DISPONIBLES — verificar en la web del ayuntamiento', tel: '112', src: 'terrassa-pc' },
-  { zona: 'getafe', capa: 'emergencias', nombre: 'Policía Local de Getafe / Protección Civil', dir: 'DATOS NO DISPONIBLES — verificar en la web del ayuntamiento', tel: '112', src: 'getafe-ayto' },
+  { capa: 'emergencias', nombre: 'Emergencias (todas)', dir: '—', tel: '112', src: 'pc-es' },
+  { capa: 'emergencias', nombre: 'Guardia Civil', dir: '—', tel: '062', src: 'pc-es' },
+  { capa: 'emergencias', nombre: 'Policía Nacional', dir: '—', tel: '091', src: 'pc-es' },
 ];
-
-/** Capitales de provincia presentes en los corredores. Dato objetivo: toda
- *  capital de provincia española cuenta con hospital público de referencia. */
-export const CAPITALES = ['Ávila', 'Segovia', 'Soria', 'Madrid', 'Guadalajara', 'Zaragoza', 'Lleida', 'Barcelona', 'Tarragona'];
 
 export const AVISO_RUTAS =
   'Las rutas de esta aplicación son una REFERENCIA DE PLANIFICACIÓN, no una navegación. ' +

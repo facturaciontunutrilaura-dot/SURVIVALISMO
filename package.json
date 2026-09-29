@@ -2,7 +2,7 @@
   "name": "survival-offline",
   "version": "1.0.0",
   "private": true,
-  "description": "Manual de campo offline de supervivencia, autoprotección y preparación ante emergencias. España y provincia de Ávila.",
+  "description": "Manual de campo offline de supervivencia, autoprotección y preparación ante emergencias en España.",
   "type": "module",
   "scripts": {
     "build:geo": "node tools/build-geo.mjs",

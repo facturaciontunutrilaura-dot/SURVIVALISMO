@@ -93,16 +93,20 @@ Con Wi-Fi y batería, dentro de la app:
    Espera al mensaje *"N recursos guardados"*.
 2. **⚙️ Configuración → 🔒 Solicitar almacenamiento persistente**
    Pide al navegador que no borre los datos si le falta espacio.
-3. **🗺 Mapa → ⬇ Descargar área**
+3. **👨‍👩‍👧 Familia → 🏠 Añadir mi casa** y después **➕ Añadir ubicación** por cada
+   persona a la que querrías llegar. Indica la provincia, las personas y, en
+   cada ubicación de familia, al menos una ruta principal y una alternativa. Si
+   quieres ver cómo queda antes, pulsa *Ver un ejemplo ficticio* y bórralo luego.
+4. **🗺 Mapa → ⬇ Descargar área**
    - Centra el mapa en tu zona y ajusta el zoom.
-   - Fuente: *OpenStreetMap* para calles, *OpenTopoMap* para montaña.
+   - Fuente (mapas del IGN): *Mapa base* para calles, *Mapa topográfico (MTN)* para montaña, *Ortofoto PNOA* para ver el terreno.
    - Zoom mínimo 8, zoom máximo 14–15 para una zona amplia.
    - Comprueba la estimación de teselas antes de pulsar (límite: 3.000).
    - Repite para cada zona que te importe: tu municipio, la ruta a casa desde el
-     trabajo, la zona de Gredos donde vayas.
+     trabajo, la zona de montaña donde vayas.
 
 **Cuánto ocupa:** la app entera son ~1 MB. Las teselas son lo que pesa: unos
-18 KB cada una, así que 2.000 teselas ≈ 36 MB. Un móvil normal aguanta de sobra
+20–35 KB cada una según la capa, así que 2.000 teselas ≈ 40–70 MB. Un móvil normal aguanta de sobra
 varias zonas.
 
 ---
@@ -167,6 +171,10 @@ móvil**. Si lo pierdes, se pierden.
 1. **⚙️ Configuración → ⬆ Exportar datos (JSON)**
 2. Guarda ese archivo fuera del móvil (correo a ti mismo, nube, ordenador).
 3. Para restaurar: **⚙️ Configuración → ⬇ Importar datos**.
+
+La copia incluye el centro familiar completo: ubicaciones, rutas, estados,
+puntos de encuentro y acuerdos (las teselas de mapa y el audio no, porque pesan
+mucho y se pueden volver a añadir).
 
 Hazlo cada vez que cambies algo importante del plan familiar.
 
@@ -242,7 +250,7 @@ que los datos se guarden**: eso ya funciona sin nada de esto.
 | Tras cada cambio importante | Pulsar 🔄 Sincronizar ahora en el otro dispositivo |
 | Cada 6 meses | Revisar caducidades en 🎒 Equipo → checklists (botiquín, despensa, pilas) |
 | Cada 6 meses | Comprobar que la radio a pilas funciona y tiene pilas de repuesto |
-| Cada junio | Revisar el checklist *Plan Ávila*, bloque de verano (incendios) |
+| Cada junio | Revisar la preparación ante incendios forestales de tu zona (en Ávila, checklist *Plan Ávila*, bloque de verano) |
 | Cada noviembre | Revisar el bloque de invierno (nieve, cadenas, autonomía 7 días) |
 | Tras cada cambio | Exportar datos e imprimir el plan familiar actualizado |
 | Anualmente | Verificar teléfonos oficiales y umbrales AEMET (ver README §7.6) |

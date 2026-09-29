@@ -110,7 +110,7 @@ async function dispositivo(nombre) {
 
 const login = (d) => d.page.evaluate(async () => {
   const S = await import('./assets/js/sync.js');
-  await S.entrar('carlos@example.com', 'secreto123');
+  await S.entrar('usuario@example.com', 'secreto123');
   return S.sesionActiva();
 });
 const sync = (d) => d.page.evaluate(async () => {
@@ -191,19 +191,19 @@ try {
     try { await S.sincronizar(); return null; } catch (e) { return e.message; }
   });
   ok('SIN RED: la sincronización falla con un mensaje claro y sin romper nada', /Sin conexión/.test(err || ''), err);
+  await escribe(A, 'kv', { id: 'familia.nodos', v: [{ id: 'n1', nombre: 'Casa', rol: 'base', ic: '🏠' }] });
   await A.page.goto(BASE + '#/sec/familia', { waitUntil: 'domcontentloaded' });
   await A.page.waitForSelector('#fa-estado .row', { timeout: 10000 });
-  ok('SIN RED: la app sigue navegando con normalidad', (await A.page.locator('#fa-estado .row').count()) === 3);
+  ok('SIN RED: la app sigue navegando con normalidad', (await A.page.locator('#fa-estado .row').count()) === 1);
 
   /* 8 · Al recuperar la red, lo pendiente sube */
   await A.ctx.setOffline(false);
   r = await sync(A);
-  // Sube el contacto escrito sin red y, además, cualquier estado que la propia
-  // app haya inicializado mientras se navegaba offline (p. ej. los nodos
-  // familiares por defecto al abrir la pantalla de Familia).
+  // Sube el contacto y la ubicación familiar escritos sin red.
   ok('Al volver la red se sube lo escrito offline', r.subidos >= 1, JSON.stringify(r));
   await sync(B);
   ok('B recibe lo que A escribió sin conexión', (await lee(B, 'contactos', 'c2'))?.n === 'Escrito sin red');
+  ok('B recibe las ubicaciones familiares de A', (await lee(B, 'kv', 'familia.nodos'))?.v?.[0]?.nombre === 'Casa');
 
   /* 9 · Detección automática de credenciales pegadas */
   const det = await A.page.evaluate(async () => {
@@ -329,7 +329,7 @@ try {
   /* 12 · Credenciales incorrectas */
   const bad = await B.page.evaluate(async () => {
     const S = await import('./assets/js/sync.js');
-    try { await S.entrar('carlos@example.com', 'mala'); return null; } catch (e) { return e.message; }
+    try { await S.entrar('usuario@example.com', 'mala'); return null; } catch (e) { return e.message; }
   });
   ok('Credenciales incorrectas dan error legible', /Invalid login/.test(bad || ''), bad);
 

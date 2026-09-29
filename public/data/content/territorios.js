@@ -12,8 +12,8 @@
    aprobado u homologado ante un riesgo concreto significa que ese riesgo
    está oficialmente reconocido como relevante en ese territorio. No dice
    cuánto riesgo hay: dice que la administración competente lo considera
-   suficientemente serio como para planificarlo. Es el mismo indicador que ya
-   se usaba en la ficha de Terrassa, aplicado ahora a todo el Estado.
+   suficientemente serio como para planificarlo. Es un indicador oficial y
+   comprobable, aplicable a todo el Estado.
 
    NIVEL DE CONFIRMACIÓN (campo v). Se distingue expresamente:
      v: 2 → confirmado en fuente oficial (boletín, portal del organismo o BOE).
@@ -226,7 +226,7 @@ export const CCAA = {
       { r: null, s: 'CAMCAT', t: "Pla especial d'emergències per contaminació marina", e: 'aprobado', url: 'https://interior.gencat.cat/ca/arees_dactuacio/proteccio_civil/plans-proteccio-civil/plans-especials/camcat/', v: 2 },
     ],
     sp: [],
-    n: 'Cataluña es la única comunidad con plan especial autonómico único de riesgo químico. Además exige plan de actuación municipal a los municipios que los planes especiales identifican como afectados: por eso la ficha de Terrassa puede decir qué riesgos tiene reconocidos oficialmente.',
+    n: 'Cataluña es la única comunidad con plan especial autonómico único de riesgo químico. Además exige plan de actuación municipal a los municipios que los planes especiales identifican como afectados: por eso, en Cataluña, el catálogo de planes de actuación municipal de cada ayuntamiento indica qué riesgos tiene reconocidos oficialmente.',
   },
   '10': {
     o: { t: "Agència Valenciana de Seguretat i Resposta a les Emergències (AVSRE)", url: 'https://avsre.gva.es/' },

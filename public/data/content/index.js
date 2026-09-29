@@ -9,10 +9,10 @@ import { ART_COMUNICACIONES, FRECUENCIAS } from './comunicaciones.js';
 import { CHECKLISTS } from './checklists.js';
 import { CURSOS } from './cursos.js';
 import { QUIZ, QUIZ_CATEGORIAS, RESPIRACIONES, GROUNDING } from './juegos.js';
-import { RIESGOS, ZONAS, NIVELES, CATEGORIAS_RIESGO } from './riesgos.js';
-import { SITUACIONES, CORREDORES } from './familia.js';
+import { RIESGOS, NIVELES, CATEGORIAS_RIESGO } from './riesgos.js';
+import { SITUACIONES } from './familia.js';
 
-export const VERSION = '1.4.0';
+export const VERSION = '1.5.0';
 export const FECHA_CONTENIDO = FECHA_CONSULTA;
 
 export const SECCIONES = [
@@ -33,7 +33,7 @@ export const SECCIONES = [
   { id: 'audio', t: 'AUDIO', ic: '🎵', desc: 'Música y mensajes de voz sin conexión' },
   { id: 'bushcraft', t: 'BUSHCRAFT', ic: '🌲', desc: 'Herramientas, nudos y campamento responsable' },
   { id: 'espana', t: 'ESPAÑA', ic: '🇪🇸', desc: 'Riesgos, sistema de emergencias e infraestructura' },
-  { id: 'avila', t: 'ÁVILA', ic: '📍', desc: 'Plan local: territorio, riesgos y servicios' },
+  { id: 'avila', t: 'GUÍA ÁVILA', ic: '📍', desc: 'Guía provincial detallada: territorio, riesgos y servicios' },
   { id: 'vehiculo', t: 'VEHÍCULO', ic: '🚗', desc: 'Kit, invierno, nieve e inundación' },
   { id: 'mascotas', t: 'MASCOTAS', ic: '🐕', desc: 'Preparación y evacuación con animales' },
   { id: 'plan-familiar', t: 'PLAN FAMILIAR', ic: '👨‍👩‍👧', desc: 'Contactos, puntos de encuentro y reunificación' },
@@ -146,9 +146,9 @@ export const INDICE = [
     t: `${r.t} — riesgo 2026·2036`,
     sec: 'riesgos',
     pr: 'importante',
-    sum: r.z.avila?.actual?.slice(0, 140) || r.z.espana?.actual?.slice(0, 140) || '',
+    sum: r.z.espana?.actual?.slice(0, 140) || Object.values(r.z)[0]?.actual?.slice(0, 140) || '',
     texto: [r.t, CATEGORIAS_RIESGO[r.cat]?.t,
-      ...ZONAS.map((z) => [r.z[z.id]?.actual, r.z[z.id]?.h2030, r.z[z.id]?.h2036].join(' ')),
+      ...Object.values(r.z).map((z) => [z?.actual, z?.h2030, z?.h2036].join(' ')),
       'riesgo proyección escenario 2036 tendencia confianza',
     ].join(' ').toLowerCase(),
   })),
@@ -161,7 +161,7 @@ export const INDICE = [
     sec: 'familia',
     pr: 'importante',
     sum: s.resumen,
-    texto: [s.t, s.resumen, s.ruta, s.antes.join(' '), s.ojo.join(' '), 'ávila terrassa getafe ruta familia'].join(' ').toLowerCase(),
+    texto: [s.t, s.resumen, s.ruta, s.antes.join(' '), s.ojo.join(' '), 'ruta familia desplazamiento'].join(' ').toLowerCase(),
   })),
   // --- Juegos y modo calma ---
   {
@@ -183,9 +183,8 @@ export const INDICE = [
   },
   {
     tipo: 'familia', id: 'centro-familiar', ruta: '#/sec/familia', t: 'Centro de coordinación familiar', sec: 'familia',
-    pr: 'critico', sum: 'Ávila, Terrassa y Getafe: estado, rutas, plan 72 h y reunificación.',
-    texto: ['familia centro coordinación ávila terrassa getafe estado reunificación plan 72 horas rutas mapa familiar carlos padres pareja llegar a mi familia',
-      ...CORREDORES.map((c) => c.t)].join(' ').toLowerCase(),
+    pr: 'critico', sum: 'Tus ubicaciones y las de tu familia: estado, rutas, plan 72 h y reunificación.',
+    texto: ['familia centro coordinación ubicaciones estado reunificación plan 72 horas rutas mapa familiar padres abuelos hijos llegar a mi familia comparar'].join(' ').toLowerCase(),
   },
 ];
 

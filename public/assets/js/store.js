@@ -108,6 +108,17 @@ export async function clear(store) {
   });
 }
 
+/** Claves de un almacén sin cargar los registros (útil para las teselas,
+ *  cuyos registros llevan imágenes). */
+export async function keys(store) {
+  const s = await tx(store);
+  return new Promise((res, rej) => {
+    const r = s.getAllKeys();
+    r.onsuccess = () => res(r.result || []);
+    r.onerror = () => rej(r.error);
+  });
+}
+
 export async function count(store) {
   const s = await tx(store);
   return new Promise((res, rej) => {
@@ -153,7 +164,10 @@ export function applySettings() {
 /* --------------------------- Export / import --------------------------- */
 export async function exportAll() {
   const data = { app: 'survival-offline', version: 1, exportado: new Date().toISOString(), settings: settings(), stores: {} };
-  for (const s of ['checks', 'puntos', 'contactos', 'frecs', 'radiolog', 'geo', 'progreso']) {
+  // 'kv' contiene el plan familiar (ubicaciones, rutas, estados, acuerdos):
+  // es lo más valioso de la copia. Solo quedan fuera teselas y audio, que
+  // pesan mucho y se pueden volver a añadir.
+  for (const s of ['kv', 'checks', 'puntos', 'contactos', 'frecs', 'radiolog', 'geo', 'progreso']) {
     data.stores[s] = await all(s);
   }
   return data;

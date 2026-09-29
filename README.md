@@ -1,6 +1,6 @@
 # SURVIVAL OFFLINE
 
-**Manual de campo offline de supervivencia, autoprotección, preparación ante emergencias y bushcraft. España y, con mucho más detalle, la provincia y la ciudad de Ávila.**
+**Manual de campo offline de supervivencia, autoprotección, preparación ante emergencias y bushcraft para España. Incluye además una guía provincial detallada de Ávila.**
 
 Aplicación web progresiva (PWA) sin dependencias externas en tiempo de ejecución. Se instala una vez con Internet y, a partir de ese momento, funciona íntegramente sin conexión: contenido, buscador, brújula, mapas vectoriales, checklists, calculadoras, cursos y plan familiar.
 
@@ -12,7 +12,7 @@ Aplicación web progresiva (PWA) sin dependencias externas en tiempo de ejecuci�
 npm install          # instala leaflet, es-atlas y topojson-client (solo para el build)
 npm run build        # genera geodatos, iconos y el manifiesto de precache
 npm run dev          # servidor local en http://localhost:8080
-npm test             # 178 pruebas end-to-end (132 de app + 46 de sincronización) con Playwright, incluida la prueba offline real
+npm test             # 193 pruebas end-to-end (146 de app + 47 de sincronización) con Playwright, incluida la prueba offline real
 ```
 
 No hay bundler, ni transpilador, ni framework. El directorio `public/` es la
@@ -32,7 +32,6 @@ survival-offline/
 ├── package.json
 ├── tools/
 │   ├── build-geo.mjs            Genera los GeoJSON offline desde es-atlas (IGN)
-│   ├── build-rutas.mjs          Genera rutas y nodos familiares (centroides IGN)
 │   ├── build-assets.mjs         Genera iconos PNG y precache-manifest.json
 │   ├── serve.mjs                Servidor estático de desarrollo
 │   ├── test.mjs                 Suite end-to-end de la app (Playwright)
@@ -145,8 +144,8 @@ arranque.
 
 - **La primera instalación.** Si el sitio está caído y el usuario nunca ha
   abierto la app, no hay nada que cachear.
-- **Descargar teselas de mapa nuevas** (dependen de los servidores de OSM /
-  OpenTopoMap, no de Netlify).
+- **Descargar teselas de mapa nuevas** (dependen de los servicios WMTS del
+  IGN, no de Netlify).
 - **Recibir actualizaciones de contenido.**
 
 **Redundancia recomendada** (todo gratuito y de cinco minutos):
@@ -280,14 +279,36 @@ Una subclase de `L.TileLayer` intercepta `createTile`, busca la tesela en
 IndexedDB y, si no está y hay red, la descarga y la guarda. El descargador de
 área calcula las teselas del *bounding box* visible para un rango de zoom, con
 estimación previa de número y tamaño, y un límite duro de 3.000 teselas por
-descarga para respetar la política de uso justo de los servidores comunitarios.
-Fuentes configuradas: OpenStreetMap estándar y OpenTopoMap (topográfico con
-curvas de nivel).
+descarga para no saturar el servicio público.
 
-**c) Capas GeoJSON importables.**
-El usuario puede descargar capas oficiales (zonas inundables de la Confederación
-Hidrográfica del Duero, cartografía de riesgo de la Junta de Castilla y León,
-capas del IGN…) e importarlas desde `🗺 Mapa → Capas`. Se guardan en IndexedDB y
+Fuentes configuradas: los servicios **WMTS del Instituto Geográfico Nacional**
+(rejilla `GoogleMapsCompatible`, la misma de Leaflet), de uso libre con
+atribución (CC BY 4.0):
+
+| Capa | Servicio | Zoom nativo |
+|---|---|---|
+| Mapa base | `ign-base` · `IGNBaseTodo` | 17 |
+| Mapa topográfico (MTN, curvas de nivel) | `mapa-raster` · `MTN` | 16 |
+| Ortofoto PNOA | `pnoa-ma` · `OI.OrthoimageCoverage` | 19 |
+
+Por encima del zoom nativo Leaflet amplía la última tesela en vez de pedir
+teselas inexistentes, y el descargador no baja niveles que no existen. Si el
+servidor no permite leer la tesela desde JavaScript (CORS), se muestra igualmente
+como imagen, aunque sin guardarla.
+
+**El mapa nunca queda en blanco.** Si en la vista actual no llega ninguna
+tesela (sin descargar, sin conexión, servidor caído o bloqueado), la capa
+vectorial se rellena automáticamente y la barra de estado lo explica. Antes esto
+solo ocurría sin conexión; con conexión pero sin teselas el mapa quedaba vacío.
+
+Las teselas de versiones anteriores (OpenStreetMap / OpenTopoMap) ya no se
+muestran: el mapa ofrece borrarlas para liberar espacio.
+
+**c) Capas GeoJSON y GPX importables.**
+El usuario puede descargar capas oficiales (zonas inundables de las
+confederaciones hidrográficas, cartografía de riesgo autonómica, capas del
+IGN…) o trazas GPX e importarlas desde `🗺 Mapa → Capas`. El GPX se convierte a
+GeoJSON en el propio navegador, sin dependencias. Se guardan en IndexedDB y
 quedan disponibles offline.
 
 ### Limitaciones reconocidas
@@ -295,11 +316,11 @@ quedan disponibles offline.
 - **No se incluyen capas oficiales de riesgo** (zonas inundables, peligrosidad
   sísmica). Esos datos tienen condiciones de uso propias y un peso considerable;
   la app aporta el mecanismo de importación en vez de redistribuirlos.
-- **No hay relieve sombreado ni curvas de nivel offline por defecto**: llegan a
-  través de las teselas de OpenTopoMap que el usuario descargue.
-- **La descarga masiva de teselas no está permitida** por los proveedores
-  comunitarios. Para un uso intensivo, lo correcto es apuntar `TILE_SOURCES` en
-  `public/assets/js/maps.js` a un servidor propio o a un servicio contratado.
+- **No hay curvas de nivel offline por defecto**: llegan a través de las
+  teselas del mapa topográfico (MTN) que el usuario descargue.
+- **Descargas grandes.** El servicio WMTS es para consulta. Para cartografía de
+  provincias enteras, el IGN ofrece descargas completas en su Centro de
+  Descargas (centrodedescargas.cnig.es).
 - **La app nunca etiqueta un lugar como “refugio seguro”.** Usa categorías
   neutras (infraestructura sanitaria, transporte, abastecimiento, recurso
   público, posible punto de encuentro, ubicación introducida por el usuario).
@@ -329,8 +350,11 @@ mismo sistema de diseño, mismo Service Worker, mismo almacenamiento local).
 
 ### 4.2 · Riesgos 2026 → 2036  (`#/sec/riesgos`)
 
-21 riesgos en cinco categorías, con tres escalas geográficas (Ávila, España,
-Europa) y dos zonas adicionales para el comparador familiar (Terrassa, Getafe).
+21 riesgos en cinco categorías. Ámbitos: **MI ZONA** (por defecto), España y
+Europa. La provincia de Ávila tiene evaluación propia, que se muestra dentro de
+MI ZONA cuando el usuario está en ella (ver `ZONAS_PROVINCIALES` en
+`data/content/riesgos.js`; es el sitio donde añadir evaluaciones de otras
+provincias).
 
 Lo que hace que esta sección sea defendible:
 
@@ -350,103 +374,73 @@ falla si aparece cualquier patrón `\d{1,3} %` dentro de una ficha de riesgo.
 Donde no hay base, la ficha dice *"NO EXISTE UNA ESTIMACIÓN FIABLE"* y ofrece
 escenarios en su lugar. Los riesgos geopolíticos no llevan gráfica.
 
-**Sobre Terrassa y Getafe.** Los niveles no se han inventado: se derivan de un
-indicador oficial y comprobable.
-- *Terrassa*: en Cataluña, la obligación de redactar un Plan de Actuación
-  Municipal para un riesgo deriva de que el plan especial autonómico identifique
-  al municipio como afectado. El DUPROCIM de Terrassa (aprobado el 31/03/2023)
-  tiene PAM obligatorio para inundaciones, nevadas, incendios forestales,
-  radiológico, sísmico, químico, transporte de mercancías peligrosas y viento;
-  planes propios para fallo eléctrico y riesgo sanitario; y emergencia
-  aeronáutica como recomendado.
-- *Getafe*: su plan de emergencias municipal seguía pendiente de aprobación
-  según información pública de septiembre de 2025, así que el marco aplicable
-  es el autonómico: PLATERCAM más los planes especiales de la Comunidad de
-  Madrid (incendios forestales, inclemencias invernales, INUNCAM, RADCAM,
-  transporte de mercancías peligrosas, terrorismo y pandemias). La Comunidad de
-  Madrid **no** tiene plan especial sísmico, coherente con su muy baja
-  peligrosidad según el IGN.
+**Comparador de ubicaciones** (`#/riesgos/comparar`). Compara las ubicaciones
+que el usuario configura en el centro familiar, usando la provincia de cada una.
+Donde la app tiene evaluación provincial propia muestra su nivel; donde no,
+**no inventa un nivel**: indica si la comunidad autónoma tiene plan especial de
+protección civil ante ese riesgo (hecho administrativo comprobable, tomado de
+`territorios.js`) y, como referencia, el nivel de ámbito España.
 
 Lo que sigue sin contrastar aparece marcado como **"pend."** en el comparador.
 
 ### 4.3 · Centro de coordinación familiar  (`#/sec/familia`)
 
-- Tres nodos editables: **Ávila** (base), **Terrassa** y **Getafe**.
+**Configurable por cada usuario. La aplicación no distribuye ninguna ubicación,
+persona ni ruta.** Al entrar por primera vez se ofrece añadir la casa propia o
+cargar un **ejemplo ficticio** (marcado como tal, sin coordenadas y borrable con
+un botón).
+
+- **Ubicaciones**: una **base** (desde donde se parte) y las de familia que se
+  quieran. Cada una con nombre, quién vive, icono, provincia (código INE),
+  municipio, teléfonos, dirección, punto de encuentro, notas, personas (adultos,
+  niños, mayores, mascotas) y posición opcional en el mapa (a mano o por GPS).
+  Se recomienda usar un punto de referencia público, no el portal exacto: si se
+  activa la sincronización, la posición viaja con el resto del plan.
 - **Estado familiar manual** 🟢🟡🔴⚫ con marca de tiempo, más estado de
   preparación por ubicación. La app no intenta deducir el estado real de nadie.
 - **Plan 72 h** que calcula agua, alimento, medicación, energía, documentación
-  y el resto a partir de los adultos, niños, mayores y mascotas de cada nodo.
-- **Plan de reunificación** con puntos A/B/C y puntos alternativos añadidos por
-  el usuario, más las siete preguntas que hay que responder en familia.
-- **Modo "Si no hay Internet"**: simulador con cuatro interruptores (Internet,
-  GPS, datos, llamadas) que muestra qué queda disponible en cada combinación, e
-  inventario en vivo de lo que hay realmente guardado en el dispositivo.
-- **Mapa familiar** con los tres nodos, sus términos municipales y las rutas.
+  y el resto a partir de las personas de cada ubicación.
+- **Plan de reunificación** con un punto por ubicación (A, B, C…) y puntos
+  alternativos, más las siete preguntas que hay que responder en familia.
+- **Modo "Si no hay Internet"**: simulador con cuatro interruptores e inventario
+  en vivo de lo que hay guardado en el dispositivo.
+- **Mapa familiar** con las ubicaciones que tienen posición y las trazas de ruta
+  importadas, sobre cartografía del IGN.
 
-### 4.4 · Rutas offline por emergencia  (`#/familia/rutas`)
+Los datos de versiones anteriores se migran solos: la provincia que se guardaba
+como texto se convierte en código INE.
 
-Seis rutas: tres para Ávila ⇄ Terrassa y tres para Ávila ⇄ Getafe, en ambos
-sentidos, combinables con **12 situaciones** (normal, incendio, inundación,
-nieve, temporal, apagón, disturbios, químico, radiológico, médica, sin
-comunicaciones y emergencia en carretera).
+### 4.4 · Rutas por situación  (`#/familia/rutas`)
 
-Cada combinación cambia: la ruta recomendada y por qué, la velocidad media de
-planificación (y por tanto el tiempo estimado), la lista de comprobaciones
-antes de salir, las advertencias específicas y las capas de puntos de interés
-prioritarias.
+Cada ubicación de familia tiene sus **rutas definidas por el usuario**
+(principal y alternativas): nombre, vías, km por carretera, notas y,
+opcionalmente, la **traza real importada en GPX o GeoJSON** (exportada de
+BRouter, OSRM, Graphhopper o cualquier navegador). Al importar la traza se
+calcula su longitud y se propone como distancia si no se había anotado.
+
+Se combinan con **12 situaciones** (normal, incendio, inundación, nieve,
+temporal, apagón, disturbios, químico, radiológico, médica, sin comunicaciones y
+emergencia en carretera). Cada combinación cambia qué ruta elegir y por qué, la
+velocidad media de planificación (y por tanto el tiempo estimado), las
+comprobaciones antes de salir, las advertencias y los puntos de interés
+prioritarios. Si hay posición en ambos extremos se muestra también la distancia
+en línea recta, marcada como tal.
 
 El botón **❤️ QUIERO LLEGAR A MI FAMILIA** es un asistente de tres preguntas
 —a quién, en qué sentido, en qué situación— que genera el plan completo.
 
----
-
-## 4 ter. Rutas offline: por qué no son líneas rectas (y qué son exactamente)
-
-El requisito era explícito: rutas reales por carretera, no una recta entre dos
-puntos. Y a la vez, sin inventar nada.
-
-**Lo que se ha hecho.** Cada ruta es una polilínea cuyos vértices son los
-**centroides municipales calculados a partir de los polígonos del IGN**
-(paquete es-atlas). Los municipios elegidos son los que atraviesa realmente
-cada corredor viario. El resultado sigue el trazado real:
-
-| Ruta | Vértices | Distancia calculada | Referencia real |
-|---|---|---|---|
-| Ávila → Terrassa (A-6 · M-50 · A-2) | 28 | 645 km | ~640 km |
-| Ávila → Terrassa (evitando Madrid, N-110 · A-15 · A-68) | 14 | 645 km | — |
-| Ávila → Terrassa (AP-2 · AP-7 de peaje) | 16 | 645 km | — |
-| Ávila → Getafe (AP-51 · A-6 · M-50) | 10 | 110 km | ~115 km |
-| Ávila → Getafe (N-403 · A-5) | 8 | 140 km | — |
-| Ávila → Getafe (valle del Alberche, M-501) | 8 | 105 km | — |
-
-Las distancias se redondean a 5 km precisamente para no aparentar una precisión
-que no tienen. Los tiempos se calculan con velocidades medias de planificación
-declaradas (90 / 70 / 45 / 25 km/h según la situación), nunca con un motor de
-navegación.
-
-**Lo que NO es.** No es turn-by-turn ni una traza calle a calle. Para eso haría
-falta la red viaria completa de OpenStreetMap más un motor de routing: para el
-corredor Ávila–Barcelona son cientos de MB de grafo, inviable en una PWA que
-debe caber cómodamente en un móvil. Se evaluó y se descartó de forma explícita.
-
-**Cómo mejorarlo si lo necesitas.** Exporta la ruta real desde cualquier
-herramienta basada en OSM (BRouter, Graphhopper, OSRM, tu navegador habitual) en
-GeoJSON e impórtala desde 🗺 Mapa → Capas. Queda guardada en IndexedDB y
-disponible offline, con la traza exacta.
+**Lo que NO es.** No es navegación turn-by-turn: eso exigiría la red viaria
+completa más un motor de routing (cientos de MB), inviable en una PWA. La app
+tampoco dibuja rutas que el usuario no haya importado: no inventa trazados.
 
 **Puntos de interés.** La app **no incluye** un directorio de hospitales,
 gasolineras, farmacias ni alojamientos con coordenadas, porque no ha sido
-posible verificarlos contra una fuente oficial en formato de datos. Inventarlos
-sería exactamente lo que este proyecto prohíbe. Lo que sí ofrece: las
-localidades reales del itinerario, las capitales de provincia señaladas (donde
-está el hospital de referencia provincial), el directorio verificado de
-servicios de emergencia, y las herramientas para que el usuario añada sus
-propios puntos e importe capas oficiales.
+posible verificarlos contra una fuente oficial en formato de datos. El usuario
+puede añadir sus propios puntos e importar capas oficiales.
 
-**Aviso permanente en la interfaz:** *"Las rutas offline son una referencia. El
-estado de cualquier vía es DESCONOCIDO hasta que lo verifiques. En una
-emergencia real prevalecen las instrucciones de las autoridades y los cortes
-oficiales."*
+**Aviso permanente en la interfaz:** las rutas son una referencia de
+planificación; el estado de cualquier vía es DESCONOCIDO hasta que se verifique
+y prevalecen siempre las instrucciones de las autoridades.
 
 ---
 
@@ -753,8 +747,7 @@ el papel no se queda sin batería.
 - **Leaflet** 1.9 — BSD-2-Clause, incluido localmente en `assets/vendor/`.
 - **es-atlas** — MIT, TopoJSON derivado del Equipamiento Geográfico de Referencia
   Nacional del **Instituto Geográfico Nacional (IGN)**.
-- **OpenStreetMap** — teselas © colaboradores de OpenStreetMap, ODbL.
-- **OpenTopoMap** — © OpenTopoMap (CC-BY-SA), datos © OpenStreetMap.
+- **Instituto Geográfico Nacional** — teselas WMTS (mapa base, MTN, PNOA), CC BY 4.0.
 - Contenido redactado a partir de fuentes oficiales españolas (Protección Civil,
   AEMET, IGN, BOE, Junta de Castilla y León, Diputación de Ávila, Ayuntamiento de
   Ávila, Sacyl, CH del Duero) y literatura técnica. El listado completo con fecha
@@ -799,8 +792,8 @@ prohíbe. Así que para cada riesgo se muestran tres cosas, en este orden:
    de tu comunidad autónoma y los del Estado. Esto no es una valoración de riesgo, es
    un hecho administrativo comprobable. Que una comunidad tenga plan especial
    aprobado ante un riesgo significa que la administración competente lo reconoce como
-   relevante en ese territorio; no dice cuánta probabilidad hay. Es el mismo indicador
-   que ya se usaba en la ficha de Terrassa, extendido a todo el Estado.
+   relevante en ese territorio; no dice cuánta probabilidad hay. Es un indicador
+   aplicable a todo el Estado.
 2. **Un aviso explícito** de que no hay evaluación específica para tu provincia.
 3. **La evaluación de ámbito ESPAÑA**, que sí está sostenida por fuentes.
 
