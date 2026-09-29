@@ -853,6 +853,7 @@ el papel no se queda sin batería.
 
 > La auditoría de uso móvil y bajo estrés, con lo implementado y medido, está en `docs/FASE-3-UX.md`.
 > La fiabilidad sin conexión y la recuperación ante fallos (fase 4) están en `docs/FASE-4-DIAGNOSTICO.md` y `docs/FASE-4-VERIFICACION.md`.
+> Fase 5 (dispositivos reales, accesibilidad y mapas): `docs/FASE-5-DIAGNOSTICO.md`, `docs/FASE-5-VERIFICACION.md`, la guía de prueba `docs/FASE-5-PREVISUALIZACION.md` y la lista `docs/REVISION-PROFESIONAL.md`.
 
 - **Mobile-first**, usable con una mano: objetivos táctiles de 44–52 px,
   navegación inferior fija de cinco destinos, botones grandes.
