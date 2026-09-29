@@ -1986,7 +1986,18 @@ try {
     // Contraste WCAG de todo texto visible contra su fondo efectivo.
     const contraste = (pg) => pg.evaluate(() => {
       const lum = (c) => { const m = c.match(/[\d.]+/g).map(Number); const [r, g, b] = m.slice(0, 3).map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
-      const fondo = (e) => { while (e) { const c = getComputedStyle(e).backgroundColor; const m = c.match(/[\d.]+/g); if (m && (m.length < 4 || +m[3] > 0.5)) return c; e = e.parentElement; } return getComputedStyle(document.documentElement).backgroundColor; };
+      // Fondo REAL: se componen las capas semitransparentes (p. ej. el resaltado
+      // de la búsqueda) sobre el primer fondo opaco. Antes se ignoraban las
+      // capas con opacidad ≤ 0,5 y el resaltado pasaba sin cumplir AA.
+      const rgba = (c) => { const m = c.match(/[\d.]+/g).map(Number); return [m[0], m[1], m[2], m.length > 3 ? m[3] : 1]; };
+      const fondo = (e) => {
+        const capas = [];
+        for (let x = e; x; x = x.parentElement) { const c = rgba(getComputedStyle(x).backgroundColor); if (c[3] > 0) { capas.push(c); if (c[3] >= 1) break; } }
+        let base = capas.length && capas[capas.length - 1][3] >= 1 ? capas.pop() : rgba(getComputedStyle(document.documentElement).backgroundColor);
+        if (base[3] < 1) base = [0, 0, 0, 1];
+        for (let i = capas.length - 1; i >= 0; i--) base = [0, 1, 2].map((k) => capas[i][k] * capas[i][3] + base[k] * (1 - capas[i][3])).concat(1);
+        return `rgb(${base.slice(0, 3).join(',')})`;
+      };
       const malos = [];
       for (const e of document.querySelectorAll('#app *, .bottomnav *')) {
         const r = e.getBoundingClientRect();
