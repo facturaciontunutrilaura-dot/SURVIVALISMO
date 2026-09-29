@@ -94,6 +94,19 @@ survival-offline/
    caché, la app lee de IndexedDB, y el mapa muestra la capa vectorial del IGN
    más las teselas descargadas.
 
+**¿Está lista tu app?** (`⚙️ Configuración`, fase 4). Comprueba el estado
+real del dispositivo:
+- cada archivo del manifiesto está en caché y no está dañado (por ejemplo, el
+  HTML del hosting guardado en lugar de un módulo JS), con botón «Reparar»;
+- si el navegador protege los datos frente al borrado automático. Se pide solo
+  la primera vez que se guarda un dato propio;
+- si la app está instalada: botón en Android, instrucciones en iOS;
+- fecha de la última copia de seguridad y si hay cambios posteriores.
+
+En la portada solo aparece un aviso, debajo de SOS, cuando algo requiere
+atención. Si faltan archivos, siempre; lo demás se puede posponer 7 días con
+«Ahora no».
+
 ### 3.3 Estrategias del Service Worker
 
 - **Navegaciones**: **caché primero** con revalidación en segundo plano. Es una

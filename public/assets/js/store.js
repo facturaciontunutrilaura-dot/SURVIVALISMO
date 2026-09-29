@@ -45,11 +45,33 @@ function tx(store, mode = 'readonly') {
   return openDB().then((db) => db.transaction(store, mode).objectStore(store));
 }
 
+/* Datos PROPIOS del usuario (lo que perdería si el navegador borrase el
+   almacenamiento). No cuentan ajustes, estadísticas de juegos ni teselas.
+   Se usa para el aviso de copia de seguridad y para pedir protección. */
+const KV_PROPIO = /^(familia\.|plan\.|ubicacion$|riesgos\.)/;
+export function esDatoPropio(store, id) {
+  return ['contactos', 'puntos', 'checks', 'frecs', 'radiolog', 'geo'].includes(store) || (store === 'kv' && KV_PROPIO.test(String(id)));
+}
+/** Anota la hora del último cambio propio y, la primera vez que el usuario
+ *  guarda algo suyo, pide al navegador que no lo borre automáticamente. */
+function anotarCambio(store, id) {
+  if (!esDatoPropio(store, id)) return;
+  try {
+    localStorage.setItem('survival.ultimoCambio', String(Date.now()));
+    if (!localStorage.getItem('survival.persistPedido')) {
+      localStorage.setItem('survival.persistPedido', '1');
+      persistStorage();
+    }
+  } catch { /* sin localStorage: no se anota */ }
+}
+
 /** Escribe marcando la hora de modificación local (`_upd`), que es lo que
  *  permite saber después qué hay que enviar a la nube. */
 export async function put(store, obj) {
   if (SYNC_STORES.includes(store)) obj = { ...obj, _upd: Date.now() };
-  return putRaw(store, obj);
+  const r = await putRaw(store, obj);
+  anotarCambio(store, obj.id);
+  return r;
 }
 
 /** Escribe SIN tocar `_upd`. Lo usa la sincronización al aplicar cambios que
@@ -87,7 +109,9 @@ export async function del(store, id) {
   if (SYNC_STORES.includes(store)) {
     await putRaw('tombstones', { id: `${store}::${id}`, store, itemId: String(id), _upd: Date.now() });
   }
-  return delRaw(store, id);
+  const r = await delRaw(store, id);
+  anotarCambio(store, id);
+  return r;
 }
 
 /** Vuelve a guardar un registro borrado (deshacer) y retira su lápida, para

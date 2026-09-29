@@ -143,6 +143,12 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
+  // «Reparar» (página ¿Está lista tu app?) pide el archivo a la red con esta
+  // cabecera para sustituir uno que falta o está dañado en la caché. Servirlo
+  // desde la caché devolvería el mismo archivo dañado. Solo esa petición
+  // explícita salta la caché; todo lo demás sigue siendo caché primero.
+  if (req.headers.get('X-Reparar') === '1') { e.respondWith(fetch(req)); return; }
+
   // Recursos propios: caché primero.
   e.respondWith(
     (async () => {

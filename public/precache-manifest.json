@@ -8,6 +8,7 @@
   "./assets/js/familia.js",
   "./assets/js/juegos.js",
   "./assets/js/maps.js",
+  "./assets/js/preparacion.js",
   "./assets/js/riesgos.js",
   "./assets/js/search.js",
   "./assets/js/store.js",

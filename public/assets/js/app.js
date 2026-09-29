@@ -8,6 +8,7 @@ import {
   FRECUENCIAS, SOURCES, SOURCE_MAP, DISCLAIMER,
 } from '../../data/content/index.js';
 import * as store from './store.js';
+import * as prep from './preparacion.js';
 import { $, $$, el, esc, toast, topbar, renderBlocks, prBadge, fmtBytes, uid, limpiarVista, alSalir, borrarConDeshacer } from './ui.js';
 import { CALCS, mountTools } from './calc.js';
 import { compassView } from './compass.js';
@@ -122,7 +123,7 @@ function vHome() {
     </a>` : ''; };
   const enlace = (id) => { const s = sec(id); return s ? `<a class="home-enlace" href="${rutaSeccion(id)}"><span aria-hidden="true">${s.ic}</span> ${esc(s.t)}</a>` : ''; };
 
-  return el(`<div class="home">
+  const n = el(`<div class="home">
     <header class="brand">
       <h1>SUPERVIVENCIA</h1>
       <div class="sub">Herramientas de preparación y emergencia offline</div>
@@ -138,6 +139,8 @@ function vHome() {
       </div>
       <a class="home-buscar" href="#/buscar"><span aria-hidden="true">🔍</span> Buscar en el manual: «sangrado», «apagón»…</a>
     </section>
+
+    <div id="home-prep" class="home-prep" hidden></div>
 
     <section class="home-bloque" aria-labelledby="h-plan">
       <h2 id="h-plan">Mi plan y herramientas</h2>
@@ -159,6 +162,9 @@ function vHome() {
       <p class="muted" style="margin:.6em 0 0">Contenido actualizado el ${esc(FECHA_CONTENIDO)} · v${esc(VERSION)} · Tus datos se guardan solo en este dispositivo.</p>
     </div>
   </div>`);
+  // Solo aparece si algo requiere atención (recursos offline, copia, protección).
+  prep.montarAvisoPortada(n.querySelector('#home-prep'));
+  return n;
 }
 
 /* ------------------------------ EMERGENCIA ------------------------------ */
@@ -1135,6 +1141,9 @@ async function vConfig() {
     ${topbar('Configuración')}
     <h1>⚙️ CONFIGURACIÓN</h1>
 
+    <h2 id="preparacion">¿Está lista tu app?</h2>
+    <div id="cfg-prep"></div>
+
     <h2>Estado offline</h2>
     <div class="card">
       <div class="kv">
@@ -1230,13 +1239,14 @@ async function vConfig() {
     const log = n.querySelector('#cfg-swlog');
     log.textContent = 'Descargando recursos…';
     try {
-      const r = await fetch('./precache-manifest.json', { cache: 'no-cache' });
-      const list = await r.json();
-      const c = await caches.open('survival-static-v' + VERSION);
-      let ok = 0;
-      for (const u of list) { try { await c.add(new Request(u, { cache: 'reload' })); ok++; } catch {} }
-      log.innerHTML = `<b>${ok}/${list.length}</b> recursos guardados. La app ya funciona sin Internet.`;
+      // Misma validación que el Service Worker: no se guarda el index.html
+      // que devuelve el hosting en lugar de un archivo que falta.
+      const r = await prep.reparar(null, VERSION);
+      log.innerHTML = r.fallos.length
+        ? `<b>${r.guardados}/${r.total}</b> recursos guardados. No se han podido descargar ${r.fallos.length}: vuelve a intentarlo con mejor conexión.`
+        : `<b>${r.guardados}/${r.total}</b> recursos guardados. La app ya funciona sin Internet.`;
       await store.persistStorage();
+      repintarPrep();
     } catch (e) { log.innerHTML = `<span style="color:var(--red)">Error: ${esc(e.message)}</span>`; }
   });
 
@@ -1252,7 +1262,7 @@ async function vConfig() {
     n.querySelector('#cfg-' + k).addEventListener('change', (e) => { store.setSetting(k, e.target.value); });
   });
 
-  n.querySelector('#cfg-export').addEventListener('click', async () => {
+  const exportar = async () => {
     const data = await store.exportAll();
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
@@ -1260,8 +1270,11 @@ async function vConfig() {
     a.download = `survival-offline-backup-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    prep.marcarCopia();
     toast('Copia exportada');
-  });
+  };
+  const repintarPrep = await prep.montarPanel(n.querySelector('#cfg-prep'), { exportar });
+  n.querySelector('#cfg-export').addEventListener('click', async () => { await exportar(); repintarPrep(); });
 
   n.querySelector('#cfg-import').addEventListener('click', () => n.querySelector('#cfg-file').click());
   n.querySelector('#cfg-file').addEventListener('change', async (e) => {
@@ -1460,7 +1473,13 @@ function v404() {
 }
 
 /* ================================ ROUTER ================================ */
+/* Cada navegación lleva un número. Si mientras se construye una vista lenta
+   (Configuración, mapa, familia…) el usuario ya se ha ido a otra, esa vista
+   se descarta al terminar: sin esto, podía pintarse encima de la nueva
+   (dirección de una pantalla, contenido de otra). */
+let navActual = 0;
 async function route() {
+  const mia = ++navActual;
   limpiarVista();
   const actual = baseRuta(location.hash);
   if (pila.length) posiciones.set(pila[pila.length - 1], window.scrollY);
@@ -1519,6 +1538,7 @@ async function route() {
     out = el(`<div>${topbar('Error')}<h1>Error</h1><div class="blk-warn">${esc(err.message)}</div><a class="btn" href="#/">Inicio</a></div>`);
   }
 
+  if (mia !== navActual) return;   // el usuario ya está en otra pantalla
   const emg = out && out.emg;
   const node = emg ? out.node : out;
   render(node, { emg: !!emg, scroll });

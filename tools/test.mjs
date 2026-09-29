@@ -881,6 +881,78 @@ try {
 
   await ctx.setOffline(false);
 
+  /* ------------------- 12 a. ¿Está lista tu app? (fase 4) ------------------- */
+  console.log('\n▸ ¿Está lista tu app?');
+  {
+    const verCache = async () => page.evaluate(async () => (await caches.keys()).find((k) => k.startsWith('survival-static-v')));
+    const cacheStatic = await verCache();
+    await page.goto(BASE + '#/sec/config'); await page.waitForSelector('#cfg-prep .prep');
+    ok('Preparación: con todo en caché dice que funciona sin conexión', /Funciona sin conexión/.test(await page.textContent('#cfg-prep')));
+    ok('Preparación: sin archivos que reparar no hay botón «Reparar»', (await page.locator('#cfg-prep [data-a="reparar"]').count()) === 0);
+
+    // a) Falta un archivo
+    await page.evaluate(async (c) => (await caches.open(c)).delete('./assets/js/juegos.js'), cacheStatic);
+    await page.goto(BASE + '#/'); await page.waitForSelector('#home-prep:not([hidden])', { timeout: 8000 }).catch(() => {});
+    ok('Portada: avisa si faltan archivos para usar la app sin conexión', /Faltan archivos/.test(await page.textContent('#home-prep')));
+    ok('Portada: el aviso de archivos no se puede posponer', (await page.locator('#home-prep [data-a="ocultar"]').count()) === 0);
+    ok('Portada: el aviso va después de SOS y 112', await page.evaluate(() => !!(document.querySelector('.home-sos').compareDocumentPosition(document.getElementById('home-prep')) & Node.DOCUMENT_POSITION_FOLLOWING)));
+    await page.click('#home-prep [data-a="reparar"]');
+    await page.waitForFunction(() => /Reparado/.test(document.querySelector('#home-prep .prep-salida')?.textContent || ''), null, { timeout: 15000 }).catch(() => {});
+    const vuelto = await page.evaluate(async (c) => !!(await (await caches.open(c)).match('./assets/js/juegos.js')), cacheStatic);
+    ok('Portada: «Reparar» recupera el archivo que faltaba', vuelto);
+
+    // b) Archivo dañado: HTML guardado en lugar del módulo
+    await page.evaluate(async (c) => {
+      const cache = await caches.open(c);
+      await cache.put('./assets/js/audio.js', new Response('<!doctype html><h1>index</h1>', { headers: { 'Content-Type': 'text/html' } }));
+    }, cacheStatic);
+    await page.goto(BASE + '#/sec/config'); await page.waitForSelector('#cfg-prep .prep');
+    ok('Preparación: detecta un archivo dañado (HTML en lugar del módulo)', /dañados 1 archivo/.test(await page.textContent('#cfg-prep')));
+    await page.click('#cfg-prep [data-a="reparar"]');
+    await page.waitForFunction(() => /Funciona sin conexión/.test(document.querySelector('#cfg-prep')?.textContent || ''), null, { timeout: 15000 }).catch(() => {});
+    const tipo = await page.evaluate(async (c) => (await (await caches.open(c)).match('./assets/js/audio.js')).headers.get('Content-Type'), cacheStatic);
+    ok('Preparación: «Reparar» sustituye el archivo dañado por el bueno', /javascript/.test(tipo), tipo);
+
+    // c) Instalación: si el navegador ofrece instalar, aparece el botón
+    await page.evaluate(() => { const e = new Event('beforeinstallprompt'); e.prompt = () => { window.__instalado = true; }; e.userChoice = Promise.resolve({ outcome: 'accepted' }); window.dispatchEvent(e); });
+    await page.goto(BASE + '#/sec/procesos-dummy'); await page.goto(BASE + '#/sec/config'); await page.waitForSelector('#cfg-prep .prep');
+    ok('Preparación: dice si la app no está instalada', /No está instalada/.test(await page.textContent('#cfg-prep')));
+    ok('Preparación: botón «Instalar» cuando el navegador lo permite', (await page.locator('#cfg-prep [data-a="instalar"]').count()) === 1);
+    await page.click('#cfg-prep [data-a="instalar"]');
+    ok('Preparación: «Instalar» abre el diálogo del navegador', await page.evaluate(() => window.__instalado === true));
+  }
+  {
+    // d) Copia de seguridad y protección, en un dispositivo limpio
+    const cc = await browser.newContext({ ...devices['Pixel 7'], serviceWorkers: 'block', acceptDownloads: true });
+    const pc = await cc.newPage();
+    await pc.goto(BASE + '#/'); await pc.waitForSelector('.home-bloque'); await pc.waitForTimeout(600);
+    ok('Portada: sin datos propios no hay ningún aviso de preparación', await pc.locator('#home-prep').isHidden());
+    await pc.evaluate(async () => (await import('./assets/js/store.js')).put('contactos', { id: 'c1', nombre: 'Prueba', tel: '600000000' }));
+    ok('Protección: al guardar el primer dato propio se pide al navegador que no lo borre', await pc.evaluate(() => localStorage.getItem('survival.persistPedido') === '1'));
+    await pc.goto(BASE + '#/sec/config'); await pc.goto(BASE + '#/'); await pc.waitForSelector('#home-prep:not([hidden])', { timeout: 8000 }).catch(() => {});
+    ok('Portada: con datos propios y sin copia, avisa', /ninguna copia de seguridad/.test(await pc.textContent('#home-prep')));
+    await pc.click('#home-prep [data-a="ocultar"]');
+    await pc.goto(BASE + '#/sec/config'); await pc.goto(BASE + '#/'); await pc.waitForTimeout(700);
+    ok('Portada: «Ahora no» oculta el aviso de copia', await pc.locator('#home-prep').isHidden());
+    await pc.goto(BASE + '#/sec/config'); await pc.waitForSelector('#cfg-prep .prep');
+    ok('Preparación: dice que nunca se ha hecho copia', /Nunca has hecho una copia/.test(await pc.textContent('#cfg-prep')));
+    await Promise.all([pc.waitForEvent('download'), pc.click('#cfg-prep [data-a="exportar"]')]);
+    await pc.waitForTimeout(500);
+    ok('Preparación: tras exportar, la copia está al día con su fecha', /Copia de seguridad al día/.test(await pc.textContent('#cfg-prep')));
+    await pc.evaluate(async () => (await import('./assets/js/store.js')).put('contactos', { id: 'c2', nombre: 'Otra', tel: '600000001' }));
+    await pc.goto(BASE + '#/'); await pc.goto(BASE + '#/sec/config'); await pc.waitForSelector('#cfg-prep .prep');
+    ok('Preparación: avisa si hay cambios después de la última copia', /Has cambiado datos después/.test(await pc.textContent('#cfg-prep')));
+    // Navegación rápida: salir de una vista lenta antes de que termine de
+    // construirse no debe dejarla pintada encima de la nueva.
+    await pc.goto(BASE + '#/'); await pc.waitForSelector('.home-bloque');
+    await pc.evaluate(() => { location.hash = '#/sec/config'; setTimeout(() => { location.hash = '#/emergencia'; }, 0); });
+    await pc.waitForTimeout(1500);
+    ok('Navegación rápida: una vista lenta no se pinta encima de la siguiente', (await pc.locator('.btn-112').count()) > 0 && (await pc.locator('#cfg-prep').count()) === 0);
+    await pc.evaluate(async () => (await import('./assets/js/store.js')).put('kv', { id: 'quiz.stats', v: { n: 1 } }));
+    ok('Preparación: las estadísticas de juegos no cuentan como datos propios', await pc.evaluate(async () => (await import('./assets/js/store.js')).esDatoPropio('kv', 'quiz.stats') === false));
+    await cc.close();
+  }
+
   /* ------------- 12 bis. EL HOSTING CAE (Netlify no responde) ------------- */
   // Escenario distinto a "no hay red": el dispositivo SÍ tiene Internet, pero
   // el servidor está caído, devuelve errores o el dominio ya no existe.
