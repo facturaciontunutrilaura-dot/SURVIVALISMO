@@ -1242,6 +1242,16 @@ async function vConfig() {
     <h2 id="preparacion">¿Está lista tu app?</h2>
     <div id="cfg-prep"></div>
 
+    <div id="cfg-informe">
+      <details class="card plegable">
+        <summary>Información para pruebas en el móvil</summary>
+        <p class="muted">Datos técnicos de este dispositivo (sin ningún dato personal) para informar de un problema al probar la app en un móvil real.</p>
+        <div class="kv inf-datos"></div>
+        <button class="btn sm" type="button" data-copiar>📋 Copiar informe</button>
+        <label class="vh" for="inf-texto">Informe técnico</label><textarea id="inf-texto" readonly hidden rows="8"></textarea>
+      </details>
+    </div>
+
     <h2>Estado offline</h2>
     <div class="card">
       <div class="kv">
@@ -1375,6 +1385,7 @@ async function vConfig() {
     toast('Copia exportada');
   };
   const repintarPrep = await prep.montarPanel(n.querySelector('#cfg-prep'), { exportar });
+  prep.montarInforme(n.querySelector('#cfg-informe'));
   n.querySelector('#cfg-export').addEventListener('click', async () => { await exportar(); repintarPrep(); });
 
   n.querySelector('#cfg-import').addEventListener('click', () => n.querySelector('#cfg-file').click());

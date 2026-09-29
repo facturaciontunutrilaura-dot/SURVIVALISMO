@@ -280,3 +280,59 @@ export async function montarAvisoPortada(cont) {
     if (await accionReparar([...r.faltan, ...r.danados], cont.querySelector('.prep-salida'))) setTimeout(() => montarAvisoPortada(cont), 1200);
   });
 }
+
+/* ======================= INFORMACIÓN PARA PRUEBAS ======================= */
+/* Datos TÉCNICOS del dispositivo para informar de un problema al probar en un
+   móvil real. No incluye ningún dato personal (ni contactos, ni plan, ni
+   posición): solo el estado de la app y del navegador. */
+export async function informeTecnico() {
+  const [rec, pers, alm, est] = await Promise.all([
+    comprobarRecursos().catch(() => ({ estado: 'error' })),
+    comprobarPersistencia(),
+    store.disponible(),
+    store.storageEstimate(),
+  ]);
+  const reg = await navigator.serviceWorker?.getRegistration?.().catch(() => null);
+  const s = store.settings();
+  const mb = (b) => (b == null ? '—' : `${(b / 1048576).toFixed(1)} MB`);
+  const recursos = rec.estado === 'ok' ? `completos (${rec.total})`
+    : rec.estado === 'incompleto' ? `INCOMPLETOS: faltan ${rec.faltan.length}, dañados ${rec.danados.length}`
+      : rec.estado;
+  const filas = [
+    ['Fecha', new Date().toLocaleString('es-ES')],
+    ['Versión de la app', VERSION],
+    ['Instalada como app', comprobarInstalacion().estado === 'ok' ? 'sí' : 'no'],
+    ['Service Worker controla la página', navigator.serviceWorker?.controller ? 'sí' : 'no'],
+    ['Versión nueva esperando', reg?.waiting ? 'sí' : 'no'],
+    ['Última actualización fallida', actualizacionFallida() ? fechaCorta(actualizacionFallida()) : 'no'],
+    ['Recursos sin conexión', recursos],
+    ['Conexión', navigator.onLine ? 'sí' : 'no'],
+    ['Almacenamiento', alm ? 'disponible' : 'BLOQUEADO'],
+    ['Protección de datos', { ok: 'concedida', no: 'no concedida', 'no-disponible': 'no disponible' }[pers] || pers],
+    ['Espacio usado / disponible', `${mb(est?.usage)} / ${mb(est?.quota)}`],
+    ['Brújula (orientación)', 'DeviceOrientationEvent' in window ? 'API disponible' : 'no disponible'],
+    ['GPS (geolocalización)', 'geolocation' in navigator ? 'API disponible' : 'no disponible'],
+    ['Pantalla', `${innerWidth}×${innerHeight} px · densidad ${devicePixelRatio} · ${screen.orientation?.type || '—'}`],
+    ['Ajustes', `tema ${s.theme} · contraste ${s.contrast} · letra ${s.fs}`],
+    ['Navegador', navigator.userAgent],
+  ];
+  return { filas, texto: filas.map(([k, v]) => `${k}: ${v}`).join('\n') };
+}
+
+export async function montarInforme(cont) {
+  const pintar = async () => {
+    const { filas } = await informeTecnico();
+    cont.querySelector('.inf-datos').innerHTML = filas.map(([k, v]) => `<div>${esc(k)}</div><div class="mono">${esc(v)}</div>`).join('');
+  };
+  cont.querySelector('details').addEventListener('toggle', (e) => { if (e.target.open) pintar(); });
+  cont.querySelector('[data-copiar]').addEventListener('click', async () => {
+    const { texto } = await informeTecnico();
+    try { await navigator.clipboard.writeText(texto); toast('Informe copiado: pégalo en tu mensaje', { tipo: 'ok' }); }
+    catch {
+      // Sin permiso de portapapeles: se muestra el texto seleccionado para copiarlo a mano.
+      const t = cont.querySelector('textarea');
+      t.hidden = false; t.value = texto; t.focus(); t.select();
+      toast('Selecciona el texto y cópialo a mano', { tipo: 'info' });
+    }
+  });
+}

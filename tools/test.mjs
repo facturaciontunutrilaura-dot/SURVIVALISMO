@@ -1138,6 +1138,26 @@ try {
     await cx.close();
   }
 
+  /* ------------- 11 sexies. Información para pruebas en el móvil (fase 5) ------------- */
+  console.log('\n▸ Información para pruebas en el móvil');
+  {
+    const ci = await browser.newContext({ ...devices['Pixel 7'], serviceWorkers: 'block', permissions: ['clipboard-read', 'clipboard-write'] });
+    const pi = await ci.newPage();
+    await pi.goto(BASE + '#/'); await pi.waitForSelector('.home-bloque');
+    await pi.evaluate(async () => { const s = await import('./assets/js/store.js'); await s.put('contactos', { id: 'x1', n: 'Nombre privado', t: '699999999', r: 'externo' }); await s.put('kv', { id: 'plan.medico', v: 'Alergia privada' }); });
+    await pi.goto(BASE + '#/sec/config'); await pi.waitForSelector('#cfg-informe details');
+    ok('Pruebas en el móvil: el informe está plegado por defecto', !(await pi.evaluate(() => document.querySelector('#cfg-informe details').open)));
+    await pi.click('#cfg-informe summary'); await pi.waitForTimeout(400);
+    const inf = await pi.textContent('#cfg-informe .inf-datos');
+    ok('Pruebas en el móvil: muestra versión, instalación, Service Worker, almacenamiento, protección y pantalla',
+      ['Versión de la app', 'Instalada como app', 'Service Worker', 'Almacenamiento', 'Protección de datos', 'Recursos sin conexión', 'Pantalla', 'Navegador'].every((k) => inf.includes(k)), inf.slice(0, 200));
+    await pi.click('#cfg-informe [data-copiar]'); await pi.waitForTimeout(300);
+    const copiado = await pi.evaluate(() => navigator.clipboard.readText());
+    ok('Pruebas en el móvil: «Copiar informe» copia el texto', /Versión de la app: /.test(copiado) && /Navegador: /.test(copiado));
+    ok('Pruebas en el móvil: el informe no incluye ningún dato personal', !/Nombre privado|699999999|Alergia privada/.test(inf + copiado));
+    await ci.close();
+  }
+
   /* --------------------- 12. Service Worker + OFFLINE --------------------- */
   console.log('\n▸ PRUEBA OFFLINE REAL');
   await page.goto(BASE, { waitUntil: 'networkidle' });
