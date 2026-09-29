@@ -186,6 +186,15 @@ export async function restaurar(store, obj) {
   return put(store, obj);
 }
 
+/** Cambia el identificador de un registro (migraciones internas). No cuenta
+ *  como cambio del usuario; sí se sincroniza: el nuevo se sube y el antiguo
+ *  deja lápida para que desaparezca también en otros dispositivos. */
+export async function renombrar(store, idViejo, nuevo) {
+  if (!(await get(store, nuevo.id))) await putRaw(store, SYNC_STORES.includes(store) ? { ...nuevo, _upd: Date.now() } : nuevo);
+  if (SYNC_STORES.includes(store)) await putRaw('tombstones', { id: `${store}::${idViejo}`, store, itemId: String(idViejo), _upd: Date.now() });
+  await delRaw(store, idViejo);
+}
+
 export async function delRaw(store, id) {
   const s = await tx(store, 'readwrite');
   return new Promise((res, rej) => {

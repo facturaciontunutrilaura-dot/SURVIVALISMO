@@ -832,12 +832,19 @@ el papel no se queda sin batería.
   navegación inferior fija de cinco destinos, botones grandes.
 - **Estética de manual de campo**: verde oliva, negro, gris, arena, tipografía
   condensada para titulares, monoespaciada para datos técnicos.
-- **Modo noche** real: no es una inversión de colores, sino una paleta de baja
-  luminancia con filtro de brillo y saturación reducidos, sin superficies claras,
-  pensada para preservar la visión nocturna y ahorrar batería en OLED.
+- **Modo noche** real: no es una inversión de colores, sino una paleta propia
+  de baja luminancia, sin superficies claras, con contraste AA, pensada para
+  preservar la visión nocturna y ahorrar batería en OLED. No usa `filter` de
+  CSS: ese filtro sacaba de la pantalla la navegación y la barra del 112
+  (corregido en la fase 3).
 - **Contraste alto** y tres tamaños de texto en Configuración.
 - Respeta `prefers-reduced-motion`, incluye enlace de salto al contenido y usa
   roles ARIA en pestañas y estados.
+- Toda pantalla tiene un título principal (H1). Si la vista no lo muestra,
+  hay uno oculto a la vista. Al cambiar de pantalla, el foco pasa a ese
+  título para que el lector de pantalla anuncie dónde se está.
+- Las pantallas de «No encontrado» y de error ofrecen siempre el 112, SOS y
+  volver al inicio. El detalle técnico va plegado.
 - Sin fuentes externas: se usa la pila del sistema, así que no hay ninguna
   petición a Google Fonts ni a CDN alguna.
 

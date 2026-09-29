@@ -4,6 +4,7 @@
   "./assets/js/app.js",
   "./assets/js/audio.js",
   "./assets/js/calc.js",
+  "./assets/js/checklist-claves.js",
   "./assets/js/compass.js",
   "./assets/js/familia.js",
   "./assets/js/juegos.js",

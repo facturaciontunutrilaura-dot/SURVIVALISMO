@@ -9,6 +9,7 @@ import {
 } from '../../data/content/index.js';
 import * as store from './store.js';
 import * as prep from './preparacion.js';
+import { clavesChecklist, mapaMigracion } from './checklist-claves.js';
 import { $, $$, el, esc, toast, topbar, renderBlocks, prBadge, fmtBytes, uid, limpiarVista, alSalir, borrarConDeshacer } from './ui.js';
 import { CALCS, mountTools } from './calc.js';
 import { compassView } from './compass.js';
@@ -30,13 +31,40 @@ function setNav(route, sub = '') {
 /** localStorage que no lanza (navegación privada, almacenamiento bloqueado). */
 const lsGet = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
 
-function render(node, { emg = false, scroll = 0 } = {}) {
+function render(node, { emg = false, scroll = 0, enfocar = false } = {}) {
   document.body.classList.toggle('emg', emg);
   app.replaceChildren(node);
   mountTools(app);
   ocultarTituloRepetido(node);
+  asegurarTitulo(node);
   asociarEtiquetas(node);
   window.scrollTo(0, scroll);
+  if (enfocar) enfocarTitulo(node);
+}
+
+/* Accesibilidad: toda pantalla tiene un H1 (los lectores de pantalla navegan
+   por títulos). Si la vista no lo trae, se crea uno oculto a la vista con el
+   título de la cabecera. */
+function asegurarTitulo(node) {
+  if (node.querySelector?.('h1')) return;
+  const t = node.querySelector?.('.topbar .title');
+  if (!t) return;
+  const h = document.createElement('h1');
+  h.className = 'vh';
+  h.textContent = t.firstChild?.textContent || t.textContent;
+  t.closest('.topbar').after(h);
+}
+/* Al cambiar de pantalla el foco pasa a su título, así el lector de pantalla
+   anuncia dónde se está. No se hace al arrancar ni al repintar la misma
+   pantalla, ni si la vista ya ha puesto el foco en otro sitio (p. ej. el
+   buscador). */
+function enfocarTitulo(node) {
+  const activo = document.activeElement;
+  if (activo && activo !== document.body && app.contains(activo)) return;
+  const h = node.querySelector('h1');
+  if (!h) return;
+  h.tabIndex = -1;
+  h.focus({ preventScroll: true });
 }
 
 /* Accesibilidad: muchas plantillas escriben <label>Texto</label><input>. Aquí
@@ -659,11 +687,17 @@ function avisoFecha(fecha) {
 async function vChecklist(id) {
   const c = CHECKLISTS.find((x) => x.id === id);
   if (!c) return v404();
+  // Marcas guardadas con el formato antiguo (por posición): se convierten a
+  // la clave estable. También las que lleguen de otro dispositivo o de una
+  // copia antigua: se convierten la próxima vez que se abra la lista.
+  const migrar = mapaMigracion(c);
+  for (const r of await store.all('checks')) if (migrar.has(r.id)) await store.renombrar('checks', r.id, { ...r, id: migrar.get(r.id) });
   const saved = Object.fromEntries((await store.all('checks')).map((r) => [r.id, r]));
+  const clavesPorGrupo = clavesChecklist(c);
   const claves = [];
 
-  const item = (g, it, i) => {
-    const key = `${c.id}::${g.g}::${i}`;
+  const item = (gi, it, i) => {
+    const key = clavesPorGrupo[gi][i];
     claves.push(key);
     const cur = saved[key] || {};
     const uidf = `f-${c.id}-${claves.length}`;
@@ -684,7 +718,7 @@ async function vChecklist(id) {
   };
 
   const grupos = c.grupos.map((g, gi) => {
-    const html = g.items.map((it, i) => item(g, it, i)).join('');
+    const html = g.items.map((it, i) => item(gi, it, i)).join('');
     return `<details class="chk-grupo" data-g="${gi}"><summary><span class="gt">${esc(g.g)}</span><span class="gp" data-gp="${gi}"></span></summary>${html}</details>`;
   }).join('');
 
@@ -719,7 +753,7 @@ async function vChecklist(id) {
     n.querySelector('#ck-txt').textContent = `${cuenta.tengo} de ${total} completados (${pct.toFixed(0)} %)`
       + (cuenta.falta || cuenta.comprar || cuenta.revisar ? ` · falta ${cuenta.falta} · comprar ${cuenta.comprar} · revisar ${cuenta.revisar}` : '');
     c.grupos.forEach((g, gi) => {
-      const ks = g.items.map((_, i) => `${c.id}::${g.g}::${i}`);
+      const ks = clavesPorGrupo[gi];
       const t = ks.filter((k) => rows[k]?.estado === 'tengo').length;
       n.querySelector(`[data-gp="${gi}"]`).textContent = t === ks.length ? `✓ ${t}/${ks.length}` : `${t}/${ks.length}`;
       n.querySelector(`[data-g="${gi}"]`).classList.toggle('completo', t === ks.length);
@@ -1603,9 +1637,30 @@ function vSinAlmacenamiento() {
   return n;
 }
 
+/* Pantallas de «no encontrado» y de error: nunca un callejón sin salida. SOS
+   y el 112 primero; el detalle técnico, plegado, solo por si hay que
+   comunicarlo. */
+function salidaSegura() {
+  return `${boton112()}
+    <div class="btnrow">
+      <a class="btn" href="#/emergencia">🚨 Ir a SOS</a>
+      <a class="btn ghost" href="#/">Volver al inicio</a>
+    </div>`;
+}
 function v404() {
   return el(`<div>${topbar('No encontrado')}<h1>No encontrado</h1>
-    <p class="muted">Esa página no existe.</p><a class="btn" href="#/">Volver al inicio</a></div>`);
+    <p class="lead">Esta dirección no existe en la app. Puede ser un enlace antiguo o mal copiado.</p>
+    ${salidaSegura()}</div>`);
+}
+function vError(err) {
+  const n = el(`<div>${topbar('Algo ha fallado')}<h1>Esta pantalla no se ha podido abrir</h1>
+    <p class="lead">Ha ocurrido un problema al abrirla. <b>SOS y el 112 siguen disponibles.</b> Puedes volver a intentarlo o ir a otra sección.</p>
+    ${salidaSegura()}
+    <button class="btn ghost" type="button" data-recargar>🔄 Volver a intentarlo</button>
+    <details class="card plegable"><summary>Detalle técnico</summary><p class="mono">${esc(err?.message || String(err))}</p></details>
+  </div>`);
+  n.querySelector('[data-recargar]').addEventListener('click', () => location.reload());
+  return n;
 }
 
 /* ================================ ROUTER ================================ */
@@ -1620,8 +1675,10 @@ async function route() {
   const actual = baseRuta(location.hash);
   if (pila.length) posiciones.set(pila[pila.length - 1], window.scrollY);
   let scroll = 0;
+  // El foco pasa al título solo al CAMBIAR de pantalla (no al arrancar ni al repintar).
+  let enfocar = pila.length > 0;
   if (pila.length > 1 && pila[pila.length - 2] === actual) { pila.pop(); scroll = posiciones.get(actual) || 0; }
-  else if (pila[pila.length - 1] === actual) scroll = window.scrollY;     // repintar la misma pantalla
+  else if (pila[pila.length - 1] === actual) { scroll = window.scrollY; enfocar = false; }    // repintar la misma pantalla
   else pila.push(actual);
   const hash = location.hash.replace(/^#/, '') || '/';
   const [ruta, consulta = ''] = hash.split('?');
@@ -1673,13 +1730,13 @@ async function route() {
     console.error(err);
     out = err?.name === 'ErrorAlmacenamiento'
       ? vSinAlmacenamiento()
-      : el(`<div>${topbar('Error')}<h1>Error</h1><div class="blk-warn">${esc(err.message)}</div><a class="btn" href="#/">Inicio</a></div>`);
+      : vError(err);
   }
 
   if (mia !== navActual) return;   // el usuario ya está en otra pantalla
   const emg = out && out.emg;
   const node = emg ? out.node : out;
-  render(node, { emg: !!emg, scroll });
+  render(node, { emg: !!emg, scroll, enfocar });
   store.setSetting('lastRoute', location.hash || '#/');
 }
 

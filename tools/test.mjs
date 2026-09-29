@@ -1118,6 +1118,67 @@ try {
     await ci2.close();
   }
 
+  /* ----------- 12 a quinquies. Checklists con claves estables ----------- */
+  console.log('\n▸ Checklists con identificadores estables');
+  {
+    const ck = await browser.newContext({ ...devices['Pixel 7'], serviceWorkers: 'block' });
+    const pk = await ck.newPage();
+    await pk.goto(BASE + '#/'); await pk.waitForSelector('.home-bloque');
+    // Marca guardada con el formato antiguo (por posición): 2.º ítem de «Agua».
+    await pk.evaluate(async () => (await import('./assets/js/store.js')).putRaw('checks', { id: 'nivel2::Agua::1', estado: 'tengo', _upd: 1 }));
+    await pk.goto(BASE + '#/check/nivel2'); await pk.waitForSelector('.chk-item');
+    const marcado = await pk.evaluate(() => [...document.querySelectorAll('.chk-item')].filter((x) => x.dataset.estado === 'tengo').map((x) => x.querySelector('.lbl').textContent));
+    ok('Checklists: la marca antigua se conserva en el mismo ítem tras la migración', marcado.length === 1 && marcado[0] === 'Garrafas o bidones de reserva', JSON.stringify(marcado));
+    const ids = await pk.evaluate(async () => { const s = await import('./assets/js/store.js'); return { checks: (await s.all('checks')).map((r) => r.id), lapidas: (await s.all('tombstones')).map((r) => r.id) }; });
+    ok('Checklists: la marca pasa a una clave por texto y la antigua desaparece', ids.checks.length === 1 && ids.checks[0] === 'nivel2::i:garrafas-o-bidones-de-reserva', ids.checks.join(','));
+    ok('Checklists: la clave antigua deja lápida para borrarse en otros dispositivos', ids.lapidas.includes('checks::nivel2::Agua::1'));
+    await ck.close();
+  }
+
+  /* --------- 12 a sexies. Errores, «no encontrado», títulos y foco --------- */
+  console.log('\n▸ Errores, títulos y foco');
+  {
+    const ce = await browser.newContext({ ...devices['Pixel 7'], serviceWorkers: 'block' });
+    // Un módulo que no se puede cargar provoca un error real al abrir la vista.
+    await ce.route('**/assets/js/riesgos.js', (r) => r.abort());
+    const pe = await ce.newPage();
+    const salida = () => pe.evaluate(() => ({
+      h1: document.querySelector('#app h1')?.textContent || '',
+      tel: !!document.querySelector('#app a[href="tel:112"]'),
+      sos: !!document.querySelector('#app a[href="#/emergencia"]'),
+      inicio: !!document.querySelector('#app a[href="#/"]'),
+      texto: document.getElementById('app').innerText,
+    }));
+    await pe.goto(BASE + '#/'); await pe.waitForSelector('.home-bloque');
+    await pe.goto(BASE + '#/esto-no-existe'); await pe.waitForTimeout(400);
+    const no = await salida();
+    ok('«No encontrado»: explica qué pasa y ofrece 112, SOS e inicio', /No encontrado/.test(no.h1) && /enlace antiguo/.test(no.texto) && no.tel && no.sos && no.inicio);
+    await pe.goto(BASE + '#/riesgos/comparar'); await pe.waitForTimeout(800);
+    const er = await salida();
+    ok('Error al abrir una pantalla: mensaje comprensible con 112, SOS e inicio', /no se ha podido abrir/.test(er.h1) && /SOS y el 112 siguen disponibles/.test(er.texto) && er.tel && er.sos && er.inicio, er.h1);
+    ok('Error: el detalle técnico queda plegado', await pe.locator('#app details:not([open]) summary', { hasText: 'Detalle técnico' }).count() === 1);
+
+    // Toda pantalla tiene un H1 (aunque sea oculto a la vista).
+    const sinH1 = [];
+    for (const r of ['#/buscar', '#/mapa', '#/familia/rutas', '#/familia/reunion', '#/familia/mapa', '#/familia/plan72', '#/sec/config', '#/emergencia', '#/check/nivel2', '#/sec/juegos/calma']) {
+      await pe.goto(BASE + r); await pe.waitForTimeout(r === '#/mapa' || r === '#/familia/mapa' ? 1200 : 500);
+      if (!(await pe.evaluate(() => (document.querySelector('#app h1')?.textContent || '').trim().length > 0))) sinH1.push(r);
+    }
+    ok('Accesibilidad: todas las pantallas tienen un título principal (H1)', sinH1.length === 0, sinH1.join(','));
+
+    // Al navegar, el foco pasa al título de la nueva pantalla.
+    await pe.goto(BASE + '#/'); await pe.waitForSelector('.home-bloque');
+    await pe.click('a.home-enlace[href="#/sec/agua"]');
+    await pe.waitForTimeout(400);
+    const foco = await pe.evaluate(() => ({ tag: document.activeElement?.tagName, txt: document.activeElement?.textContent || '' }));
+    ok('Accesibilidad: al cambiar de pantalla el foco pasa a su título', foco.tag === 'H1' && /AGUA/i.test(foco.txt), JSON.stringify(foco));
+    await pe.goto(BASE + '#/sec/agua'); await pe.waitForTimeout(300);
+    await pe.evaluate(() => { document.activeElement?.blur(); window.dispatchEvent(new HashChangeEvent('hashchange')); });
+    await pe.waitForTimeout(400);
+    ok('Accesibilidad: repintar la misma pantalla no mueve el foco', await pe.evaluate(() => document.activeElement === document.body));
+    await ce.close();
+  }
+
   /* ------------- 12 bis. EL HOSTING CAE (Netlify no responde) ------------- */
   // Escenario distinto a "no hay red": el dispositivo SÍ tiene Internet, pero
   // el servidor está caído, devuelve errores o el dominio ya no existe.

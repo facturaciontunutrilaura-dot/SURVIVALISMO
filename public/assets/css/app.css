@@ -936,3 +936,7 @@ ul.planes .badge { margin-left: 4px; vertical-align: middle; }
 .dv-lista li { margin: 4px 0; }
 .dv-lista .btn { margin-left: 4px; }
 .dv-nota { margin-top: 10px; }
+
+/* El título recibe el foco al cambiar de pantalla (lectores de pantalla); no
+   es un control, así que no se dibuja el recuadro de foco. */
+h1[tabindex="-1"]:focus { outline: none; }

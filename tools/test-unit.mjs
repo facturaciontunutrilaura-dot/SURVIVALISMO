@@ -294,3 +294,21 @@ test('copias: validarCopia acepta una copia correcta y rechaza las dañadas sin 
   const rara = validarCopia({ ...buena, stores: { ...buena.stores, futuro: [] } });
   assert.equal(rara.ok, true); assert.deepEqual(rara.resumen.ignorados, ['futuro']);
 });
+
+test('checklists: claves estables por texto, únicas y con migración desde las antiguas', async () => {
+  const { CHECKLISTS } = await import('../public/data/content/checklists.js');
+  const { clavesChecklist, mapaMigracion } = await import('../public/assets/js/checklist-claves.js');
+  for (const c of CHECKLISTS) {
+    const claves = clavesChecklist(c).flat();
+    assert.equal(new Set(claves).size, claves.length, `claves repetidas en ${c.id}`);
+    assert.ok(claves.every((k) => k.startsWith(c.id + '::i:') && k.split('::').length === 2), c.id);
+    const m = mapaMigracion(c);
+    assert.equal(m.size, claves.length);
+    assert.equal(m.get(`${c.id}::${c.grupos[0].g}::0`), clavesChecklist(c)[0][0]);
+  }
+  // Reordenar ítems o moverlos de grupo no cambia la clave de cada texto.
+  const c = CHECKLISTS[0];
+  const antes = Object.fromEntries(c.grupos.flatMap((g, gi) => g.items.map((it, i) => [it, clavesChecklist(c)[gi][i]])));
+  const movido = { ...c, grupos: [{ g: 'Nuevo', items: [...c.grupos[1].items].reverse() }, ...c.grupos.slice(2), c.grupos[0]] };
+  movido.grupos.forEach((g, gi) => g.items.forEach((it, i) => assert.equal(clavesChecklist(movido)[gi][i], antes[it], it)));
+});
