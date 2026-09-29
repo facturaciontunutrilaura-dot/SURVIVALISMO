@@ -35,7 +35,7 @@
    ========================================================================= */
 
 import * as store from './store.js';
-import { el, esc, toast, uid, fmtBytes, alSalir } from './ui.js';
+import { el, esc, toast, uid, fmtBytes, alSalir, borrarConDeshacer } from './ui.js';
 import * as ubi from './ubicacion.js';
 
 let L = null;
@@ -379,7 +379,7 @@ export async function mapView() {
         .bindPopup(`<b>${esc(p.nombre)}</b><br><span class="muted">${esc(t.t)}</span>
           ${p.nota ? `<br>${esc(p.nota)}` : ''}
           <br><span class="mono muted">${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}</span>
-          <br><button class="btn sm danger" data-del="${esc(p.id)}" style="margin-top:6px">Eliminar</button>`)
+          <br><button class="btn danger" data-del="${esc(p.id)}" type="button" style="margin-top:8px">Eliminar punto</button>`)
         .addTo(puntosLayer);
     }
   }
@@ -388,10 +388,12 @@ export async function mapView() {
   map.on('popupopen', (e) => {
     const b = e.popup._contentNode?.querySelector('[data-del]');
     if (b) b.addEventListener('click', async () => {
-      await store.del('puntos', b.dataset.del);
+      const rec = await store.get('puntos', b.dataset.del);
       map.closePopup();
-      await pintaPuntos();
-      toast('Punto eliminado');
+      await borrarConDeshacer({
+        que: 'Punto', borrar: () => store.del('puntos', rec.id), restaurar: () => store.restaurar('puntos', rec),
+        repintar: () => n.isConnected && pintaPuntos(),
+      });
     });
   });
 
@@ -619,13 +621,20 @@ export async function mapView() {
       <div class="btnrow" style="margin-top:8px"><button class="btn" id="gi-go" type="button">Importar</button>
       <button class="btn ghost" id="gi-x" type="button">Cerrar</button></div>
       <h4>Capas importadas</h4>
-      ${gs.length ? `<div class="list">${gs.map((g) => `<div class="row"><div class="rt"><b>${esc(g.nombre)}</b><span>${(g.data.features || []).length} elementos</span></div><button class="btn sm danger" data-gdel="${esc(g.id)}">Borrar</button></div>`).join('')}</div>` : '<p class="muted">Ninguna todavía.</p>'}
+      ${gs.length ? `<div class="list">${gs.map((g) => `<div class="row"><div class="rt"><b>${esc(g.nombre)}</b><span>${(g.data.features || []).length} elementos</span></div><button class="btn danger borrar" data-gdel="${esc(g.id)}" type="button" aria-label="Borrar la capa ${esc(g.nombre)}">Borrar</button></div>`).join('')}</div>` : '<p class="muted">Ninguna todavía.</p>'}
       <div class="blk-warn">Esta app no marca ningún lugar como "refugio seguro". Un lugar solo es seguro si lo determina la autoridad competente en esa emergencia concreta.</div>
     </div>`;
     panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     panel.querySelector('#gi-x').addEventListener('click', () => { panel.innerHTML = ''; });
     panel.querySelectorAll('[data-gdel]').forEach((b) =>
-      b.addEventListener('click', async () => { await store.del('geo', b.dataset.gdel); toast('Capa eliminada. Recarga el mapa.'); })
+      b.addEventListener('click', async () => {
+        const rec = await store.get('geo', b.dataset.gdel);
+        const fila = b.closest('.row');
+        await borrarConDeshacer({
+          que: 'Capa', borrar: () => store.del('geo', rec.id), restaurar: () => store.restaurar('geo', rec),
+          repintar: async () => { if (fila.isConnected) fila.hidden = !(await store.get('geo', rec.id)); },
+        });
+      })
     );
     panel.querySelector('#gi-go').addEventListener('click', async () => {
       const f = panel.querySelector('#gi-f').files?.[0];

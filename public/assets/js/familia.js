@@ -7,7 +7,7 @@
    ninguna ruta precargada. Se guarda solo en el dispositivo (IndexedDB,
    almacén 'kv'), salvo que el usuario active la sincronización opcional.
    ========================================================================= */
-import { el, esc, toast, uid, alSalir } from './ui.js';
+import { el, esc, toast, uid, alSalir, borrarConDeshacer } from './ui.js';
 import * as store from './store.js';
 import * as ubi from './ubicacion.js';
 import {
@@ -101,12 +101,16 @@ export async function familiaView() {
     const puedeIr = base(ns) && destinos(ns).length;
     top.innerHTML = `
       ${hayEjemplo ? `<div class="blk-warn"><b>Estás viendo datos de EJEMPLO ficticios.</b> Edítalos con tus datos reales o bórralos.
-        <div class="btnrow"><button class="btn sm danger" id="fa-borrar-ej" type="button">Borrar el ejemplo</button></div></div>` : ''}
+        <div class="btnrow"><button class="btn danger" id="fa-borrar-ej" type="button">Borrar el ejemplo</button></div></div>` : ''}
       ${puedeIr ? '<a class="btn wide heart" href="#/familia/ir" style="margin-bottom:12px">❤️ QUIERO LLEGAR A MI FAMILIA</a>' : ''}`;
     top.querySelector('#fa-borrar-ej')?.addEventListener('click', async () => {
-      if (!confirm('¿Borrar las ubicaciones de ejemplo?')) return;
-      for (let i = ns.length - 1; i >= 0; i--) if (ns[i].ejemplo) ns.splice(i, 1);
-      await guardar(); pintaTodo(); toast('Ejemplo borrado');
+      const copia = ns.map((x) => structuredClone(x));
+      await borrarConDeshacer({
+        que: 'Ejemplo',
+        borrar: async () => { for (let i = ns.length - 1; i >= 0; i--) if (ns[i].ejemplo) ns.splice(i, 1); await guardar(); },
+        restaurar: async () => { ns.splice(0, ns.length, ...copia); await guardar(); },
+        repintar: () => n.isConnected && pintaTodo(),
+      });
     });
   }
 
@@ -228,7 +232,7 @@ export async function familiaView() {
 
       <div class="rutas-slot"></div>
 
-      <div class="btnrow" style="margin-top:12px"><button class="btn sm danger" data-borrar type="button">Eliminar esta ubicación</button></div>
+      <div class="btnrow" style="margin-top:12px"><button class="btn danger" data-borrar type="button">Eliminar esta ubicación</button></div>
     </div></details>`);
 
     d.querySelectorAll('[data-f]').forEach((inp) => {
@@ -275,12 +279,28 @@ export async function familiaView() {
       guardar(); toast('Posición eliminada');
     });
     d.querySelector('[data-borrar]').addEventListener('click', async () => {
-      if (!confirm(`¿Eliminar «${nd.nombre || 'esta ubicación'}» y sus rutas?`)) return;
-      for (const r of nd.rutas) if (r.geoId) await store.del('geo', r.geoId).catch(() => {});
-      ns.splice(ns.indexOf(nd), 1);
-      delete estados[nd.id]; delete prep[nd.id];
-      await Promise.all([guardar(), setKv('familia.estados', estados), setKv('familia.prep', prep)]);
-      pintaTodo(); toast('Ubicación eliminada');
+      // Se guarda todo lo necesario para deshacer: la ubicación, su posición
+      // en la lista, sus estados y las trazas de sus rutas.
+      const pos = ns.indexOf(nd);
+      const est = estados[nd.id], pre = prep[nd.id];
+      const trazas = (await Promise.all(nd.rutas.filter((r) => r.geoId).map((r) => store.get('geo', r.geoId)))).filter(Boolean);
+      await borrarConDeshacer({
+        que: 'Ubicación',
+        borrar: async () => {
+          for (const g of trazas) await store.del('geo', g.id).catch(() => {});
+          ns.splice(ns.indexOf(nd), 1);
+          delete estados[nd.id]; delete prep[nd.id];
+          await Promise.all([guardar(), setKv('familia.estados', estados), setKv('familia.prep', prep)]);
+        },
+        restaurar: async () => {
+          for (const g of trazas) await store.restaurar('geo', g);
+          ns.splice(Math.min(pos, ns.length), 0, nd);
+          if (est) estados[nd.id] = est;
+          if (pre) prep[nd.id] = pre;
+          await Promise.all([guardar(), setKv('familia.estados', estados), setKv('familia.prep', prep)]);
+        },
+        repintar: () => n.isConnected && pintaTodo(),
+      });
     });
 
     if (nd.rol !== 'base') d.querySelector('.rutas-slot').replaceWith(editorRutas(nd));
@@ -317,7 +337,7 @@ export async function familiaView() {
           <div class="btnrow">
             <label class="btn sm ghost">📥 Importar traza (GPX/GeoJSON)<input type="file" accept=".gpx,.geojson,.json" hidden data-importar></label>
             ${r.geoId ? '<button class="btn sm ghost" data-quitartraza type="button">Quitar traza</button>' : ''}
-            <button class="btn sm danger" data-quitar type="button">Eliminar ruta</button>
+            <button class="btn danger" data-quitar type="button">Eliminar ruta</button>
           </div>
         </div>`);
         box.querySelectorAll('[data-r]').forEach((inp) => inp.addEventListener(inp.tagName === 'SELECT' ? 'change' : 'input', () => {
@@ -346,10 +366,14 @@ export async function familiaView() {
           r.geoId = null; await guardar(); pinta();
         });
         box.querySelector('[data-quitar]').addEventListener('click', async () => {
-          if (!confirm('¿Eliminar esta ruta?')) return;
-          if (r.geoId) await store.del('geo', r.geoId).catch(() => {});
-          nd.rutas.splice(nd.rutas.indexOf(r), 1);
-          await guardar(); pinta();
+          const pos = nd.rutas.indexOf(r);
+          const traza = r.geoId ? await store.get('geo', r.geoId) : null;
+          await borrarConDeshacer({
+            que: 'Ruta',
+            borrar: async () => { if (traza) await store.del('geo', traza.id); nd.rutas.splice(nd.rutas.indexOf(r), 1); await guardar(); },
+            restaurar: async () => { if (traza) await store.restaurar('geo', traza); nd.rutas.splice(Math.min(pos, nd.rutas.length), 0, r); await guardar(); },
+            repintar: () => w.isConnected && pinta(),
+          });
         });
         lista.appendChild(box);
       });
@@ -724,11 +748,17 @@ export async function reunionView() {
     n.querySelector('#re-list').innerHTML = extra.length
       ? extra.map((e) => `<div class="row"><span>📍</span><div class="rt"><b>${esc(e.n)}</b>
           <span>${esc(e.l || '')}${e.c ? '<br>' + esc(e.c) : ''}${e.u ? '<br><i>' + esc(e.u) + '</i>' : ''}</span></div>
-          <button class="btn sm danger" data-del="${esc(e.id)}" type="button" aria-label="Eliminar ${esc(e.n)}">✕</button></div>`).join('')
+          <button class="btn danger borrar" data-del="${esc(e.id)}" type="button" aria-label="Eliminar ${esc(e.n)}">✕</button></div>`).join('')
       : '<p class="muted">Ninguno todavía. Añade al menos uno fuera de vuestra zona habitual.</p>';
     n.querySelectorAll('[data-del]').forEach((x) => x.addEventListener('click', async () => {
       const i = extra.findIndex((y) => y.id === x.dataset.del);
-      extra.splice(i, 1); await setKv('familia.encuentros', extra); pinta();
+      const punto = extra[i];
+      await borrarConDeshacer({
+        que: 'Punto de encuentro',
+        borrar: async () => { extra.splice(extra.indexOf(punto), 1); await setKv('familia.encuentros', extra); },
+        restaurar: async () => { extra.splice(Math.min(i, extra.length), 0, punto); await setKv('familia.encuentros', extra); },
+        repintar: () => n.isConnected && pinta(),
+      });
     }));
   }
 

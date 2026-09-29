@@ -15,12 +15,44 @@ export function el(html) {
   return t.content.firstElementChild;
 }
 
-export function toast(msg, ms = 2600) {
-  const prev = $('.toast');
-  if (prev) prev.remove();
-  const n = el(`<div class="toast" role="status">${esc(msg)}</div>`);
+/* Avisos breves. `toast(msg)` sigue funcionando como antes; con opciones:
+     tipo   → 'ok' | 'error' | 'info' (icono y, si es error, role="alert")
+     ms     → duración; por defecto depende de la longitud del texto
+     accion → { t: 'Deshacer', fn } añade un botón (p. ej. deshacer un borrado)
+   Solo hay un aviso a la vez. */
+let toastTimer = null;
+export function toast(msg, opts = {}) {
+  if (typeof opts === 'number') opts = { ms: opts };
+  const { tipo = 'info', accion = null } = opts;
+  const ms = opts.ms ?? Math.min(8000, Math.max(accion ? 6000 : 3000, String(msg).length * 60, tipo === 'error' ? 6000 : 0));
+  $('.toast')?.remove();
+  clearTimeout(toastTimer);
+  const ic = { ok: '✓', error: '⚠', info: '' }[tipo] || '';
+  const n = el(`<div class="toast t-${tipo}" role="${tipo === 'error' ? 'alert' : 'status'}">
+    ${ic ? `<span class="ic" aria-hidden="true">${ic}</span>` : ''}<span class="msg">${esc(msg)}</span>
+    ${accion ? `<button type="button" class="toast-accion">${esc(accion.t)}</button>` : ''}
+  </div>`);
+  if (accion) {
+    n.querySelector('.toast-accion').addEventListener('click', async () => {
+      n.remove(); clearTimeout(toastTimer);
+      try { await accion.fn(); } catch (e) { toast('No se pudo deshacer: ' + e.message, { tipo: 'error' }); }
+    });
+  }
   document.body.appendChild(n);
-  setTimeout(() => n.remove(), ms);
+  toastTimer = setTimeout(() => n.remove(), ms);
+  return n;
+}
+
+/** Borra y ofrece deshacer durante unos segundos, sin ventanas de
+ *  confirmación. `borrar` y `restaurar` son async; `repintar` refresca la
+ *  vista si sigue en pantalla. */
+export async function borrarConDeshacer({ que, borrar, restaurar, repintar = () => {} }) {
+  await borrar();
+  repintar();
+  toast(`${que} eliminado`, {
+    tipo: 'ok',
+    accion: { t: 'Deshacer', fn: async () => { await restaurar(); repintar(); toast(`${que} recuperado`, { tipo: 'ok' }); } },
+  });
 }
 
 export function topbar(title, sub = '', backHref = '#/') {

@@ -558,11 +558,24 @@ mark { background: rgba(156, 183, 104, .28); color: inherit; padding: 0 2px; }
 .sp { height: 14px; }
 .hide { display: none !important; }
 .toast {
-  position: fixed; left: 50%; bottom: 80px; transform: translateX(-50%);
+  position: fixed; left: 50%; bottom: calc(72px + env(safe-area-inset-bottom)); transform: translateX(-50%);
+  display: flex; align-items: center; gap: 10px;
   background: var(--panel); border: 1px solid var(--olive2); border-radius: var(--r);
-  padding: 10px 16px; z-index: 100; font-size: .9rem; max-width: 90vw;
-  box-shadow: 0 6px 20px rgba(0,0,0,.5);
+  padding: 8px 8px 8px 14px; z-index: 100; font-size: .95rem; width: max-content; max-width: calc(100vw - 24px);
+  box-shadow: 0 6px 20px rgba(0,0,0,.5); min-height: 48px;
 }
+.toast .msg { padding: 4px 0; }
+.toast .ic { font-weight: 700; }
+.toast.t-ok .ic { color: var(--olive3); }
+.toast.t-error { border-color: var(--red); }
+.toast.t-error .ic { color: #F0A89C; }
+.toast-accion {
+  flex: 0 0 auto; min-height: 44px; min-width: 44px; padding: 0 14px; cursor: pointer;
+  background: var(--olive); color: #f2f1e6; border: 1px solid var(--olive2); border-radius: var(--r);
+  font: inherit; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; font-size: .85rem;
+}
+/* En SOS, el aviso aparece por encima de la barra del 112, nunca encima. */
+body.emg .toast { bottom: calc(140px + env(safe-area-inset-bottom)); }
 .offbadge {
   position: fixed; right: 10px; top: 10px; z-index: 60;
   font-family: var(--fb); font-size: .6rem; letter-spacing: .1em;

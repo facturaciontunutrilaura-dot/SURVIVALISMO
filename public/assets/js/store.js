@@ -90,6 +90,13 @@ export async function del(store, id) {
   return delRaw(store, id);
 }
 
+/** Vuelve a guardar un registro borrado (deshacer) y retira su lápida, para
+ *  que la sincronización no propague el borrado que ya no existe. */
+export async function restaurar(store, obj) {
+  if (SYNC_STORES.includes(store)) await delRaw('tombstones', `${store}::${obj.id}`);
+  return put(store, obj);
+}
+
 export async function delRaw(store, id) {
   const s = await tx(store, 'readwrite');
   return new Promise((res, rej) => {

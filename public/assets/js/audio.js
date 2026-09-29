@@ -16,7 +16,7 @@
    instrucciones que puedes escuchar con las manos ocupadas.
    ========================================================================= */
 
-import { el, esc, toast, uid, fmtBytes, confirmar } from './ui.js';
+import { el, esc, toast, uid, fmtBytes, confirmar, borrarConDeshacer, alSalir } from './ui.js';
 import * as store from './store.js';
 
 const CATEGORIAS = [
@@ -120,8 +120,8 @@ export async function audioView() {
           <span style="font-size:1.25rem">${(CAT[a.cat] || CAT.otro).ic}</span>
           <div class="rt"><b>${esc(a.nombre)}</b>
             <span>${esc((CAT[a.cat] || CAT.otro).t)} · ${dur(a.dur)} · ${fmtBytes(a.tam)}</span></div>
-          <button class="btn sm" data-play="${i}" type="button">▶</button>
-          <button class="btn sm danger" data-del="${esc(a.id)}" type="button">✕</button>
+          <button class="btn" data-play="${i}" type="button" aria-label="Reproducir ${esc(a.nombre)}">▶</button>
+          <button class="btn danger borrar" data-del="${esc(a.id)}" type="button" aria-label="Borrar ${esc(a.nombre)}">✕</button>
         </div>`).join('')
       : `<p class="muted">${todos.length ? 'Nada en esta categoría.' : 'Todavía no has añadido ningún archivo. Empieza por una nota de voz con vuestro punto de encuentro: en una emergencia se escucha mejor de lo que se lee.'}</p>`;
 
@@ -129,12 +129,13 @@ export async function audioView() {
       b.addEventListener('click', () => reproducir(+b.dataset.play)));
     n.querySelectorAll('[data-del]').forEach((b) =>
       b.addEventListener('click', async () => {
-        const a = cola.find((x) => x.id === b.dataset.del);
-        if (!confirmar(`¿Borrar «${a?.nombre || 'este audio'}»?`)) return;
-        await store.del('audio', b.dataset.del);
-        if (cola[indice]?.id === b.dataset.del) parar();
-        await pinta(); await espacio();
-        toast('Audio borrado');
+        // El registro guardado incluye el archivo: deshacer lo recupera entero.
+        const rec = await store.get('audio', b.dataset.del);
+        if (cola[indice]?.id === rec.id) parar();
+        await borrarConDeshacer({
+          que: 'Audio', borrar: () => store.del('audio', rec.id), restaurar: () => store.restaurar('audio', rec),
+          repintar: async () => { if (n.isConnected) { await pinta(); await espacio(); } },
+        });
       }));
 
     // Marca el que está sonando

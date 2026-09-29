@@ -220,6 +220,26 @@ try {
   await page.waitForSelector('#k-punto');
   ok('Texto del plan persiste', (await page.inputValue('#k-punto')).includes('Plaza del pueblo'));
 
+  // Borrar y deshacer: un toque no puede hacer perder un contacto.
+  await page.locator('summary', { hasText: 'Añadir contacto' }).click();
+  await page.fill('#pf-n', 'Contacto externo');
+  await page.fill('#pf-t', '600000000');
+  await page.click('#pf-go');
+  await page.waitForSelector('[data-cdel]');
+  const hayContacto = () => page.evaluate(async () => (await (await import('./assets/js/store.js')).all('contactos')).length);
+  const lapida = () => page.evaluate(async () => (await (await import('./assets/js/store.js')).all('tombstones')).some((t) => t.store === 'contactos'));
+  await page.click('[data-cdel]');
+  await page.waitForSelector('.toast .toast-accion');
+  ok('Borrar un contacto ofrece «Deshacer» sin pedir confirmación', (await hayContacto()) === 0 && /Deshacer/i.test(await page.textContent('.toast')));
+  const cajaDeshacer = await page.locator('.toast-accion').boundingBox();
+  ok('El botón «Deshacer» es fácil de pulsar (≥ 44 px)', cajaDeshacer && cajaDeshacer.height >= 44, `(${cajaDeshacer?.height})`);
+  await page.click('.toast-accion');
+  await page.waitForSelector('[data-cdel]');
+  ok('Deshacer recupera el contacto', (await hayContacto()) === 1 && (await page.textContent('#pf-list')).includes('Contacto externo'));
+  ok('Deshacer retira la lápida (la sincronización no lo borrará)', !(await lapida()));
+  const cajaBorrar = await page.locator('[data-cdel]').boundingBox();
+  ok('El botón de borrar mide al menos 44 px', cajaBorrar && cajaBorrar.height >= 44 && cajaBorrar.width >= 44, JSON.stringify(cajaBorrar));
+
   /* ------------------------------ 8. Cursos ------------------------------ */
   console.log('\n▸ Formación');
   await page.goto(BASE + '#/curso/c04');
@@ -486,6 +506,24 @@ try {
   await page.waitForTimeout(300);
   ok('Estado familiar manual se guarda', (await page.textContent('#fa-estado')).includes('Necesito ayuda'));
 
+  // Eliminar una ubicación y deshacer: vuelven la ubicación, sus rutas y su traza.
+  await page.locator('details.nodo summary').nth(1).click();
+  await page.locator('details.nodo').nth(1).locator('[data-borrar]').click();
+  await page.waitForSelector('.toast .toast-accion');
+  const trasBorrar = await page.evaluate(async () => {
+    const st = await import('./assets/js/store.js');
+    return { nodos: (await st.get('kv', 'familia.nodos')).v.length, geo: (await st.all('geo')).length };
+  });
+  ok('Eliminar ubicación: sin confirmación y con «Deshacer»', trasBorrar.nodos === 1 && trasBorrar.geo === 0, JSON.stringify(trasBorrar));
+  await page.click('.toast-accion');
+  await page.waitForTimeout(400);
+  const trasDeshacer = await page.evaluate(async () => {
+    const st = await import('./assets/js/store.js');
+    const ns = (await st.get('kv', 'familia.nodos')).v;
+    return { nodos: ns.length, rutas: ns[1]?.rutas?.length, geo: (await st.all('geo')).length, estado: (await st.get('kv', 'familia.estados')).v[ns[1].id]?.estado };
+  });
+  ok('Deshacer recupera la ubicación con sus rutas, traza y estado', trasDeshacer.nodos === 2 && trasDeshacer.rutas === 2 && trasDeshacer.geo === 1 && trasDeshacer.estado === 'ayuda', JSON.stringify(trasDeshacer));
+
   await page.goto(BASE + '#/familia/rutas');
   await page.waitForSelector('.ruta');
   ok('Muestra las rutas definidas por el usuario', (await page.locator('#ru-out .ruta').count()) === 2);
@@ -619,6 +657,17 @@ try {
   ok('El audio NO entra en la sincronización', await page.evaluate(async () => {
     const st = await import('./assets/js/store.js');
     return !st.SYNC_STORES.includes('audio');
+  }));
+
+  // Una grabación familiar puede ser irrecuperable: borrar y deshacer.
+  await page.click('[data-del="test1"]');
+  await page.waitForSelector('.toast .toast-accion');
+  ok('Borrar un audio lo para y ofrece «Deshacer»', (await page.locator('[data-del="test1"]').count()) === 0 && (await page.locator('#au-player').isHidden()));
+  await page.click('.toast-accion');
+  await page.waitForSelector('[data-del="test1"]');
+  ok('Deshacer recupera el audio con su archivo', await page.evaluate(async () => {
+    const a = await (await import('./assets/js/store.js')).get('audio', 'test1');
+    return !!a && a.blob instanceof Blob && a.blob.size > 1000;
   }));
 
   /* ------------------------- 11. Ajustes / temas ------------------------- */

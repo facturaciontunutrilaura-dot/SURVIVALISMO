@@ -8,7 +8,7 @@ import {
   FRECUENCIAS, SOURCES, SOURCE_MAP, DISCLAIMER,
 } from '../../data/content/index.js';
 import * as store from './store.js';
-import { $, $$, el, esc, toast, topbar, renderBlocks, prBadge, fmtBytes, uid, limpiarVista, alSalir } from './ui.js';
+import { $, $$, el, esc, toast, topbar, renderBlocks, prBadge, fmtBytes, uid, limpiarVista, alSalir, borrarConDeshacer } from './ui.js';
 import { CALCS, mountTools } from './calc.js';
 import { compassView } from './compass.js';
 
@@ -444,10 +444,13 @@ async function frecuenciasPanel() {
           <span class="badge warn">propia</span>
           <div>${esc(f.n)}</div><div class="m">${esc(f.us || '')} · ${esc(f.z || '')}</div>
           <div class="m">${esc(f.no || '')}</div>
-          <button class="btn sm danger" data-fdel="${esc(f.id)}" style="margin-top:6px">Eliminar</button></div>`).join('')
+          <button class="btn danger borrar" data-fdel="${esc(f.id)}" type="button" style="margin-top:6px" aria-label="Eliminar la frecuencia ${esc(f.f)}">Eliminar</button></div>`).join('')
       : '<p class="muted">Ninguna todavía. Añade las que verifiques tú mismo.</p>';
     n.querySelectorAll('[data-fdel]').forEach((b) =>
-      b.addEventListener('click', async () => { await store.del('frecs', b.dataset.fdel); paintUF(); toast('Eliminada'); }));
+      b.addEventListener('click', async () => {
+        const rec = await store.get('frecs', b.dataset.fdel);
+        await borrarConDeshacer({ que: 'Frecuencia', borrar: () => store.del('frecs', rec.id), restaurar: () => store.restaurar('frecs', rec), repintar: () => n.isConnected && paintUF() });
+      }));
   };
 
   const paintLog = async () => {
@@ -455,10 +458,13 @@ async function frecuenciasPanel() {
     n.querySelector('#rl-list').innerHTML = rows.length
       ? rows.map((r) => `<div class="row"><div class="rt"><b>${esc(r.f)} · señal ${esc(r.s)}/5</b>
           <span>${new Date(r.ts).toLocaleString('es-ES')} — ${esc(r.t || '')}</span></div>
-          <button class="btn sm danger" data-ldel="${esc(r.id)}">✕</button></div>`).join('')
+          <button class="btn danger borrar" data-ldel="${esc(r.id)}" type="button" aria-label="Eliminar entrada del registro">✕</button></div>`).join('')
       : '<p class="muted">Sin entradas.</p>';
     n.querySelectorAll('[data-ldel]').forEach((b) =>
-      b.addEventListener('click', async () => { await store.del('radiolog', b.dataset.ldel); paintLog(); }));
+      b.addEventListener('click', async () => {
+        const rec = await store.get('radiolog', b.dataset.ldel);
+        await borrarConDeshacer({ que: 'Entrada del registro', borrar: () => store.del('radiolog', rec.id), restaurar: () => store.restaurar('radiolog', rec), repintar: () => n.isConnected && paintLog() });
+      }));
   };
 
   n.querySelector('#uf-go').addEventListener('click', async () => {
@@ -700,10 +706,13 @@ async function vPlanFamiliar() {
       ? cs.map((c) => `<div class="row"><div class="rt"><b>${esc(c.n)} <span class="badge">${esc(c.r)}</span></b>
           <span>${esc(c.t || '')} ${c.d ? '· ' + esc(c.d) : ''}${c.no ? '<br>' + esc(c.no) : ''}</span></div>
           ${c.t ? `<a class="btn sm ghost" href="tel:${esc(c.t.replace(/\s/g, ''))}">📞</a>` : ''}
-          <button class="btn sm danger" data-cdel="${esc(c.id)}">✕</button></div>`).join('')
+          <button class="btn danger borrar" data-cdel="${esc(c.id)}" type="button" aria-label="Eliminar el contacto ${esc(c.n)}">✕</button></div>`).join('')
       : '<p class="muted">Ningún contacto todavía. Empieza por el contacto externo fuera de la zona.</p>';
     n.querySelectorAll('[data-cdel]').forEach((b) =>
-      b.addEventListener('click', async () => { await store.del('contactos', b.dataset.cdel); paint(); }));
+      b.addEventListener('click', async () => {
+        const rec = await store.get('contactos', b.dataset.cdel);
+        await borrarConDeshacer({ que: 'Contacto', borrar: () => store.del('contactos', rec.id), restaurar: () => store.restaurar('contactos', rec), repintar: () => n.isConnected && paint() });
+      }));
   };
 
   n.querySelector('#pf-go').addEventListener('click', async () => {
