@@ -89,7 +89,9 @@ const supa = createServer(async (req, res) => {
 await new Promise((r) => supa.listen(SB, r));
 
 const srv = spawn(process.execPath, [path.join(ROOT, 'tools/serve.mjs')], {
-  env: { ...process.env, PORT: String(PORT) }, stdio: 'ignore',
+  // SIN_CSP: Supabase se simula en http://localhost; la CSP de producción solo
+  // admite https://*.supabase.co. El resto de cabeceras de producción se aplica.
+  env: { ...process.env, PORT: String(PORT), SIN_CSP: '1' }, stdio: 'ignore',
 });
 await new Promise((r) => setTimeout(r, 900));
 

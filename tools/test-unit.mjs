@@ -260,6 +260,10 @@ test('mapas IGN: la CSP permite las teselas del IGN y nada más de terceros para
     assert.ok(img.includes('https://www.ign.es'), `${f}: img-src`);
     assert.ok(con.includes('https://www.ign.es'), `${f}: connect-src`);
     assert.ok(!/openstreetmap|opentopomap/.test(img + con), `${f}: restos de OSM`);
+    // El audio offline se reproduce desde un blob: local. Sin media-src, la CSP
+    // usa default-src 'self' y lo bloquea (fallo real detectado en la fase 5).
+    const media = txt.match(/media-src([^;]*);/)?.[1] || '';
+    assert.ok(/'self'/.test(media) && /blob:/.test(media) && !/https?:/.test(media), `${f}: media-src debe ser 'self' blob: y nada externo`);
   }
 });
 
@@ -311,4 +315,15 @@ test('checklists: claves estables por texto, únicas y con migración desde las 
   const antes = Object.fromEntries(c.grupos.flatMap((g, gi) => g.items.map((it, i) => [it, clavesChecklist(c)[gi][i]])));
   const movido = { ...c, grupos: [{ g: 'Nuevo', items: [...c.grupos[1].items].reverse() }, ...c.grupos.slice(2), c.grupos[0]] };
   movido.grupos.forEach((g, gi) => g.items.forEach((it, i) => assert.equal(clavesChecklist(movido)[gi][i], antes[it], it)));
+});
+
+test('cabeceras: public/_headers y netlify.toml dicen lo mismo (la previsualización local usa _headers)', () => {
+  const toml = fs.readFileSync(new URL('../netlify.toml', import.meta.url), 'utf8');
+  const headers = fs.readFileSync(new URL('../public/_headers', import.meta.url), 'utf8');
+  const deToml = (k) => toml.match(new RegExp(`^\\s*${k} = "([^"]+)"`, 'm'))?.[1];
+  const deHeaders = (k) => headers.match(new RegExp(`^\\s*${k}: (.+)$`, 'm'))?.[1].trim();
+  for (const k of ['Content-Security-Policy', 'Permissions-Policy', 'X-Content-Type-Options', 'X-Frame-Options', 'Referrer-Policy']) {
+    assert.ok(deToml(k), `falta ${k} en netlify.toml`);
+    assert.equal(deHeaders(k), deToml(k), `${k} distinta entre _headers y netlify.toml`);
+  }
 });

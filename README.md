@@ -13,12 +13,19 @@ Aplicación web progresiva (PWA) sin dependencias externas en tiempo de ejecuci�
 ```bash
 npm install          # instala leaflet, es-atlas y topojson-client (solo para el build)
 npm run build        # genera geodatos, iconos y el manifiesto de precache
-npm run dev          # servidor local en http://localhost:8080
-npm test             # 435 pruebas: 28 unitarias (buscador, datos, build, mapas, portada, copias, checklists) + 360 end-to-end de app + 47 de sincronización, incluida la prueba offline real
+npm run dev          # servidor local en http://localhost:8080 (= npm start)
+npm test             # pruebas unitarias + end-to-end de app (con la prueba offline real) + sincronización
 ```
 
 No hay bundler, ni transpilador, ni framework. El directorio `public/` es la
 aplicación tal cual se despliega.
+
+**Previsualización local = producción.** `npm start` / `npm run dev` sirven
+`public/` con las **mismas cabeceras que Netlify**, leídas de `public/_headers`
+(CSP incluida). Una prueba unitaria comprueba que `_headers` y `netlify.toml`
+coinciden. Las pruebas E2E también se ejecutan bajo esa CSP. `SIN_CSP=1` la
+quita: solo lo usa la prueba de sincronización, que simula Supabase en
+`http://localhost`.
 
 > **HTTPS obligatorio en producción.** El Service Worker, la geolocalización y
 > el magnetómetro solo funcionan en contextos seguros (`https://` o `localhost`).
