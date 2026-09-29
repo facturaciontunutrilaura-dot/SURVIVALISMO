@@ -253,16 +253,105 @@ export async function exportAll() {
   return data;
 }
 
-export async function importAll(data, { merge = true } = {}) {
-  if (!data || data.app !== 'survival-offline') throw new Error('Archivo no reconocido');
-  if (data.settings) localStorage.setItem(LS, JSON.stringify({ ...DEFAULTS, ...data.settings }));
-  for (const [store, rows] of Object.entries(data.stores || {})) {
-    if (!STORES.includes(store)) continue;
-    if (!merge) await clear(store);
-    for (const row of rows) await put(store, row);
+/* ------------------------ Restauración de copias ------------------------
+   Antes de tocar nada se valida el archivo entero. Si algo no cuadra, se
+   rechaza con el motivo y los datos actuales no cambian. Si es válido, se
+   escribe en UNA sola transacción de IndexedDB: o entra todo o no entra
+   nada (no hay restauraciones a medias). */
+const VERSION_COPIA = 1;
+const COPIA_STORES = ['kv', 'checks', 'puntos', 'contactos', 'frecs', 'radiolog', 'geo', 'progreso'];
+export const NOMBRES_COPIA = {
+  kv: 'Plan familiar, acuerdos y ajustes del plan',
+  contactos: 'Contactos',
+  puntos: 'Puntos del mapa',
+  checks: 'Marcas de checklists',
+  frecs: 'Frecuencias propias',
+  radiolog: 'Registro de radio',
+  geo: 'Capas y rutas importadas',
+  progreso: 'Progreso de cursos',
+};
+const esObj = (x) => x !== null && typeof x === 'object' && !Array.isArray(x);
+const idValido = (id) => (typeof id === 'string' && id.length > 0 && id.length <= 500) || Number.isFinite(id);
+/* Lo mínimo que necesita cada registro para que la app lo pueda usar. */
+const CAMPOS = {
+  kv: (r) => 'v' in r,
+  contactos: (r) => typeof r.n === 'string',
+  puntos: (r) => Number.isFinite(r.lat) && Number.isFinite(r.lon) && Math.abs(r.lat) <= 90 && Math.abs(r.lon) <= 180,
+  checks: (r) => typeof r.id === 'string' && r.id.includes('::'),
+  frecs: (r) => typeof r.f === 'string',
+  radiolog: (r) => typeof r.f === 'string',
+  geo: (r) => esObj(r.data),
+  progreso: () => true,
+};
+
+/** Comprueba una copia sin escribir nada. Devuelve
+ *  { ok, errores: [texto], resumen: { exportado, stores: {store: n}, ignorados: [store], ajustes } }. */
+export function validarCopia(data) {
+  const errores = [];
+  if (!esObj(data)) return { ok: false, errores: ['El archivo no tiene el formato de una copia de seguridad.'] };
+  if (data.app !== 'survival-offline') return { ok: false, errores: ['El archivo no es una copia de seguridad de esta app.'] };
+  if (!Number.isInteger(data.version) || data.version < 1) errores.push('La copia no indica su versión de formato.');
+  else if (data.version > VERSION_COPIA) errores.push('La copia es de una versión más nueva de la app. Actualiza la app antes de restaurarla.');
+  if (!esObj(data.stores)) errores.push('La copia no contiene datos.');
+  if (data.settings !== undefined && !esObj(data.settings)) errores.push('Los ajustes de la copia están dañados.');
+  const resumen = { exportado: typeof data.exportado === 'string' ? data.exportado : null, stores: {}, ignorados: [], ajustes: esObj(data.settings) };
+  if (esObj(data.stores)) {
+    for (const [st, filas] of Object.entries(data.stores)) {
+      if (!COPIA_STORES.includes(st)) { resumen.ignorados.push(st); continue; }
+      const nombre = NOMBRES_COPIA[st];
+      if (!Array.isArray(filas)) { errores.push(`«${nombre}» está dañado (no es una lista).`); continue; }
+      const malas = filas.filter((r) => !esObj(r) || !idValido(r.id) || !CAMPOS[st](r)).length;
+      const ids = new Set(filas.filter(esObj).map((r) => r.id));
+      if (malas) errores.push(`«${nombre}»: ${malas} ${malas === 1 ? 'registro dañado o incompleto' : 'registros dañados o incompletos'}.`);
+      else if (ids.size !== filas.length) errores.push(`«${nombre}»: hay registros repetidos.`);
+      resumen.stores[st] = filas.length;
+    }
+    if (!errores.length && !Object.values(resumen.stores).some((n) => n > 0) && !resumen.ajustes) errores.push('La copia está vacía: no contiene ningún dato.');
   }
-  applySettings();
-  return true;
+  return { ok: errores.length === 0, errores, resumen };
+}
+
+/** Restaura una copia YA VALIDADA. Fusiona con lo existente: si un registro
+ *  existe en los dos lados, gana el de la copia. Los registros idénticos a
+ *  los actuales no se reescriben (así la sincronización no vuelve a subirlo
+ *  todo); los que cambian quedan marcados como modificados para subirse.
+ *  Devuelve { nuevos, cambiados, iguales }. */
+export async function importAll(data, { merge = true } = {}) {
+  const v = validarCopia(data);
+  if (!v.ok) throw new Error(v.errores.join(' '));
+  const db = await openDB();
+  const stores = Object.keys(v.resumen.stores);
+  const cuenta = { nuevos: 0, cambiados: 0, iguales: 0 };
+  const limpio = ({ _upd, ...r }) => JSON.stringify(r);
+  const ahora = Date.now();
+  await new Promise((res, rej) => {
+    const t = db.transaction([...stores, 'tombstones'], 'readwrite');
+    t.oncomplete = () => res();
+    t.onerror = () => rej(t.error);
+    t.onabort = () => rej(t.error || new Error('La restauración se ha cancelado; no se ha cambiado nada.'));
+    for (const st of stores) {
+      const os = t.objectStore(st);
+      if (!merge) os.clear();
+      for (const fila of data.stores[st]) {
+        const g = os.get(fila.id);
+        g.onsuccess = () => {
+          const actual = g.result;
+          if (merge && actual && limpio(actual) === limpio(fila)) { cuenta.iguales++; return; }
+          if (actual && merge) cuenta.cambiados++; else cuenta.nuevos++;
+          os.put(SYNC_STORES.includes(st) ? { ...fila, _upd: ahora } : fila);
+          // Si se había borrado aquí, su lápida impediría que volviera al sincronizar.
+          t.objectStore('tombstones').delete(`${st}::${fila.id}`);
+        };
+      }
+    }
+  });
+  // Los ajustes (tema, tamaño de letra…) solo cuando los datos ya han entrado.
+  if (v.resumen.ajustes) {
+    try { localStorage.setItem(LS, JSON.stringify({ ...DEFAULTS, ...data.settings })); } catch { /* sin localStorage */ }
+    applySettings();
+  }
+  if (cuenta.nuevos + cuenta.cambiados) { try { localStorage.setItem('survival.ultimoCambio', String(ahora)); } catch { /* sin localStorage */ } }
+  return cuenta;
 }
 
 /* --------------------------- Uso de almacenamiento --------------------------- */

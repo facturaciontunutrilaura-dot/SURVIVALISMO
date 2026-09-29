@@ -782,12 +782,29 @@ envía a ningún servidor: no hay analítica, ni cookies de terceros, ni backend
 
 **Copia de seguridad**
 `⚙️ Configuración → Exportar datos (JSON)`. Descarga un archivo
-`survival-offline-backup-AAAA-MM-DD.json` con puntos del mapa, contactos del
-plan familiar, marcas de checklist, frecuencias propias, radio log, capas
-GeoJSON importadas, progreso de cursos y ajustes.
+`survival-offline-backup-AAAA-MM-DD.json` con:
+- el **plan familiar**: ubicaciones, rutas, estados, puntos de encuentro,
+  acuerdos e información médica;
+- contactos, puntos del mapa y marcas de checklist;
+- frecuencias propias y radio log;
+- capas GeoJSON importadas y progreso de cursos;
+- ajustes.
 
-**Restauración**
-`⚙️ Configuración → Importar datos`. Fusiona con lo existente (no borra).
+Quedan fuera las teselas del mapa y el audio, que pesan mucho y se pueden
+volver a añadir. El panel «¿Está lista tu app?» recuerda la fecha de la
+última copia y avisa si hay cambios posteriores.
+
+**Restauración** (`⚙️ Configuración → Importar datos`)
+1. Se **valida el archivo entero** antes de tocar nada: formato, que sea de
+   esta app, versión, estructura y los campos mínimos de cada registro (por
+   ejemplo, coordenadas válidas en los puntos). Un solo registro dañado
+   rechaza la copia, explicando el motivo. Los datos actuales no cambian.
+2. Si es válida, se muestra un **resumen** (fecha y cuántos elementos de
+   cada tipo) y hay que pulsar «Restaurar esta copia».
+3. La escritura es **todo o nada**, en una sola transacción. Fusiona con lo
+   que haya: gana la versión de la copia y no se borra nada. Los registros
+   idénticos no se reescriben, así la sincronización no vuelve a subirlo
+   todo.
 
 **Recomendación:** exporta después de cada cambio importante del plan familiar y
 guarda el JSON en un lugar distinto del móvil. Imprime además el plan familiar

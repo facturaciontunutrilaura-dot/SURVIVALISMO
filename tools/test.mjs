@@ -802,6 +802,11 @@ try {
     await pi.goto(BASE + '#/sec/config');
     await pi.waitForSelector('#cfg-import');
     await pi.setInputFiles('#cfg-file', await file.path());
+    await pi.waitForSelector('.resumen-copia');
+    const resumen = await pi.textContent('.resumen-copia');
+    ok('Importar: antes de restaurar enseña qué contiene la copia', /Plan familiar/.test(resumen) && /Marcas de checklists: \d+/.test(resumen), resumen.slice(0, 160));
+    ok('Importar: sin confirmar no se escribe nada', (await pi.evaluate(async () => (await (await import('./assets/js/store.js')).all('checks')).length)) === 0);
+    await pi.click('[data-rest="si"]');
     await pi.waitForTimeout(1200);
     ok('Importar: la app sigue en Configuración sin recargar', (await pi.locator('#cfg-import').count()) === 1);
     await pi.goto(BASE + '#/sec/familia');
@@ -812,6 +817,43 @@ try {
     ok('Importar: se restauran las rutas', (await pi.locator('#ru-out .ruta').count()) === 2);
     const marcas = await pi.evaluate(async () => (await (await import('./assets/js/store.js')).all('checks')).length);
     ok('Importar: se restauran las marcas de checklist', marcas === copia.stores.checks.length && marcas > 0, `${marcas}/${copia.stores.checks.length}`);
+
+    // Copias corruptas: se rechazan ANTES de tocar nada.
+    const antes = await pi.evaluate(async () => { const s = await import('./assets/js/store.js'); return (await s.all('checks')).length + (await s.all('kv')).length; });
+    const dir = path.join(ROOT, 'tools');
+    const casos = [
+      ['no-json', '{ esto no es json'],
+      ['otra-app', JSON.stringify({ app: 'otra', version: 1, stores: {} })],
+      ['fila-rota', JSON.stringify({ ...copia, stores: { ...copia.stores, checks: [...copia.stores.checks.slice(0, 3).map((r) => ({ ...r, id: r.id + 'x' })), { estado: 'tengo' }] } })],
+      ['punto-malo', JSON.stringify({ ...copia, stores: { ...copia.stores, puntos: [{ id: 'p1', nombre: 'x', lat: 'norte', lon: 3 }] } })],
+      ['futura', JSON.stringify({ ...copia, version: 99 })],
+    ];
+    const rechazos = [];
+    for (const [nombre, contenido] of casos) {
+      const fp = path.join(dir, `_copia-${nombre}.json`);
+      fs.writeFileSync(fp, contenido);
+      try {
+        await pi.goto(BASE + '#/sec/config'); await pi.waitForSelector('#cfg-import');
+        await pi.setInputFiles('#cfg-file', fp);
+        await pi.waitForSelector('#cfg-restaurar .blk-warn', { timeout: 5000 }).catch(() => {});
+        rechazos.push([nombre, await pi.textContent('#cfg-restaurar'), await pi.locator('[data-rest="si"]').count()]);
+      } finally { fs.unlinkSync(fp); }
+    }
+    ok('Copia corrupta: se rechaza un archivo que no es JSON', /no se puede leer/i.test(rechazos[0][1]) && rechazos[0][2] === 0);
+    ok('Copia corrupta: se rechaza la copia de otra app', /no es una copia de seguridad de esta app/.test(rechazos[1][1]) && rechazos[1][2] === 0);
+    ok('Copia corrupta: un solo registro dañado rechaza la copia entera', /registro dañado/.test(rechazos[2][1]) && rechazos[2][2] === 0, rechazos[2][1].slice(0, 120));
+    ok('Copia corrupta: coordenadas no válidas se detectan', /Puntos del mapa/.test(rechazos[3][1]) && rechazos[3][2] === 0);
+    ok('Copia corrupta: una copia de una versión futura no se restaura', /más nueva/.test(rechazos[4][1]) && rechazos[4][2] === 0);
+    ok('Copia corrupta: el aviso dice que los datos actuales no se han tocado', rechazos.every(([, t]) => /no se han tocado/.test(t)));
+    const despues = await pi.evaluate(async () => { const s = await import('./assets/js/store.js'); return (await s.all('checks')).length + (await s.all('kv')).length; });
+    ok('Copia corrupta: los datos actuales siguen exactamente igual', antes === despues, `${antes} → ${despues}`);
+
+    // Restaurar la MISMA copia otra vez no reescribe nada.
+    await pi.goto(BASE + '#/sec/config'); await pi.waitForSelector('#cfg-import');
+    await pi.setInputFiles('#cfg-file', await file.path());
+    await pi.waitForSelector('.resumen-copia');
+    const r2 = await pi.evaluate(async (c) => (await import('./assets/js/store.js')).importAll(c), copia);
+    ok('Importar dos veces la misma copia no marca nada como cambiado', r2.nuevos === 0 && r2.cambiados === 0 && r2.iguales > 0, JSON.stringify(r2));
     await ci.close();
   }
 

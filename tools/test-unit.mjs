@@ -275,3 +275,22 @@ test('portada: cada sección aparece una sola vez y «Plan familiar» sigue acce
   const fam = fs.readFileSync(path.join(PUB, 'assets/js/familia.js'), 'utf8');
   assert.ok(fam.includes('#/sec/plan-familiar'), 'Familia debe enlazar a Contactos y acuerdos');
 });
+
+test('copias: validarCopia acepta una copia correcta y rechaza las dañadas sin escribir', async () => {
+  const { validarCopia } = await import('../public/assets/js/store.js');
+  const buena = { app: 'survival-offline', version: 1, exportado: '2026-09-29T10:00:00Z', settings: { theme: 'dark' },
+    stores: { contactos: [{ id: 'a', n: 'Ana', t: '600' }], puntos: [{ id: 'p', lat: 40.4, lon: -3.7 }], checks: [{ id: 'nivel2::Agua::0', estado: 'tengo' }], kv: [{ id: 'plan.medico', v: 'x' }] } };
+  const v = validarCopia(buena);
+  assert.equal(v.ok, true, v.errores.join());
+  assert.deepEqual(v.resumen.stores, { contactos: 1, puntos: 1, checks: 1, kv: 1 });
+  assert.equal(validarCopia(null).ok, false);
+  assert.equal(validarCopia({ ...buena, app: 'otra' }).ok, false);
+  assert.equal(validarCopia({ ...buena, version: 2 }).ok, false);
+  assert.equal(validarCopia({ ...buena, stores: { ...buena.stores, contactos: 'x' } }).ok, false);
+  assert.equal(validarCopia({ ...buena, stores: { ...buena.stores, puntos: [{ id: 'p', lat: 200, lon: 0 }] } }).ok, false);
+  assert.equal(validarCopia({ ...buena, stores: { ...buena.stores, contactos: [{ id: 'a', n: 'A' }, { id: 'a', n: 'B' }] } }).ok, false);
+  assert.equal(validarCopia({ ...buena, stores: { ...buena.stores, kv: [{ id: 'plan.x' }] } }).ok, false);
+  assert.equal(validarCopia({ app: 'survival-offline', version: 1, stores: {} }).ok, false, 'vacía');
+  const rara = validarCopia({ ...buena, stores: { ...buena.stores, futuro: [] } });
+  assert.equal(rara.ok, true); assert.deepEqual(rara.resumen.ignorados, ['futuro']);
+});

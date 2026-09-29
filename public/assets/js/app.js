@@ -1215,6 +1215,7 @@ async function vConfig() {
         <button class="btn ghost" id="cfg-import" type="button">⬇ Importar datos</button>
       </div>
       <input type="file" id="cfg-file" accept="application/json,.json" hidden>
+      <div id="cfg-restaurar" aria-live="polite"></div>
     </div>
 
     <h2>Mantenimiento</h2>
@@ -1284,13 +1285,42 @@ async function vConfig() {
   n.querySelector('#cfg-export').addEventListener('click', async () => { await exportar(); repintarPrep(); });
 
   n.querySelector('#cfg-import').addEventListener('click', () => n.querySelector('#cfg-file').click());
+  // Restaurar: primero se valida el archivo entero y se enseña qué contiene;
+  // solo al confirmar se escribe (todo o nada). Nada se toca si falla.
+  const panelRest = n.querySelector('#cfg-restaurar');
   n.querySelector('#cfg-file').addEventListener('change', async (e) => {
-    const f = e.target.files?.[0]; if (!f) return;
-    try {
-      await store.importAll(JSON.parse(await f.text()), { merge: true });
-      toast('Datos importados');
-      route();
-    } catch (err) { toast('Error: ' + err.message); }
+    const f = e.target.files?.[0]; e.target.value = ''; if (!f) return;
+    let data = null, v;
+    try { data = JSON.parse(await f.text()); v = store.validarCopia(data); }
+    catch { v = { ok: false, errores: ['El archivo no se puede leer: no es una copia de seguridad o está dañado.'] }; }
+    if (!v.ok) {
+      panelRest.innerHTML = `<div class="blk-warn"><p><b>No se puede restaurar «${esc(f.name)}».</b> Tus datos actuales no se han tocado.</p>
+        <ul>${v.errores.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>`;
+      return;
+    }
+    const r = v.resumen;
+    const fecha = r.exportado && !Number.isNaN(Date.parse(r.exportado)) ? prep.fechaCorta(Date.parse(r.exportado)) : 'fecha desconocida';
+    const filas = Object.entries(r.stores).filter(([, k]) => k > 0).map(([st, k]) => `<li>${esc(store.NOMBRES_COPIA[st])}: <b>${k}</b></li>`);
+    if (r.ajustes) filas.push('<li>Ajustes de apariencia (tema, contraste y tamaño de letra)</li>');
+    panelRest.innerHTML = `<div class="card resumen-copia">
+      <p><b>Copia del ${esc(fecha)}</b> («${esc(f.name)}»). Contiene:</p>
+      <ul>${filas.join('')}</ul>
+      ${r.ignorados.length ? `<p class="muted">No se restaurará (esta versión no lo reconoce): ${esc(r.ignorados.join(', '))}.</p>` : ''}
+      <p class="muted">Se añade a lo que ya tienes. Si algo está en los dos sitios, se queda la versión de la copia. No se borra nada.</p>
+      <div class="btnrow">
+        <button class="btn" type="button" data-rest="si">⬇ Restaurar esta copia</button>
+        <button class="btn ghost" type="button" data-rest="no">Cancelar</button>
+      </div></div>`;
+    panelRest.querySelector('[data-rest="no"]').addEventListener('click', () => { panelRest.innerHTML = ''; });
+    panelRest.querySelector('[data-rest="si"]').addEventListener('click', async () => {
+      try {
+        const c = await store.importAll(data, { merge: true });
+        toast(`Copia restaurada: ${c.nuevos} nuevos, ${c.cambiados} actualizados, ${c.iguales} sin cambios`, { tipo: 'ok' });
+        route();
+      } catch (err) {
+        panelRest.innerHTML = `<div class="blk-warn"><p><b>No se ha podido restaurar.</b> No se ha cambiado nada.</p><p class="muted">${esc(err.message)}</p></div>`;
+      }
+    });
   });
 
   n.querySelector('#cfg-tiles').addEventListener('click', async () => {
