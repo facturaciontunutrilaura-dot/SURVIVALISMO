@@ -105,6 +105,18 @@ survival-offline/
 - **Versionado**: la constante `VERSION` de `sw.js` nombra las cachés. Al
   cambiarla, la activación borra las anteriores. Si no hay Internet, se conserva
   la versión instalada y la app sigue funcionando con ella.
+- **Actualización segura** (fase 4):
+  - una versión nueva solo se instala si **todos** sus recursos se descargan
+    bien. Un fallo de red, un 404 o el `index.html` que devuelve el hosting en
+    lugar de un archivo que falta hacen fallar la instalación;
+  - si falla, no se escribe ni se borra ninguna caché y la versión anterior
+    sigue completa, también sin conexión;
+  - ya instalada, la versión nueva **espera**. Arriba aparece «Hay una versión
+    nueva… Actualizar ahora», que no se muestra en las pantallas de emergencia.
+    Se aplica al pulsarlo o la próxima vez que se abra la app, nunca a mitad
+    de uso;
+  - si otra pestaña la aplica, esta ofrece «Recargar» en vez de recargarse
+    sola.
 
 ### 3.4 Comprobación manual del modo offline
 

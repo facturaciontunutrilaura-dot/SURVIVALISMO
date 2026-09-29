@@ -715,6 +715,13 @@ body.emg .toast { bottom: calc(140px + env(safe-area-inset-bottom)); }
   background: var(--panel); color: var(--dim2);
 }
 .offbadge.off { border-color: var(--amber); color: var(--amber); }
+.aviso-version {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin: 8px max(12px, calc((100% - var(--maxw)) / 2)) 0; padding: 8px 12px; border: 1px solid var(--olive2); border-radius: var(--r);
+  background: var(--panel); color: var(--txt); font-size: .9rem; line-height: 1.35;
+}
+.aviso-version[hidden], body.emg .aviso-version { display: none; }
+.aviso-version span { flex: 1 1 200px; }
 
 details { border: 1px solid var(--line); border-radius: var(--r); background: var(--panel); margin-bottom: 8px; }
 summary { padding: 12px; cursor: pointer; font-family: var(--ff); text-transform: uppercase; font-size: .92rem; letter-spacing: .03em; }

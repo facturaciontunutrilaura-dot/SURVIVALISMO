@@ -820,6 +820,17 @@ try {
   await page.goto(BASE, { waitUntil: 'networkidle' });
   await page.evaluate(() => navigator.serviceWorker.ready.then(() => true));
   ok('Service Worker registrado y listo', true);
+  {
+    // Primera instalación: el SW toma el control, pero eso no es una versión
+    // nueva y no debe aparecer ningún aviso de actualización.
+    const cn = await browser.newContext({ ...devices['Pixel 7'], serviceWorkers: 'allow' });
+    const pn = await cn.newPage();
+    await pn.goto(BASE, { waitUntil: 'networkidle' });
+    await pn.waitForFunction(() => !!navigator.serviceWorker.controller, null, { timeout: 15000 });
+    await pn.waitForTimeout(500);
+    ok('Primera instalación: sin aviso de «versión nueva»', await pn.locator('#aviso-version').isHidden());
+    await cn.close();
+  }
 
   // Precachea todo desde la propia app
   await page.goto(BASE + '#/sec/config');
@@ -921,11 +932,54 @@ try {
     await page.locator('#fa-nodos details').nth(1).locator('[data-f="tel"]').fill('600111222');
     await page.waitForTimeout(600);
 
+    const versionActual = swOriginal.match(/const VERSION = '([^']+)'/)[1];
+    const actualizar = () => page.evaluate(async () => { const r = await navigator.serviceWorker.getRegistration(); try { await r?.update(); } catch {} });
+
+    // a) ACTUALIZACIÓN INTERRUMPIDA: un recurso de la versión nueva no se puede
+    //    descargar. El hosting devuelve index.html (fallback SPA, 200) en lugar
+    //    del módulo: debe detectarse. La versión instalada no se toca.
+    console.log('\n▸ Actualización segura (fase 4)');
+    const juegosJs = path.join(ROOT, 'public/assets/js/juegos.js');
+    fs.writeFileSync(swPath, swOriginal.replace(/const VERSION = '[^']+'/, "const VERSION = '9.9.8-fallo'"));
+    fs.renameSync(juegosJs, juegosJs + '.bak');
+    try {
+      await page.goto(BASE, { waitUntil: 'networkidle' });
+      await actualizar();
+      await page.waitForTimeout(3000);
+      const tras = await page.evaluate(async () => {
+        const r = await navigator.serviceWorker.getRegistration();
+        return { claves: await caches.keys(), esperando: !!r.waiting, instalando: !!r.installing, aviso: !document.getElementById('aviso-version').hidden };
+      });
+      ok('ACTUALIZACIÓN FALLIDA: no se crea la caché de la versión incompleta', !tras.claves.some((k) => k.includes('9.9.8-fallo')), tras.claves.join(','));
+      ok('ACTUALIZACIÓN FALLIDA: la caché de la versión instalada sigue intacta', tras.claves.some((k) => k.includes(versionActual)), tras.claves.join(','));
+      ok('ACTUALIZACIÓN FALLIDA: no queda ninguna versión esperando para aplicarse', !tras.esperando && !tras.instalando);
+      ok('ACTUALIZACIÓN FALLIDA: no se ofrece actualizar a una versión incompleta', !tras.aviso);
+    } finally {
+      fs.renameSync(juegosJs + '.bak', juegosJs);
+    }
+    // Sin red, el módulo que falló en la actualización se sigue sirviendo
+    // desde la versión anterior.
+    await ctx.setOffline(true);
+    await page.goto(BASE + '#/sec/juegos', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('.tabs-grid', { timeout: 15000 }).catch(() => {});
+    ok('ACTUALIZACIÓN FALLIDA: sin red, la app sigue completa con la versión anterior', (await page.locator('.tabs-grid button').count()) >= 4);
+    await ctx.setOffline(false);
+
+    // b) ACTUALIZACIÓN COMPLETA: se descarga entera, espera y avisa. No se
+    //    aplica hasta que el usuario pulsa «Actualizar ahora».
     fs.writeFileSync(swPath, swOriginal.replace(/const VERSION = '[^']+'/, "const VERSION = '9.9.9-test'"));
     await page.goto(BASE, { waitUntil: 'networkidle' });
-    await page.evaluate(async () => { const r = await navigator.serviceWorker.getRegistration(); await r?.update(); });
-    await page.waitForTimeout(2500);
-    await page.reload({ waitUntil: 'networkidle' });
+    await actualizar();
+    await page.waitForSelector('#aviso-version:not([hidden])', { timeout: 15000 }).catch(() => {});
+    ok('VERSIÓN NUEVA: aparece el aviso «Actualizar ahora»', /Actualizar ahora/.test(await page.textContent('#aviso-version')));
+    const esperando = await page.evaluate(async () => ({ claves: await caches.keys(), w: !!(await navigator.serviceWorker.getRegistration()).waiting }));
+    ok('VERSIÓN NUEVA: no se aplica sola a mitad de uso', esperando.w && esperando.claves.some((k) => k.includes(versionActual)), esperando.claves.join(','));
+    await page.goto(BASE + '#/emergencia');
+    await page.waitForSelector('.btn-112');
+    ok('VERSIÓN NUEVA: el aviso no aparece en las pantallas de emergencia', !(await page.locator('#aviso-version').isVisible()));
+    await page.goto(BASE + '#/');
+    await page.waitForSelector('#aviso-version:not([hidden])');
+    await Promise.all([page.waitForEvent('load', { timeout: 15000 }), page.click('#aviso-version button')]);
     await page.waitForTimeout(1000);
 
     const claves = await page.evaluate(() => caches.keys());

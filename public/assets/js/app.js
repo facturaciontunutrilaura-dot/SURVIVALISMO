@@ -1244,7 +1244,7 @@ async function vConfig() {
     const log = n.querySelector('#cfg-swlog');
     if (!swReg) return (log.textContent = 'Service Worker no disponible.');
     log.textContent = 'Comprobando…';
-    try { await swReg.update(); log.textContent = 'Comprobación realizada. Si hay una versión nueva se aplicará al reiniciar la app.'; }
+    try { await swReg.update(); log.textContent = 'Comprobación realizada. Si hay una versión nueva, se descarga entera y aparece arriba el aviso «Actualizar ahora». Mientras tanto sigues con la versión actual.'; }
     catch { log.textContent = 'Sin conexión: se mantiene la versión instalada, que sigue funcionando.'; }
   });
 
@@ -1529,9 +1529,51 @@ window.addEventListener('hashchange', route);
 route();
 
 /* ============================ SERVICE WORKER ============================ */
+/* Actualización segura. El Service Worker solo llega a «instalado» si ha
+   descargado TODOS los recursos de la versión nueva; entonces espera. Aquí se
+   avisa al usuario y la versión nueva se aplica cuando él lo pide (o al
+   siguiente arranque). Nunca se cambia de versión a mitad de uso: se
+   mezclarían módulos de dos versiones. En las pantallas de emergencia el
+   aviso no se muestra (CSS), para que nada invite a recargar en ese momento. */
+let actualizando = false;
+function avisoVersion(texto, boton, accion) {
+  const a = $('#aviso-version');
+  if (!a) return;
+  a.innerHTML = `<span>${esc(texto)}</span><button class="btn sm" type="button">${esc(boton)}</button>`;
+  a.querySelector('button').addEventListener('click', accion);
+  a.hidden = false;
+}
+function vigilarActualizacion(reg) {
+  const hayNueva = () => {
+    if (!reg.waiting || !navigator.serviceWorker.controller) return;
+    avisoVersion('Hay una versión nueva de la app lista. Se aplicará sola la próxima vez que la abras.', 'Actualizar ahora', () => {
+      actualizando = true;
+      $('#aviso-version').textContent = 'Actualizando…';
+      reg.waiting?.postMessage('skipWaiting');
+    });
+  };
+  hayNueva();
+  reg.addEventListener('updatefound', () => {
+    const w = reg.installing;
+    w?.addEventListener('statechange', () => { if (w.state === 'installed') hayNueva(); });
+  });
+}
 if ('serviceWorker' in navigator) {
+  // En la primera instalación el SW toma el control (clients.claim) y también
+  // dispara 'controllerchange': eso no es una actualización.
+  let controlador = navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    const anterior = controlador;
+    controlador = navigator.serviceWorker.controller;
+    if (!anterior) return;
+    // Pedido por el usuario → se recarga con la versión nueva completa.
+    if (actualizando) { actualizando = false; location.reload(); return; }
+    // Aplicada desde otra pestaña: esta sigue con módulos de la versión
+    // anterior. No se recarga sin permiso; se ofrece hacerlo.
+    avisoVersion('La app se ha actualizado. Recarga para usar la versión nueva sin errores.', 'Recargar', () => location.reload());
+  });
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch((e) => console.warn('SW:', e));
+    navigator.serviceWorker.register('./sw.js').then(vigilarActualizacion).catch((e) => console.warn('SW:', e));
   });
 }
 

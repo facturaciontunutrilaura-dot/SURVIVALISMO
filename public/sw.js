@@ -1,7 +1,12 @@
 /* =========================================================================
-   sw.js — Service Worker de SURVIVAL OFFLINE
+   sw.js — Service Worker de SUPERVIVENCIA
    Estrategia:
      · Precache completo del app shell + contenido + geodatos en la instalación.
+     · Actualización segura: una versión nueva solo se instala si TODOS sus
+       recursos se han descargado bien; si falta uno, la instalación falla y
+       sigue la versión anterior, intacta. Ya instalada, espera a que el
+       usuario pulse «Actualizar» (o al siguiente arranque): nunca se cambia
+       de versión a mitad de uso.
      · Navegaciones: caché primero, con revalidación en segundo plano.
      · Recursos propios: caché primero (son inmutables por versión).
      · Peticiones a terceros (teselas de mapa): pasan de largo; la app las
@@ -18,20 +23,50 @@ const RUNTIME = `survival-runtime-v${VERSION}`;
    VERSION también la escribe el build a partir de data/content/index.js. */
 const MANIFIESTO = './precache-manifest.json';
 
+/* ¿La respuesta es de verdad el recurso pedido? El hosting tiene un
+   «fallback» de SPA: un archivo que no existe devuelve index.html con 200.
+   Sin esta comprobación se guardaría HTML en lugar de un módulo JS y esa parte
+   de la app dejaría de funcionar sin conexión. */
+function respuestaValida(url, r) {
+  if (!r || !r.ok || r.status !== 200 || r.type === 'opaqueredirect') return false;
+  const esHtml = url.endsWith('/') || url.endsWith('.html');
+  const tipo = (r.headers.get('Content-Type') || '').toLowerCase();
+  return esHtml || !tipo.includes('text/html');
+}
+
 self.addEventListener('install', (e) => {
   e.waitUntil(
     (async () => {
       // Si no se puede leer el manifiesto, la instalación falla y el
       // navegador conserva la versión anterior, que sigue funcionando.
       const r = await fetch(MANIFIESTO, { cache: 'reload' });
-      if (!r.ok) throw new Error('No se pudo leer ' + MANIFIESTO);
+      if (!respuestaValida(MANIFIESTO, r)) throw new Error('No se pudo leer ' + MANIFIESTO);
       const lista = [...new Set([...(await r.json()), './index.html', MANIFIESTO])];
+
+      // 1) Se descarga TODO antes de escribir nada. Un solo fallo aborta la
+      //    instalación: no se toca ninguna caché y la versión instalada sigue
+      //    funcionando (también sin conexión).
+      const descargas = await Promise.all(lista.map(async (u) => {
+        const req = new Request(u, { cache: 'reload' });
+        const res = await fetch(req);
+        if (!respuestaValida(u, res)) throw new Error(`Recurso no disponible: ${u} (${res.status})`);
+        return [req, res];
+      }));
+
+      // 2) Solo con todo en la mano se escribe la caché de esta versión. Si la
+      //    escritura falla (p. ej. sin espacio), se borra lo escrito si la caché
+      //    es nueva; si ya existía (misma versión), se deja como estaba.
+      const existia = await caches.has(STATIC);
       const cache = await caches.open(STATIC);
-      // addAll falla entero si un recurso falla: los añadimos uno a uno.
-      await Promise.all(
-        lista.map((u) => cache.add(new Request(u, { cache: 'reload' })).catch((err) => console.warn('SW precache:', u, err)))
-      );
-      self.skipWaiting();
+      try {
+        for (const [req, res] of descargas) await cache.put(req, res);
+      } catch (err) {
+        if (!existia) await caches.delete(STATIC);
+        throw err;
+      }
+      // Sin skipWaiting(): si ya hay una versión activa, la nueva espera a que
+      // el usuario la aplique (mensaje 'skipWaiting') o al siguiente arranque.
+      // En la primera instalación no hay nada que esperar y se activa sola.
     })()
   );
 });
@@ -46,6 +81,7 @@ self.addEventListener('activate', (e) => {
   );
 });
 
+// La página lo envía cuando el usuario pulsa «Actualizar».
 self.addEventListener('message', (e) => {
   if (e.data === 'skipWaiting') self.skipWaiting();
 });
@@ -97,7 +133,7 @@ self.addEventListener('fetch', (e) => {
         return net || new Response(
           '<!doctype html><meta charset="utf-8"><title>Sin conexión</title>' +
           '<body style="background:#0d110f;color:#e9e7dd;font-family:system-ui;padding:24px">' +
-          '<h1>SURVIVAL OFFLINE</h1><p>Esta es la primera vez que abres la aplicación y no hay conexión, ' +
+          '<h1>SUPERVIVENCIA</h1><p>Esta es la primera vez que abres la aplicación y no hay conexión, ' +
           'así que todavía no hay nada guardado en el dispositivo.</p>' +
           '<p>Conéctate una vez para completar la instalación. A partir de ahí funcionará sin Internet.</p></body>',
           { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
