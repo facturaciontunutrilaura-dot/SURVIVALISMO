@@ -1072,6 +1072,52 @@ try {
     await cp.close();
   }
 
+  /* ---------------- 12 a quater. Mis datos vitales en SOS ---------------- */
+  console.log('\n▸ Mis datos vitales en SOS');
+  {
+    const cv = await browser.newContext({ ...devices['Pixel 7'], serviceWorkers: 'block' });
+    const pv = await cv.newPage();
+    const abrir = async () => {
+      await pv.goto(BASE + '#/'); await pv.goto(BASE + '#/emergencia'); await pv.waitForSelector('#datos-vitales');
+      await pv.click('#datos-vitales summary');
+      await pv.waitForFunction(() => !/Cargando/.test(document.querySelector('#datos-vitales .dv-cuerpo').textContent));
+      return pv.textContent('#datos-vitales .dv-cuerpo');
+    };
+    await pv.goto(BASE + '#/emergencia'); await pv.waitForSelector('#datos-vitales');
+    const orden = await pv.evaluate(() => {
+      const pos = (sel) => document.querySelector(sel).getBoundingClientRect().top;
+      return { cerrado: !document.getElementById('datos-vitales').open, antes112: pos('.btn-112') < pos('#datos-vitales'), antesSanitarias: pos('#datos-vitales') < pos('.sos-med') };
+    });
+    ok('Datos vitales: plegado por defecto, después del 112 y antes de las emergencias sanitarias', orden.cerrado && orden.antes112 && orden.antesSanitarias, JSON.stringify(orden));
+    const vacio = await abrir();
+    ok('Datos vitales: sin datos, lo dice y enlaza al plan familiar', /Aún no has anotado/.test(vacio) && (await pv.locator('#datos-vitales a[href="#/sec/plan-familiar"]').count()) === 1);
+
+    const MEDICO = 'Alérgica a la penicilina.\nToma levotiroxina.';
+    await pv.evaluate(async (medico) => {
+      const s = await import('./assets/js/store.js');
+      await s.put('kv', { id: 'plan.medico', v: medico });
+      await s.put('kv', { id: 'plan.punto', v: 'Plaza del ayuntamiento' });
+      await s.put('contactos', { id: 'ext1', n: 'Tía Ana', t: '600 123 456', r: 'externo', no: '' });
+      await s.put('contactos', { id: 'loc1', n: 'Vecino', t: '600 999 999', r: 'vecino', no: '' });
+    }, MEDICO);
+    const lleno = await abrir();
+    const medicoMostrado = await pv.textContent('#datos-vitales .dv-texto');
+    ok('Datos vitales: muestra la información médica tal como la escribió el usuario', medicoMostrado === MEDICO, JSON.stringify(medicoMostrado));
+    ok('Datos vitales: muestra el contacto externo con botón de llamada', /Tía Ana/.test(lleno) && (await pv.locator('#datos-vitales a[href="tel:600123456"]').count()) === 1);
+    ok('Datos vitales: solo el contacto externo, no el resto de contactos', !/Vecino/.test(lleno));
+    ok('Datos vitales: muestra el punto de encuentro', /Plaza del ayuntamiento/.test(lleno));
+    ok('Datos vitales: no añade contenido médico propio', !/(recomend|debe tomar|diagnóstic|dosis)/i.test(lleno) && /la app no lo revisa/.test(lleno));
+    await cv.close();
+
+    const ci2 = await browser.newContext({ ...devices['Pixel 7'], serviceWorkers: 'block' });
+    await ci2.addInitScript(() => Object.defineProperty(window, 'indexedDB', { value: { open() { const req = {}; setTimeout(() => { req.error = new DOMException('bloqueado'); req.onerror && req.onerror(); }, 0); return req; } } }));
+    const pi2 = await ci2.newPage();
+    await pi2.goto(BASE + '#/emergencia'); await pi2.waitForSelector('#datos-vitales');
+    await pi2.click('#datos-vitales summary'); await pi2.waitForTimeout(500);
+    ok('Datos vitales: sin almacenamiento, SOS sigue completo y lo explica', (await pi2.locator('.sos-med').count()) === 5 && /No se pueden leer tus datos/.test(await pi2.textContent('#datos-vitales')));
+    await ci2.close();
+  }
+
   /* ------------- 12 bis. EL HOSTING CAE (Netlify no responde) ------------- */
   // Escenario distinto a "no hay red": el dispositivo SÍ tiene Internet, pero
   // el servidor está caído, devuelve errores o el dominio ya no existe.
@@ -1412,7 +1458,9 @@ try {
     await pm.evaluate(() => window.scrollTo(0, 900));
     await pm.waitForTimeout(150);
     const y0 = await pm.evaluate(() => window.scrollY);
-    await pm.click('a[href="#/emergencia/nevada"]');
+    // Se sigue el enlace sin que Playwright desplace la página para pulsarlo
+    // (a esa altura puede quedar bajo la barra fija del 112).
+    await pm.evaluate(() => document.querySelector('a[href="#/emergencia/nevada"]').click());
     await pm.waitForSelector('.qcard');
     await pm.click('.topbar [data-volver]');
     await pm.waitForSelector('.btn-112');

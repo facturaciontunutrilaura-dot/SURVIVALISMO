@@ -638,6 +638,15 @@ dispositivo sin teléfono no hace nada o ofrece una app, sin errores.
 
 `GRUPOS_EMERGENCIA` organiza el resto de escenarios en la pantalla SOS.
 
+**Mis datos vitales** (fase 4). En SOS, debajo del 112 y de «Mi posición»,
+hay una fila plegada con lo que el usuario ha anotado en su plan:
+- la información médica, tal cual la escribió;
+- los contactos marcados como «externo», con botón de llamada;
+- los puntos de encuentro.
+
+No añade recomendaciones, diagnósticos ni contenido clínico. Se carga aparte:
+si el almacenamiento falla, SOS sigue completo.
+
 ### 7.1 ter Buscador y sinónimos
 
 La lógica está en `public/assets/js/search.js` (módulo puro, probado con

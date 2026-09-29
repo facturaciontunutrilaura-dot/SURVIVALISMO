@@ -927,3 +927,12 @@ ul.planes .badge { margin-left: 4px; vertical-align: middle; }
 .prep-aviso { border: 1px solid var(--amber); border-left-width: 4px; border-radius: var(--r); background: var(--panel); padding: 10px 12px; }
 .prep-aviso p { margin: 0 0 4px; }
 .prep-aviso ul { margin: 0 0 8px; padding-left: 1.2em; }
+
+/* ---------------------- Mis datos vitales (SOS, fase 4) ---------------------- */
+.datos-vitales { margin-top: 8px; }
+.datos-vitales h3 { font-size: 1rem; margin: 10px 0 4px; }
+.dv-texto { white-space: pre-wrap; margin: 0; }
+.dv-lista { margin: 0; padding-left: 1.1em; }
+.dv-lista li { margin: 4px 0; }
+.dv-lista .btn { margin-left: 4px; }
+.dv-nota { margin-top: 10px; }

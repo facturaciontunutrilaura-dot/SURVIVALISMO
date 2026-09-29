@@ -259,6 +259,10 @@ function vEmergenciaLista() {
       <p class="sos-nota solo-escritorio">Este dispositivo quizá no pueda hacer llamadas: marca el 112 desde un teléfono.</p>
       <button class="btn ghost wide sm" type="button" data-pos112>📍 Mi posición para dar al 112</button>
       <div id="pos112" aria-live="polite"></div>
+      <details class="card plegable datos-vitales" id="datos-vitales">
+        <summary>🩺 Mis datos vitales</summary>
+        <div class="dv-cuerpo" aria-live="polite"><p class="muted">Cargando…</p></div>
+      </details>
     </section>
 
     <section aria-labelledby="sos-h-med">
@@ -274,7 +278,38 @@ function vEmergenciaLista() {
     ${barra112()}
   </div>`);
   montarPosicion112(n);
+  montarDatosVitales(n.querySelector('#datos-vitales .dv-cuerpo'));
   return { node: n, emg: true };
+}
+
+/* «Mis datos vitales»: SOLO lo que el usuario ha escrito en su plan
+   (información médica, contacto externo, puntos de encuentro), para tenerlo a
+   un toque en una emergencia. No añade recomendaciones ni interpreta nada.
+   Se carga aparte: si el almacenamiento falla, SOS sigue igual. */
+async function montarDatosVitales(cont) {
+  const tel = (t) => String(t || '').replace(/[^0-9+]/g, '');
+  const texto = (t) => `<p class="dv-texto">${esc(t)}</p>`;
+  try {
+    const [kvs, contactos] = await Promise.all([store.all('kv'), store.all('contactos')]);
+    const kv = Object.fromEntries(kvs.map((r) => [r.id, r.v]));
+    const lleno = (k) => typeof kv[k] === 'string' && kv[k].trim();
+    const nodos = (Array.isArray(kv['familia.nodos']) ? kv['familia.nodos'] : []).filter((x) => x && !x.ejemplo);
+    const externos = contactos.filter((c) => c.r === 'externo');
+    const encuentros = [
+      ...[['plan.punto', 'Si no podemos volver a casa'], ['plan.cerca', 'Cerca (barrio)'], ['plan.lejos', 'Fuera del barrio o del municipio']]
+        .filter(([k]) => lleno(k)).map(([k, t]) => `<li><b>${esc(t)}:</b> ${esc(kv[k])}</li>`),
+      ...nodos.filter((x) => typeof x.encuentro === 'string' && x.encuentro.trim()).map((x) => `<li><b>${esc(x.nombre || 'Ubicación')}:</b> ${esc(x.encuentro)}</li>`),
+    ];
+    const partes = [];
+    if (lleno('plan.medico')) partes.push(`<h3>Información médica</h3>${texto(kv['plan.medico'])}`);
+    if (externos.length) partes.push(`<h3>Contacto externo</h3><ul class="dv-lista">${externos.map((c) => `<li><b>${esc(c.n)}</b>${c.t ? ` · ${tel(c.t) ? `<a class="btn sm ghost" href="tel:${esc(tel(c.t))}">📞 ${esc(c.t)}</a>` : esc(c.t)}` : ''}${c.no ? `<br><span class="muted">${esc(c.no)}</span>` : ''}</li>`).join('')}</ul>`);
+    if (encuentros.length) partes.push(`<h3>Punto de encuentro</h3><ul class="dv-lista">${encuentros.join('')}</ul>`);
+    cont.innerHTML = partes.length
+      ? `${partes.join('')}<p class="muted dv-nota">Es lo que tú has anotado; la app no lo revisa. <a href="#/sec/plan-familiar">Editar</a></p>`
+      : `<p>Aún no has anotado información médica, un contacto externo ni un punto de encuentro.</p><a class="btn sm ghost" href="#/sec/plan-familiar">Anotarlos en el plan familiar</a>`;
+  } catch {
+    cont.innerHTML = '<p>No se pueden leer tus datos guardados ahora: el navegador no deja acceder al almacenamiento. SOS y el 112 funcionan con normalidad.</p>';
+  }
 }
 
 /* Pestañas accesibles: rejilla que nunca oculta ninguna (en móvil 3×2,
