@@ -1,6 +1,6 @@
 // Agregador de la base de conocimiento offline.
 import { SOURCES, SOURCE_MAP, FECHA_CONSULTA, DISCLAIMER } from './sources.js';
-import { EMERGENCIAS, EMERGENCIAS_MAP } from './emergencias.js';
+import { EMERGENCIAS, EMERGENCIAS_MAP, SOS_SANITARIAS, SOS_SANITARIAS_MAP, GRUPOS_EMERGENCIA } from './emergencias.js';
 import { ART_RECURSOS } from './art-recursos.js';
 import { ART_TECNICAS } from './art-tecnicas.js';
 import { ART_PREPARACION } from './art-preparacion.js';
@@ -86,6 +86,21 @@ function textoDeBloques(body = []) {
 }
 
 export const INDICE = [
+  // --- Emergencias sanitarias de SOS (apuntan a su artículo de primeros auxilios) ---
+  ...SOS_SANITARIAS.map((s) => {
+    const a = ARTICULOS_MAP[s.art];
+    return {
+      tipo: 'sos',
+      id: s.id,
+      ruta: `#/emergencia/sanitaria/${s.id}`,
+      t: s.t,
+      sec: 'emergencia',
+      pr: 'critico',
+      sum: a?.sum || '',
+      tags: [...s.tags, ...(a?.tags || [])].join(' '),
+      texto: a ? textoDeBloques(a.body) : '',
+    };
+  }),
   ...ARTICULOS.map((a) => ({
     tipo: 'articulo',
     id: a.id,
@@ -94,7 +109,8 @@ export const INDICE = [
     sec: a.sec,
     pr: a.pr,
     sum: a.sum,
-    texto: [a.t, a.sum, (a.tags || []).join(' '), textoDeBloques(a.body)].join(' ').toLowerCase(),
+    tags: (a.tags || []).join(' '),
+    texto: textoDeBloques(a.body),
   })),
   ...EMERGENCIAS.map((e) => ({
     tipo: 'emergencia',
@@ -104,9 +120,7 @@ export const INDICE = [
     sec: 'emergencia',
     pr: e.pr,
     sum: e.card[0],
-    texto: [e.t, e.card.join(' '), e.ahora.join(' '), e.horas.join(' '), e.dias.join(' '), e.no.join(' '), e.eq.join(' ')]
-      .join(' ')
-      .toLowerCase(),
+    texto: [e.card.join(' '), e.ahora.join(' '), e.horas.join(' '), e.dias.join(' '), e.no.join(' '), e.eq.join(' ')].join(' '),
   })),
   ...CHECKLISTS.map((c) => ({
     tipo: 'checklist',
@@ -116,7 +130,7 @@ export const INDICE = [
     sec: 'equipo',
     pr: 'importante',
     sum: c.desc,
-    texto: [c.t, c.desc, c.grupos.map((g) => g.g + ' ' + g.items.join(' ')).join(' ')].join(' ').toLowerCase(),
+    texto: c.grupos.map((g) => g.g + ' ' + g.items.join(' ')).join(' '),
   })),
   ...CURSOS.map((c) => ({
     tipo: 'curso',
@@ -126,7 +140,7 @@ export const INDICE = [
     sec: 'cursos',
     pr: 'recomendado',
     sum: c.obj,
-    texto: [c.n, c.t, c.obj, c.teoria.join(' ')].join(' ').toLowerCase(),
+    texto: c.teoria.join(' '),
   })),
   ...FRECUENCIAS.map((f) => ({
     tipo: 'frecuencia',
@@ -136,8 +150,14 @@ export const INDICE = [
     sec: 'comunicaciones',
     pr: 'info',
     sum: `${f.rx} ${f.unidad} · ${f.licencia}`,
-    texto: [f.nombre, f.grupo, f.rx, f.uso, f.zona, f.notas].join(' ').toLowerCase(),
+    texto: [f.grupo, f.rx, f.uso, f.zona, f.notas].join(' '),
   })),
+  {
+    tipo: 'frecuencia', id: 'base-frecuencias', ruta: '#/sec/comunicaciones', t: 'Base de frecuencias de radio',
+    sec: 'comunicaciones', pr: 'importante', sum: 'Emisoras, canales PMR446 y frecuencias de emergencia, con su verificación y fuente. Incluye radio log.',
+    tags: 'frecuencias radio emisoras canales pmr446 walkie radioaficionado radio log',
+    texto: FRECUENCIAS.map((f) => `${f.nombre} ${f.rx} ${f.unidad} ${f.grupo}`).join(' · '),
+  },
   // --- Riesgos 2026–2036: una entrada por riesgo y zona principal ---
   ...RIESGOS.map((r) => ({
     tipo: 'riesgo',
@@ -147,10 +167,10 @@ export const INDICE = [
     sec: 'riesgos',
     pr: 'importante',
     sum: r.z.espana?.actual?.slice(0, 140) || Object.values(r.z)[0]?.actual?.slice(0, 140) || '',
-    texto: [r.t, CATEGORIAS_RIESGO[r.cat]?.t,
+    texto: [CATEGORIAS_RIESGO[r.cat]?.t,
       ...Object.values(r.z).map((z) => [z?.actual, z?.h2030, z?.h2036].join(' ')),
       'riesgo proyección escenario 2036 tendencia confianza',
-    ].join(' ').toLowerCase(),
+    ].join(' '),
   })),
   // --- Situaciones de ruta familiar ---
   ...SITUACIONES.map((s) => ({
@@ -161,30 +181,30 @@ export const INDICE = [
     sec: 'familia',
     pr: 'importante',
     sum: s.resumen,
-    texto: [s.t, s.resumen, s.ruta, s.antes.join(' '), s.ojo.join(' '), 'ruta familia desplazamiento'].join(' ').toLowerCase(),
+    texto: [s.ruta, s.antes.join(' '), s.ojo.join(' '), 'ruta familia desplazamiento'].join(' '),
   })),
   // --- Juegos y modo calma ---
   {
     tipo: 'juego', id: 'juegos', ruta: '#/sec/juegos', t: 'Juegos offline', sec: 'juegos',
     pr: 'recomendado', sum: 'Tres en raya, memory de supervivencia y reto de preguntas. Funcionan sin conexión.',
     texto: ['juegos offline tres en raya memory reto quiz preguntas niños aburrimiento estrés grupo',
-      ...QUIZ.map((q) => q.q), ...Object.values(QUIZ_CATEGORIAS).map((c) => c.t)].join(' ').toLowerCase(),
+      ...QUIZ.map((q) => q.q), ...Object.values(QUIZ_CATEGORIAS).map((c) => c.t)].join(' '),
   },
   {
     tipo: 'juego', id: 'calma', ruta: '#/sec/juegos', t: 'Modo calma — respiración y grounding', sec: 'juegos',
     pr: 'recomendado', sum: 'Respiración guiada con temporizador visual, grounding y ejercicios de grupo.',
     texto: ['modo calma respiración guiada grounding ansiedad estrés temporizador ejercicios grupo niños',
-      ...RESPIRACIONES.map((r) => r.t + ' ' + r.desc), ...GROUNDING.map((g) => g.t + ' ' + g.desc)].join(' ').toLowerCase(),
+      ...RESPIRACIONES.map((r) => r.t + ' ' + r.desc), ...GROUNDING.map((g) => g.t + ' ' + g.desc)].join(' '),
   },
   {
     tipo: 'audio', id: 'audio-offline', ruta: '#/sec/audio', t: 'Audio offline', sec: 'audio',
     pr: 'recomendado', sum: 'Música y mensajes de voz guardados en el dispositivo, reproducibles sin conexión.',
-    texto: 'audio offline música mp3 canciones mensajes de voz grabaciones instrucciones habladas niños cuentos apagón aislamiento moral reproductor sin conexión importar archivos'.toLowerCase(),
+    texto: 'audio offline música mp3 canciones mensajes de voz grabaciones instrucciones habladas niños cuentos apagón aislamiento moral reproductor sin conexión importar archivos',
   },
   {
     tipo: 'familia', id: 'centro-familiar', ruta: '#/sec/familia', t: 'Centro de coordinación familiar', sec: 'familia',
     pr: 'critico', sum: 'Tus ubicaciones y las de tu familia: estado, rutas, plan 72 h y reunificación.',
-    texto: ['familia centro coordinación ubicaciones estado reunificación plan 72 horas rutas mapa familiar padres abuelos hijos llegar a mi familia comparar'].join(' ').toLowerCase(),
+    texto: ['familia centro coordinación ubicaciones estado reunificación plan 72 horas rutas mapa familiar padres abuelos hijos llegar a mi familia comparar'].join(' '),
   },
 ];
 
@@ -194,6 +214,9 @@ export {
   DISCLAIMER,
   EMERGENCIAS,
   EMERGENCIAS_MAP,
+  SOS_SANITARIAS,
+  SOS_SANITARIAS_MAP,
+  GRUPOS_EMERGENCIA,
   CHECKLISTS,
   CURSOS,
   FRECUENCIAS,

@@ -59,8 +59,36 @@ try {
   /* --------------------------- 2. Modo emergencia --------------------------- */
   console.log('\n▸ Modo emergencia');
   await page.click('.tile.sos');
-  await page.waitForSelector('.emg-hd');
+  await page.waitForSelector('.btn-112');
   ok('Lista de escenarios', (await page.locator('.list .row').count()) === 20);
+  const b112 = page.locator('.sos-llamar a.btn-112');
+  ok('SOS: botón para llamar al 112 visible arriba', await b112.isVisible());
+  ok('SOS: el botón usa el enlace estándar tel:112', (await b112.getAttribute('href')) === 'tel:112');
+  ok('SOS: el botón tiene nombre accesible', /112/.test(await b112.getAttribute('aria-label') || ''));
+  const cajaB = await b112.boundingBox();
+  ok('SOS: el botón es grande (≥ 64 px de alto)', cajaB && cajaB.height >= 64, `(${cajaB?.height})`);
+  ok('SOS: el 112 está antes que cualquier protocolo', await page.evaluate(() => {
+    const b = document.querySelector('.btn-112'), m = document.querySelector('.sos-med'), r = document.querySelector('.sos .row');
+    return b.compareDocumentPosition(m) & Node.DOCUMENT_POSITION_FOLLOWING && m.compareDocumentPosition(r) & Node.DOCUMENT_POSITION_FOLLOWING;
+  }));
+  const meds = await page.locator('.sos-med').evaluateAll((els) => els.map((e) => e.getAttribute('href')));
+  ok('SOS: cinco accesos sanitarios', meds.length === 5, JSON.stringify(meds));
+  for (const [id, art, texto] of [
+    ['parada-cardiaca', 'pa-rcp', /30 compresiones/], ['hemorragia', 'pa-hemorragias', /Presión directa/],
+    ['atragantamiento', 'pa-atragantamiento', /golpes/], ['infarto', 'pa-infarto', /dolor torácico/i], ['ictus', 'pa-ictus', /Asimetría facial/],
+  ]) {
+    await page.goto(BASE + '#/emergencia/sanitaria/' + id);
+    await page.waitForSelector('.emg-hd');
+    const txt = await page.textContent('#app');
+    ok(`SOS sanitaria «${id}»: contenido del artículo y 112`, texto.test(txt) && (await page.locator('a[href="tel:112"]').count()) >= 1);
+    ok(`SOS sanitaria «${id}»: enlaza al artículo original`, (await page.locator(`a[href="#/art/${art}"]`).count()) === 1);
+  }
+  ok('Infarto e ictus avisan de que están pendientes de ampliar', /PENDIENTE DE AMPLIAR/.test(await page.textContent('#app')));
+  await page.goto(BASE + '#/art/pa-varios');
+  await page.waitForSelector('h1');
+  ok('Infarto e ictus ya no están escondidos en «Fracturas…»', !/Asimetría facial/.test(await page.textContent('#app')));
+  await page.goto(BASE + '#/emergencia');
+  await page.waitForSelector('.btn-112');
   await page.click('a[href="#/emergencia/apagon"]');
   await page.waitForSelector('.qcard');
   ok('Tarjeta rápida visible', (await page.locator('.qcard li').count()) >= 4);
@@ -71,6 +99,37 @@ try {
   await page.click('.tabs button[data-t="ev"]');
   await page.waitForTimeout(150);
   ok('Pestaña evacuar/refugiarse', (await page.locator('#emg-body .blk-note').count()) === 1);
+  await page.focus('.tabs button[data-t="ev"]');
+  await page.keyboard.press('ArrowRight');
+  await page.waitForTimeout(100);
+  ok('Pestañas navegables con el teclado', (await page.getAttribute('.tabs button[data-t="ahora"]', 'aria-selected')) === 'true');
+  ok('Barra fija del 112 en la ficha', await page.locator('.sos-bar a[href="tel:112"]').isVisible());
+
+  // Pestañas en distintos tamaños: las seis visibles, sin desplazamiento horizontal.
+  for (const [nombre, opts] of [
+    ['móvil pequeño 320 px', { viewport: { width: 320, height: 568 }, isMobile: true, hasTouch: true }],
+    ['Android', devices['Pixel 7']],
+    ['iPhone', devices['iPhone 13']],
+    ['móvil en horizontal', devices['Pixel 7 landscape']],
+    ['escritorio', { viewport: { width: 1280, height: 800 } }],
+  ]) {
+    const c = await browser.newContext(opts);
+    const pg = await c.newPage();
+    await pg.goto(BASE + '#/emergencia/incendio-forestal');
+    await pg.waitForSelector('.tabs-sos');
+    const r = await pg.evaluate(() => {
+      const bs = [...document.querySelectorAll('.tabs-sos button')];
+      return {
+        n: bs.length,
+        dentro: bs.every((b) => { const x = b.getBoundingClientRect(); return x.left >= 0 && x.right <= innerWidth + 1 && x.width > 40; }),
+        scroll: document.documentElement.scrollWidth - innerWidth,
+      };
+    });
+    await pg.click('.tabs-sos button[data-t="no"]');
+    const noOk = (await pg.locator('#emg-body .steps.no li').count()) > 3;
+    ok(`Pestañas SOS en ${nombre}: las 6 visibles y «No hacer» usable`, r.n === 6 && r.dentro && r.scroll <= 0 && noOk, JSON.stringify(r));
+    await c.close();
+  }
 
   /* ------------------------------ 3. Artículos ------------------------------ */
   console.log('\n▸ Secciones y artículos');
@@ -116,6 +175,22 @@ try {
   ok('Buscar "apagón" encuentra el escenario', (await page.textContent('#res')).toLowerCase().includes('apagón'));
   await page.fill('#q', 'zzzzqqq'); await page.waitForTimeout(350);
   ok('Búsqueda sin resultados se maneja', (await page.locator('.sr-empty').count()) === 1);
+  ok('Sin resultados ofrece alternativas y acceso a SOS', (await page.locator('.sr-empty [data-sug]').count()) >= 3 && (await page.locator('.sr-empty a[href="#/emergencia"]').count()) === 1);
+  await page.fill('#q', 'sangra mucho'); await page.waitForTimeout(350);
+  ok('Buscar "sangra mucho" da primero hemorragia', /hemorragia/i.test(await page.locator('#res .row b').first().textContent()));
+  ok('Los resultados muestran categoría, fragmento y motivo', (await page.locator('#res .row .cat').count()) > 0 && (await page.locator('#res .row mark').count()) > 0 && (await page.locator('#res .row .por').count()) > 0);
+  ok('Filtros por tipo de resultado', (await page.locator('#fb button').count()) >= 2);
+  await page.click('#fb button[data-f="manual"]'); await page.waitForTimeout(150);
+  ok('El filtro Manual solo deja artículos', (await page.locator('#res .row .cat').allTextContents()).every((t) => /manual/i.test(t)));
+  await page.fill('#q', 'corte de luz'); await page.waitForTimeout(350);
+  ok('Buscar "corte de luz" da primero el apagón', /apag/i.test(await page.locator('#res .row b').first().textContent()));
+  await page.locator('#res .row').first().click();
+  await page.waitForSelector('.qcard');
+  await page.goBack();
+  await page.waitForSelector('#res .row');
+  ok('Al volver atrás se conserva la búsqueda', (await page.inputValue('#q')) === 'corte de luz');
+  await page.fill('#q', 'hemoragia'); await page.waitForTimeout(400);
+  ok('Una errata se corrige sola y muestra resultados', (await page.locator('.corregida').count()) === 1 && /hemorragia/i.test(await page.locator('#res .row b').first().textContent()));
 
   /* ------------------------------ 6. Checklists ------------------------------ */
   console.log('\n▸ Checklists e IndexedDB');
@@ -161,6 +236,34 @@ try {
 
   /* ------------------- 9 bis. NUEVO: Juegos y modo calma ------------------- */
   console.log('\n▸ Juegos offline y modo calma');
+  await page.goto(BASE + '#/sec/juegos/calma');
+  await page.waitForSelector('#ca-start');
+  ok('El enlace «Modo calma» abre directamente esa pestaña', (await page.getAttribute('#jg-tabs [data-t="cal"]', 'aria-selected')) === 'true');
+  await page.click('#ca-start');
+  await page.waitForTimeout(300);
+  await page.goto(BASE + '#/');
+  await page.waitForTimeout(1300);
+  ok('Al salir, el modo calma no sigue corriendo en segundo plano', !consoleErrors.some((e) => /ca-|null/.test(e)));
+
+  // Brújula: solo acepta rumbos referidos al norte.
+  await page.goto(BASE + '#/sec/orientacion');
+  await page.waitForSelector('#cp-start');
+  await page.click('#cp-start');
+  await page.evaluate(() => window.dispatchEvent(new DeviceOrientationEvent('deviceorientation', { alpha: 90, absolute: false })));
+  await page.waitForTimeout(100);
+  ok('Brújula: ignora la orientación relativa (no apunta al norte)', (await page.textContent('#cp-deg')) === '—');
+  await page.evaluate(() => window.dispatchEvent(new DeviceOrientationEvent('deviceorientationabsolute', { alpha: 90, absolute: true })));
+  await page.waitForTimeout(100);
+  ok('Brújula: usa la orientación absoluta', (await page.textContent('#cp-deg')) === '270°', await page.textContent('#cp-deg'));
+  await page.evaluate(() => window.dispatchEvent(new DeviceOrientationEvent('deviceorientation', { alpha: 10, absolute: false })));
+  await page.waitForTimeout(100);
+  ok('Brújula: la relativa no sobrescribe a la absoluta', (await page.textContent('#cp-deg')) === '270°');
+  const giro1 = await page.$eval('#cp-rose', (e) => e.style.transform);
+  await page.evaluate(() => { for (let i = 0; i < 30; i++) window.dispatchEvent(new DeviceOrientationEvent('deviceorientationabsolute', { alpha: 359, absolute: true })); });
+  await page.evaluate(() => { for (let i = 0; i < 30; i++) window.dispatchEvent(new DeviceOrientationEvent('deviceorientationabsolute', { alpha: 1, absolute: true })); });
+  const giro2 = await page.$eval('#cp-rose', (e) => parseFloat(e.style.transform.match(/-?[\d.]+/)[0]));
+  ok('Brújula: pasar por el norte no da una vuelta completa', Math.abs(giro2) < 400, `${giro1} → ${giro2}`);
+
   await page.goto(BASE + '#/sec/juegos');
   await page.waitForSelector('.ttt-c');
   ok('Tres en raya renderiza 9 casillas', (await page.locator('.ttt-c').count()) === 9);
@@ -477,6 +580,15 @@ try {
   await page.waitForSelector('#q');
   await page.fill('#q', 'hipotermia'); await page.waitForTimeout(400);
   ok('SIN RED: el buscador funciona', (await page.locator('#res .row').count()) >= 1);
+  await page.fill('#q', 'sangra mucho'); await page.waitForTimeout(400);
+  ok('SIN RED: sinónimos y ranking funcionan', /hemorragia/i.test(await page.locator('#res .row b').first().textContent()));
+
+  await page.goto(BASE + '#/emergencia', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('.btn-112', { timeout: 10000 });
+  ok('SIN RED: SOS con botón 112 y accesos sanitarios', (await page.locator('.sos-med').count()) === 5);
+  await page.goto(BASE + '#/emergencia/sanitaria/ictus', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('.qcard', { timeout: 10000 });
+  ok('SIN RED: ficha sanitaria de SOS', /Asimetría facial/.test(await page.textContent('#app')));
 
   await page.goto(BASE + '#/mapa', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#map.leaflet-container', { timeout: 15000 });

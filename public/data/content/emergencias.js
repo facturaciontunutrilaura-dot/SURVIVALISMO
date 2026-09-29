@@ -973,3 +973,30 @@ export const EMERGENCIAS = [
 ];
 
 export const EMERGENCIAS_MAP = Object.fromEntries(EMERGENCIAS.map((e) => [e.id, e]));
+
+/* ------------------------------------------------------------------------
+   EMERGENCIAS SANITARIAS EN SOS
+   No duplican contenido: cada acceso apunta a un artículo de Primeros
+   auxilios (`art`), que SOS muestra con su propia cabecera y el botón de
+   llamada. El texto médico vive en un solo sitio.
+   ------------------------------------------------------------------------ */
+export const SOS_SANITARIAS = [
+  { id: 'parada-cardiaca', t: 'Parada cardíaca', ic: '❤️', art: 'pa-rcp', tags: ['no respira', 'inconsciente', 'rcp', 'reanimación'] },
+  { id: 'hemorragia', t: 'Hemorragia grave', ic: '🩸', art: 'pa-hemorragias', tags: ['sangrado', 'sangra', 'torniquete'] },
+  { id: 'atragantamiento', t: 'Atragantamiento', ic: '🫁', art: 'pa-atragantamiento', tags: ['no puede respirar', 'asfixia', 'heimlich'] },
+  { id: 'infarto', t: 'Infarto', ic: '💔', art: 'pa-infarto', tags: ['dolor torácico', 'dolor en el pecho'] },
+  { id: 'ictus', t: 'Ictus', ic: '🧠', art: 'pa-ictus', tags: ['derrame cerebral', 'cara torcida', 'no puede hablar'] },
+];
+export const SOS_SANITARIAS_MAP = Object.fromEntries(SOS_SANITARIAS.map((s) => [s.id, s]));
+
+/* Agrupación de los escenarios en la pantalla SOS. Es solo organización:
+   todo escenario que no figure en un grupo aparece en "Otros". */
+export const GRUPOS_EMERGENCIA = [
+  { id: 'fuego', t: 'Fuego', ids: ['incendio-forestal', 'incendio-vivienda'] },
+  { id: 'clima', t: 'Agua, clima y tierra', ids: ['inundacion', 'tormenta', 'ola-calor', 'ola-frio', 'nevada', 'terremoto'] },
+  { id: 'suministros', t: 'Suministros', ids: ['apagon', 'falta-agua', 'falta-alimentos'] },
+  { id: 'tecnologicos', t: 'Químico y radiológico', ids: ['quimico', 'radiologico'] },
+  { id: 'personas', t: 'Personas y montaña', ids: ['persona-perdida', 'accidente-montana'] },
+  { id: 'seguridad', t: 'Casa, evacuación y seguridad', ids: ['aislamiento', 'evacuacion', 'disturbios', 'conflicto'] },
+  { id: 'general', t: 'Otros', ids: ['general'] },
+];

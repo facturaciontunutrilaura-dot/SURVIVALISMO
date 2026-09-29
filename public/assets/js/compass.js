@@ -3,7 +3,7 @@
    Usa DeviceOrientationAbsolute / webkitCompassHeading cuando existen.
    Si no hay sensores, ofrece modo manual (rosa girable) y métodos naturales.
    ========================================================================= */
-import { el, esc, toast } from './ui.js';
+import { el, esc, toast, alSalir } from './ui.js';
 
 function roseSVG() {
   const marks = [];
@@ -62,23 +62,54 @@ export function compassView() {
   const cardEl = n.querySelector('#cp-card');
   const info = n.querySelector('#cp-info');
   let heading = 0, locked = null, manual = false, manualDeg = 0, running = false;
+  let conDatos = false, absolutoVisto = false;
+  // Ángulo acumulado que se aplica a la rosa. No se normaliza a 0–360: así,
+  // al pasar de 359° a 0° la rosa gira 1° y no da una vuelta completa.
+  let giro = 0;
 
   function paint(h) {
-    heading = h;
-    rose.style.transform = `rotate(${-h}deg)`;
-    degEl.textContent = `${Math.round(h)}°`;
-    cardEl.textContent = card(h) + (locked != null ? ` · FIJO ${Math.round(locked)}°` : '');
+    heading = ((h % 360) + 360) % 360;
+    const delta = ((heading - giro) % 360 + 540) % 360 - 180;
+    giro += delta;
+    rose.style.transform = `rotate(${-giro}deg)`;
+    degEl.textContent = `${Math.round(heading) % 360}°`;
+    cardEl.textContent = card(heading) + (locked != null ? ` · FIJO ${Math.round(locked)}°` : '');
   }
 
+  /* Suavizado exponencial por el camino corto: el magnetómetro tiembla y,
+     sin esto, la aguja baila varios grados en cada lectura. */
+  let suave = null;
+  function aplicarSensor(h) {
+    if (manual) return;
+    // La rosa se dibuja respecto a la parte de arriba de la PANTALLA: si el
+    // móvil está en horizontal hay que sumar el giro de la pantalla.
+    const giroPantalla = screen.orientation?.angle ?? (typeof window.orientation === 'number' ? window.orientation : 0);
+    const bruto = (h + giroPantalla + 360) % 360;
+    if (suave == null) suave = bruto;
+    else suave = (suave + ((((bruto - suave) % 360) + 540) % 360 - 180) * 0.25 + 360) % 360;
+    conDatos = true;
+    paint(suave);
+  }
+
+  /* Solo se aceptan rumbos referidos al norte:
+     · iOS: webkitCompassHeading (ya es rumbo magnético).
+     · Android/Chrome: el evento 'deviceorientationabsolute'.
+     · Otros navegadores: 'deviceorientation' solo si declara absolute=true.
+     El 'deviceorientation' relativo de Android NO sirve: su alfa es relativo
+     a la posición en la que estaba el móvil al empezar, y antes se mezclaba
+     con el absoluto provocando saltos y rumbos falsos. */
+  function onAbsoluto(e) {
+    if (typeof e.alpha !== 'number') return;
+    absolutoVisto = true;
+    aplicarSensor(360 - e.alpha);
+  }
   function onOrient(e) {
-    let h = null;
-    if (typeof e.webkitCompassHeading === 'number') h = e.webkitCompassHeading;
-    else if (e.absolute && typeof e.alpha === 'number') h = 360 - e.alpha;
-    else if (typeof e.alpha === 'number') h = 360 - e.alpha;
-    if (h == null || Number.isNaN(h)) return;
-    paint((h + 360) % 360);
+    if (typeof e.webkitCompassHeading === 'number' && !Number.isNaN(e.webkitCompassHeading)) return aplicarSensor(e.webkitCompassHeading);
+    if (absolutoVisto) return;
+    if (e.absolute === true && typeof e.alpha === 'number') aplicarSensor(360 - e.alpha);
   }
 
+  let avisoTimer = null;
   async function start() {
     if (running) return;
     try {
@@ -88,13 +119,13 @@ export function compassView() {
         if (r !== 'granted') throw new Error('Permiso denegado');
       }
       if (!('DeviceOrientationEvent' in window)) throw new Error('Sin API de orientación');
-      window.addEventListener('deviceorientationabsolute', onOrient, true);
+      window.addEventListener('deviceorientationabsolute', onAbsoluto, true);
       window.addEventListener('deviceorientation', onOrient, true);
       running = true;
       info.innerHTML = `<div class="blk-note">Sensor activo. Calibra moviendo el móvil en forma de 8 durante unos segundos. Aléjate de metales, imanes, coches y electrónica: desvían la lectura.</div>`;
-      setTimeout(() => {
-        if (degEl.textContent === '—') {
-          info.innerHTML = `<div class="blk-warn">El navegador no está entregando datos de orientación. Usa el modo manual y los métodos naturales que se explican más abajo.</div>`;
+      avisoTimer = setTimeout(() => {
+        if (!conDatos) {
+          info.innerHTML = `<div class="blk-warn">El navegador no está entregando un rumbo referido al norte. Usa el modo manual y los métodos naturales que se explican más abajo.</div>`;
         }
       }, 2500);
     } catch (err) {
@@ -110,28 +141,42 @@ export function compassView() {
     toast(locked == null ? 'Rumbo liberado' : `Rumbo fijado en ${Math.round(locked)}° · inverso ${Math.round((locked + 180) % 360)}°`);
   });
 
-  n.querySelector('#cp-manual').addEventListener('click', () => {
+  /* Modo manual: los listeners de arrastre se registran una sola vez y solo
+     actúan mientras el modo está activo. */
+  let dragging = false, startX = 0, startDeg = 0;
+  const c = n.querySelector('.compass');
+  const down = (e) => { if (!manual) return; dragging = true; startX = e.clientX; startDeg = manualDeg; };
+  const move = (e) => {
+    if (!manual || !dragging) return;
+    manualDeg = (startDeg + (e.clientX - startX) * 0.7 + 360 * 4) % 360;
+    paint(manualDeg);
+    e.preventDefault();
+  };
+  const up = () => { dragging = false; };
+  c.addEventListener('pointerdown', down);
+  window.addEventListener('pointermove', move, { passive: false });
+  window.addEventListener('pointerup', up);
+
+  const botonManual = n.querySelector('#cp-manual');
+  botonManual.addEventListener('click', () => {
     manual = !manual;
+    botonManual.setAttribute('aria-pressed', String(manual));
+    c.classList.toggle('manual', manual);
     if (manual) {
       info.innerHTML = `<div class="blk-note">Modo manual: arrastra la rosa para alinearla con el norte que hayas determinado por el sol, las estrellas o el terreno. Después podrás leer rumbos sobre ella.</div>`;
-      let dragging = false, startX = 0, startDeg = 0;
-      const c = n.querySelector('.compass');
-      const down = (e) => { dragging = true; startX = (e.touches ? e.touches[0].clientX : e.clientX); startDeg = manualDeg; };
-      const move = (e) => {
-        if (!dragging) return;
-        const x = (e.touches ? e.touches[0].clientX : e.clientX);
-        manualDeg = (startDeg + (x - startX) * 0.7 + 360 * 4) % 360;
-        paint(manualDeg);
-        e.preventDefault();
-      };
-      const up = () => { dragging = false; };
-      c.addEventListener('pointerdown', down);
-      window.addEventListener('pointermove', move, { passive: false });
-      window.addEventListener('pointerup', up);
       paint(manualDeg);
     } else {
       info.innerHTML = '';
+      suave = null;
     }
+  });
+
+  alSalir(() => {
+    window.removeEventListener('deviceorientationabsolute', onAbsoluto, true);
+    window.removeEventListener('deviceorientation', onOrient, true);
+    window.removeEventListener('pointermove', move);
+    window.removeEventListener('pointerup', up);
+    clearTimeout(avisoTimer);
   });
 
   n.querySelector('#cp-gps').addEventListener('click', () => {

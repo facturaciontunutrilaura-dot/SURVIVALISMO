@@ -35,7 +35,7 @@
    ========================================================================= */
 
 import * as store from './store.js';
-import { el, esc, toast, uid, fmtBytes } from './ui.js';
+import { el, esc, toast, uid, fmtBytes, alSalir } from './ui.js';
 import * as ubi from './ubicacion.js';
 
 let L = null;
@@ -263,6 +263,7 @@ export async function mapView() {
   const map = Lf.map(n.querySelector('#map'), { zoomControl: true, attributionControl: true })
     .setView([40.2, -3.7], 6);
   map.attributionControl.setPrefix('Leaflet');
+  alSalir(() => map.remove());
 
   /* Si el usuario ha indicado su provincia (Riesgos → Mi zona), el mapa se
      abre sobre ella y la resalta. Si no, muestra toda España. */

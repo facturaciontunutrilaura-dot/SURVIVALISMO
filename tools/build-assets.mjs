@@ -123,6 +123,18 @@ function walk(dir, base = '') {
 }
 
 const list = ['./', ...walk(PUB)].sort();
+
+/* ------------------- Versión única: index.js → sw.js -------------------
+   La versión se escribe en un solo sitio (data/content/index.js). El Service
+   Worker no puede importar ese módulo, así que el build la copia en sw.js. */
+const idxSrc = fs.readFileSync(path.join(PUB, 'data/content/index.js'), 'utf8');
+const VERSION = idxSrc.match(/export const VERSION = '([^']+)'/)?.[1];
+if (!VERSION) throw new Error('No se encuentra VERSION en data/content/index.js');
+const swFile = path.join(PUB, 'sw.js');
+const swSrc = fs.readFileSync(swFile, 'utf8');
+const swNuevo = swSrc.replace(/const VERSION = '[^']+';/, `const VERSION = '${VERSION}';`);
+if (swNuevo !== swSrc) fs.writeFileSync(swFile, swNuevo);
+console.log(`\nVersión ${VERSION} (sw.js sincronizado)`);
 fs.writeFileSync(path.join(PUB, 'precache-manifest.json'), JSON.stringify(list, null, 2));
 
 let total = 0;

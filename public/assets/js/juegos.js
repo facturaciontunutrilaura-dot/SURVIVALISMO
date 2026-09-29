@@ -2,7 +2,7 @@
    juegos.js — Juegos offline y Modo Calma (sección PSICOLOGÍA)
    Todo funciona sin conexión. Las estadísticas se guardan en IndexedDB.
    ========================================================================= */
-import { el, esc, toast } from './ui.js';
+import { el, esc, toast, alSalir } from './ui.js';
 import * as store from './store.js';
 import { MEMORY_CARTAS, QUIZ, QUIZ_CATEGORIAS, DIFICULTAD, RESPIRACIONES, GROUNDING, CALMA_AVISO } from '../../data/content/juegos.js';
 
@@ -427,6 +427,10 @@ export function modoCalma() {
     }, 1000);
   });
 
+  // Al cambiar de pestaña o de pantalla se para el temporizador y se libera
+  // el wake lock: si no, seguirían activos en segundo plano.
+  n.destruir = parar;
+
   n.querySelector('#ca-gr').innerHTML = GROUNDING.map((g) => `
     <details><summary>${esc(g.t)}</summary><div>
       <p class="muted">${esc(g.desc)}</p>
@@ -437,7 +441,7 @@ export function modoCalma() {
 }
 
 /* --------------------------- Vista de la sección --------------------------- */
-export function juegosView() {
+export function juegosView(inicial) {
   const n = el(`<div>
     <div class="blk-note">Los juegos no son solo entretenimiento. En un aislamiento prolongado, y muy especialmente con niños o adolescentes, tener actividades sencillas que ocupen la atención reduce el estrés, el aburrimiento y la tensión del grupo. Todo funciona sin conexión y sin gastar apenas batería.</div>
     <div class="tabs" role="tablist" id="jg-tabs">
@@ -451,11 +455,15 @@ export function juegosView() {
 
   const body = n.querySelector('#jg-body');
   const vistas = { ttt: tresEnRaya, mem: memory, ret: reto, cal: modoCalma };
-  const pinta = (t) => { body.replaceChildren(vistas[t]()); };
-  n.querySelectorAll('#jg-tabs button').forEach((b) => b.addEventListener('click', () => {
-    n.querySelectorAll('#jg-tabs button').forEach((x) => x.setAttribute('aria-selected', String(x === b)));
-    pinta(b.dataset.t);
-  }));
-  pinta('ttt');
+  const destruir = () => body.firstElementChild?.destruir?.();
+  const pinta = (t) => {
+    destruir();
+    body.replaceChildren(vistas[t]());
+    n.querySelectorAll('#jg-tabs button').forEach((x) => x.setAttribute('aria-selected', String(x.dataset.t === t)));
+  };
+  n.querySelectorAll('#jg-tabs button').forEach((b) => b.addEventListener('click', () => pinta(b.dataset.t)));
+  alSalir(destruir);
+  // '#/sec/juegos/calma' abre directamente el modo calma.
+  pinta({ calma: 'cal', memory: 'mem', reto: 'ret' }[inicial] || 'ttt');
   return n;
 }

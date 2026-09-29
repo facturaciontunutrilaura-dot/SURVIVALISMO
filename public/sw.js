@@ -12,62 +12,24 @@ const VERSION = '1.5.0';
 const STATIC = `survival-static-v${VERSION}`;
 const RUNTIME = `survival-runtime-v${VERSION}`;
 
-const CORE = [
-  './',
-  './index.html',
-  './manifest.webmanifest',
-  './assets/css/app.css',
-  './assets/js/app.js',
-  './assets/js/ui.js',
-  './assets/js/store.js',
-  './assets/js/calc.js',
-  './assets/js/compass.js',
-  './assets/js/maps.js',
-  './assets/js/juegos.js',
-  './assets/js/riesgos.js',
-  './assets/js/familia.js',
-  './assets/js/sync.js',
-  './assets/js/audio.js',
-  './assets/js/ubicacion.js',
-  './assets/vendor/leaflet/leaflet.js',
-  './assets/vendor/leaflet/leaflet.css',
-  './assets/vendor/leaflet/images/marker-icon.png',
-  './assets/vendor/leaflet/images/marker-icon-2x.png',
-  './assets/vendor/leaflet/images/marker-shadow.png',
-  './assets/vendor/leaflet/images/layers.png',
-  './assets/vendor/leaflet/images/layers-2x.png',
-  './data/content/index.js',
-  './data/content/sources.js',
-  './data/content/emergencias.js',
-  './data/content/art-recursos.js',
-  './data/content/art-tecnicas.js',
-  './data/content/art-preparacion.js',
-  './data/content/art-territorio.js',
-  './data/content/comunicaciones.js',
-  './data/content/checklists.js',
-  './data/content/cursos.js',
-  './data/content/juegos.js',
-  './data/content/riesgos.js',
-  './data/content/familia.js',
-  './data/content/territorios.js',
-  './data/content/territorio-idx.js',
-  './data/geo/es-provincias.geojson',
-  './data/geo/es-ccaa.geojson',
-  './data/geo/avila-municipios.geojson',
-  './data/geo/avila-centroides.geojson',
-  './icons/icon-192.png',
-  './icons/icon-512.png',
-  './icons/maskable-512.png',
-  './precache-manifest.json',
-];
+/* La lista de recursos NO se mantiene a mano aquí: la genera
+   tools/build-assets.mjs en precache-manifest.json recorriendo public/. Así
+   un archivo nuevo no puede quedarse fuera del modo offline por olvido.
+   VERSION también la escribe el build a partir de data/content/index.js. */
+const MANIFIESTO = './precache-manifest.json';
 
 self.addEventListener('install', (e) => {
   e.waitUntil(
     (async () => {
+      // Si no se puede leer el manifiesto, la instalación falla y el
+      // navegador conserva la versión anterior, que sigue funcionando.
+      const r = await fetch(MANIFIESTO, { cache: 'reload' });
+      if (!r.ok) throw new Error('No se pudo leer ' + MANIFIESTO);
+      const lista = [...new Set([...(await r.json()), './index.html', MANIFIESTO])];
       const cache = await caches.open(STATIC);
       // addAll falla entero si un recurso falla: los añadimos uno a uno.
       await Promise.all(
-        CORE.map((u) => cache.add(new Request(u, { cache: 'reload' })).catch((err) => console.warn('SW precache:', u, err)))
+        lista.map((u) => cache.add(new Request(u, { cache: 'reload' })).catch((err) => console.warn('SW precache:', u, err)))
       );
       self.skipWaiting();
     })()

@@ -382,6 +382,48 @@ export const ART_TECNICAS = [
     ],
     src: ['erc'],
   },
+  /* Infarto e ictus se han sacado del artículo de fracturas para que sean
+     accesibles directamente (y desde SOS). Solo contienen lo que el manual ya
+     recogía —signos del ictus, dolor torácico como urgencia, cómo avisar al
+     112 y cuándo empezar RCP—; lo que falta se declara como pendiente. */
+  {
+    id: 'pa-infarto',
+    sec: 'primeros-auxilios',
+    t: 'Infarto: dolor torácico',
+    pr: 'critico',
+    sum: 'El dolor torácico requiere atención profesional inmediata: llama al 112.',
+    tags: ['primeros auxilios', 'infarto', 'dolor torácico', 'dolor en el pecho', 'corazón', '112'],
+    body: [
+      { card: { t: 'SOSPECHA DE INFARTO', lines: ['Dolor torácico → atención profesional inmediata', 'Llama al 112', 'Si no responde y no respira con normalidad → RCP y DEA'] } },
+      { h: 'Qué hacer' },
+      { ol: [
+        'Llama al 112. No cuelgues hasta que te lo indiquen: pueden guiarte paso a paso.',
+        'Al llamar di qué ha pasado y desde cuándo, dónde estáis (dirección exacta o coordenadas) y qué le ocurre (consciencia, respiración).',
+        'Si deja de responder y no respira con normalidad: llama al 112 (manos libres), pide un desfibrilador e inicia RCP.',
+      ] },
+      { warn: 'FICHA PENDIENTE DE AMPLIAR Y VERIFICAR. Recoge solo lo que el manual ya contenía y estaba contrastado con sus fuentes. Faltan pautas específicas (otros signos de alarma, cómo colocar a la persona mientras llega la ayuda, medicación) que deben redactarse y revisarse contra las guías del European Resuscitation Council o de los servicios de emergencias antes de incluirlas. Mientras tanto, sigue las indicaciones del 112.' },
+    ],
+    src: ['erc', 'pc-es'],
+  },
+  {
+    id: 'pa-ictus',
+    sec: 'primeros-auxilios',
+    t: 'Ictus: reconocerlo y avisar',
+    pr: 'critico',
+    sum: 'Asimetría facial, debilidad en un brazo o dificultad para hablar. El tiempo es cerebro: 112 sin esperar.',
+    tags: ['primeros auxilios', 'ictus', 'derrame cerebral', 'accidente cerebrovascular', '112'],
+    body: [
+      { card: { t: 'SOSPECHA DE ICTUS', lines: ['Asimetría facial', 'Debilidad en un brazo', 'Dificultad para hablar', 'El tiempo es cerebro: 112 sin esperar'] } },
+      { h: 'Qué hacer' },
+      { ol: [
+        'Llama al 112 sin esperar. No cuelgues hasta que te lo indiquen: pueden guiarte paso a paso.',
+        'Al llamar di qué ha pasado y desde cuándo, dónde estáis (dirección exacta o coordenadas) y qué le ocurre (consciencia, respiración).',
+        'Si deja de responder y no respira con normalidad: llama al 112 (manos libres), pide un desfibrilador e inicia RCP.',
+      ] },
+      { warn: 'FICHA PENDIENTE DE AMPLIAR Y VERIFICAR. Recoge solo lo que el manual ya contenía y estaba contrastado con sus fuentes. Faltan pautas específicas (otros signos, qué hacer mientras llega la ayuda) que deben redactarse y revisarse contra las guías del European Resuscitation Council o de los servicios de emergencias antes de incluirlas. Mientras tanto, sigue las indicaciones del 112.' },
+    ],
+    src: ['erc', 'pc-es'],
+  },
   {
     id: 'pa-termicas',
     sec: 'primeros-auxilios',
@@ -469,7 +511,7 @@ export const ART_TECNICAS = [
         'NO provoques el vómito salvo indicación expresa: con cáusticos y derivados del petróleo, el vómito causa más daño.',
         'Monóxido de carbono: saca a la persona al aire libre, ventila, llama al 112 y no vuelvas a entrar. Los síntomas —dolor de cabeza, náuseas, confusión— se confunden con una gripe.',
       ] },
-      { warn: 'Requiere atención profesional inmediata: pérdida de consciencia, dificultad respiratoria, dolor torácico, hemorragia que no cede, fractura abierta o deformidad evidente, quemadura extensa, convulsión, sospecha de ictus (asimetría facial, debilidad en un brazo, dificultad para hablar) o de infarto. Ante un ictus, el tiempo es cerebro: 112 sin esperar.' },
+      { warn: 'Requiere atención profesional inmediata: pérdida de consciencia, dificultad respiratoria, dolor torácico, hemorragia que no cede, fractura abierta o deformidad evidente, quemadura extensa, convulsión, o sospecha de ictus o de infarto (tienen ficha propia en Primeros auxilios y en SOS).' },
     ],
     src: ['erc', 'pc-es'],
   },

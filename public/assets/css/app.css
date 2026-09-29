@@ -380,6 +380,8 @@ body.emg { --bg: #0A0E06; }
   border: 2px solid var(--olive2); border-radius: 50%; background: radial-gradient(circle, var(--panel2), var(--bg2));
 }
 .compass .rose { position: absolute; inset: 0; transition: transform .12s linear; }
+/* En modo manual la rosa se arrastra: sin esto el navegador desplaza la página. */
+.compass.manual { touch-action: none; }
 .compass .rose svg { width: 100%; height: 100%; display: block; }
 .compass .needle-fixed {
   position: absolute; left: 50%; top: 4px; transform: translateX(-50%);
@@ -397,9 +399,120 @@ body.emg { --bg: #0A0E06; }
 .compass .read b { display: block; font-size: 2rem; color: var(--txt); line-height: 1.1; }
 .compass .read span { display: block; font-size: .82rem; color: var(--olive3); letter-spacing: .14em; }
 
+/* ------------------------------ SOS ------------------------------ */
+.vh { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Botón de llamada al 112. Rojo pleno: es el único elemento de la app con
+   este color de fondo, para que se reconozca al instante. Contraste del texto
+   blanco sobre #B3261E ≈ 6,5:1. */
+.btn-112 {
+  display: flex; align-items: center; justify-content: center; gap: 14px;
+  width: 100%; min-height: 76px; padding: 12px 18px;
+  background: #B3261E; color: #fff; border: 2px solid #E8715F; border-radius: 10px;
+  text-decoration: none; box-shadow: 0 4px 14px rgba(0, 0, 0, .45);
+  -webkit-user-select: none; user-select: none;
+}
+.btn-112:active { transform: translateY(1px); background: #9A1F18; }
+.btn-112:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+.btn-112 .ic { font-size: 2rem; line-height: 1; }
+.btn-112 .tx { display: flex; flex-direction: column; line-height: 1.1; }
+.btn-112 b { font-family: var(--ff); text-transform: uppercase; letter-spacing: .06em; font-size: 1.55rem; }
+.btn-112 small { font-size: .85rem; opacity: .92; margin-top: 3px; }
+.btn-112.compacto { min-height: 54px; gap: 10px; border-radius: 8px; }
+.btn-112.compacto .ic { font-size: 1.4rem; }
+.btn-112.compacto b { font-size: 1.2rem; }
+html[data-theme='night'] .btn-112 { background: #7A1D16; border-color: #A4473A; color: #F3D3CC; }
+
+.sos-llamar { margin-bottom: 18px; }
+.sos-nota { margin: 8px 2px 10px; font-size: .9rem; color: var(--dim); }
+.solo-escritorio { display: none; }
+@media (hover: hover) and (pointer: fine) { .solo-escritorio { display: block; } }
+.pos112 { background: var(--panel); border: 1px solid var(--line2); border-radius: var(--r); padding: 10px 12px; margin-top: 8px; }
+.pos112 .big { font-size: 1.45rem; font-weight: 700; letter-spacing: .02em; margin-bottom: 4px; word-break: break-all; }
+
+.sos h2 { margin-top: 6px; }
+.sos-meds { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.sos-meds .sos-med:first-child { grid-column: 1 / -1; }
+/* Móviles: una columna de botones anchos. Con dos columnas, palabras como
+   ATRAGANTAMIENTO no caben sin partirse, y en una columna todo queda al
+   alcance del pulgar. */
+@media (max-width: 479px) {
+  .sos-meds { grid-template-columns: 1fr; gap: 8px; }
+  .sos-meds .sos-med { min-height: 64px; }
+}
+/* Pantallas anchas: dos tarjetas arriba (las más graves) y tres abajo. */
+@media (min-width: 760px) {
+  .sos-meds { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .sos-meds .sos-med { grid-column: span 2; }
+  .sos-meds .sos-med:nth-child(-n+2) { grid-column: span 3; }
+}
+.sos-med {
+  display: flex; align-items: center; gap: 10px; min-height: 76px; padding: 12px;
+  background: #3A1712; border: 1px solid #7A3326; border-left: 4px solid #E8715F; border-radius: 8px;
+  color: #FBE9E4; text-decoration: none;
+}
+.sos-med:active { background: #4A1E17; }
+.sos-med:focus-visible, .sos .row:focus-visible, .tabs button:focus-visible { outline: 3px solid var(--olive3); outline-offset: 2px; }
+.sos-med .ic { font-size: 1.8rem; line-height: 1; flex: 0 0 auto; }
+.sos-med .tx { display: flex; flex-direction: column; min-width: 0; }
+.sos-med b {
+  font-family: var(--ff); text-transform: uppercase; letter-spacing: .01em; line-height: 1.15;
+  font-size: clamp(.92rem, 3.9vw, 1.08rem);
+  /* Nunca cortar una palabra a mitad: si no cabe, guion silábico (lang="es"). */
+  overflow-wrap: normal; word-break: normal; hyphens: auto; -webkit-hyphens: auto;
+}
+.sos-med small { font-size: .78rem; color: #E6BDB3; line-height: 1.3; margin-top: 3px; }
+html[data-theme='night'] .sos-med { background: #24110D; border-color: #4A2119; border-left-color: #8A4336; color: #D9B9AE; }
+.sos-mas { display: inline-block; margin: 10px 2px 18px; color: var(--olive3); font-weight: 700; min-height: 44px; line-height: 44px; }
+.sos-grupo { margin: 14px 0 6px; font-size: .9rem; color: var(--dim); letter-spacing: .08em; }
+.sos .row .ric { font-size: 1.35rem; width: 1.6em; text-align: center; flex: 0 0 auto; }
+
+/* Barra fija con el 112, justo encima de la navegación inferior: al alcance
+   del pulgar mientras se leen los pasos de una ficha. */
+.sos-bar {
+  position: fixed; left: 0; right: 0; z-index: 45;
+  bottom: calc(58px + env(safe-area-inset-bottom));
+  padding: 8px var(--pad); background: linear-gradient(0deg, var(--bg) 70%, transparent);
+}
+.sos-bar .btn-112 { max-width: calc(var(--maxw) - 2 * var(--pad)); margin: 0 auto; }
+body.emg #app { padding-bottom: 170px; }
+/* Móvil en horizontal: poca altura. La barra se compacta para no tapar los pasos. */
+@media (max-height: 500px) {
+  .sos-bar { padding: 4px var(--pad); }
+  .sos-bar .btn-112 { min-height: 42px; }
+  .sos-bar .btn-112 b { font-size: 1rem; }
+  body.emg #app { padding-bottom: 130px; }
+}
+@media print { .sos-bar, .btn-112, [data-pos112] { display: none !important; } }
+
+/* Pestañas de SOS: rejilla, nunca desplazamiento horizontal. En móvil
+   3 columnas × 2 filas; en pantallas anchas, una sola fila. */
+.tabs.tabs-sos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; overflow: visible; }
+.tabs.tabs-sos button { min-height: 50px; padding: 6px 4px; white-space: normal; line-height: 1.15; font-size: .8rem; letter-spacing: .03em; }
+.tabs.tabs-sos button.no { color: #F0A89C; border-color: #6A2A20; }
+@media (min-width: 700px) { .tabs.tabs-sos { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+@media (max-width: 330px) { .tabs.tabs-sos { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
 /* ------------------------------ BUSCADOR ------------------------------ */
 .searchbar { position: sticky; top: 62px; z-index: 30; background: var(--bg); padding-bottom: 10px; }
-.sr-empty { color: var(--dim2); font-size: .9rem; padding: 14px 0; }
+.sr-empty { color: var(--dim); font-size: .95rem; padding: 10px 0; }
+.sugs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.sugs .btn { text-transform: none; letter-spacing: 0; font-family: var(--ft); font-weight: 600; }
+.filtros-busq { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.filtros-busq:empty { display: none; }
+.filtros-busq button {
+  min-height: 38px; padding: 4px 12px; border-radius: 999px; cursor: pointer;
+  background: var(--panel); border: 1px solid var(--line2); color: var(--dim); font: inherit; font-size: .85rem;
+}
+.filtros-busq button span { font-family: var(--fb); font-size: .75rem; opacity: .8; margin-left: 2px; }
+.filtros-busq button[aria-pressed='true'] { background: var(--olive); border-color: var(--olive2); color: #f2f1e6; }
+.filtros-busq button:focus-visible, .row.res:focus-visible { outline: 3px solid var(--olive3); outline-offset: 2px; }
+.row.res { align-items: flex-start; }
+.row.res .ric { font-size: 1.2rem; width: 1.5em; text-align: center; margin-top: 2px; flex: 0 0 auto; }
+.row.res .chev { align-self: center; }
+.row.res .rt .cat { font-family: var(--fb); font-size: .64rem; letter-spacing: .1em; text-transform: uppercase; color: var(--olive3); margin-bottom: 2px; }
+.row.res .rt .frag { font-size: .82rem; color: var(--dim); margin-top: 3px; line-height: 1.4; }
+.row.res .rt .por { font-size: .7rem; color: var(--dim2); margin-top: 4px; font-style: italic; }
 mark { background: rgba(156, 183, 104, .28); color: inherit; padding: 0 2px; }
 
 /* ------------------------------ BOTTOM NAV ------------------------------ */

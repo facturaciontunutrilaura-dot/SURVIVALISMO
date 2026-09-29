@@ -12,7 +12,7 @@ Aplicación web progresiva (PWA) sin dependencias externas en tiempo de ejecuci�
 npm install          # instala leaflet, es-atlas y topojson-client (solo para el build)
 npm run build        # genera geodatos, iconos y el manifiesto de precache
 npm run dev          # servidor local en http://localhost:8080
-npm test             # 193 pruebas end-to-end (146 de app + 47 de sincronización) con Playwright, incluida la prueba offline real
+npm test             # 257 pruebas: 22 unitarias (buscador, datos, build) + 188 end-to-end de app + 47 de sincronización, incluida la prueba offline real
 ```
 
 No hay bundler, ni transpilador, ni framework. El directorio `public/` es la
@@ -34,6 +34,7 @@ survival-offline/
 │   ├── build-geo.mjs            Genera los GeoJSON offline desde es-atlas (IGN)
 │   ├── build-assets.mjs         Genera iconos PNG y precache-manifest.json
 │   ├── serve.mjs                Servidor estático de desarrollo
+│   ├── test-unit.mjs            Pruebas unitarias sin navegador (node:test): buscador, datos, build
 │   ├── test.mjs                 Suite end-to-end de la app (Playwright)
 │   └── test-sync.mjs            Suite de sincronización (Supabase simulado)
 └── public/                      ← esto es la app; es lo que se publica
@@ -552,14 +553,54 @@ descarga.
 ### 7.1 Publicar una versión nueva
 
 1. Edita los ficheros de `public/data/content/`.
-2. Sube `VERSION` en `public/data/content/index.js` **y** en `public/sw.js`
-   (deben coincidir; es lo que fuerza la renovación de caché).
+2. Sube `VERSION` en `public/data/content/index.js`. Es el único sitio: el
+   build la copia en `public/sw.js` (es lo que fuerza la renovación de caché)
+   y regenera `precache-manifest.json`, que es la lista que precachea el
+   Service Worker. Una prueba falla si ambas cosas no están al día.
 3. Actualiza `FECHA_CONSULTA` en `public/data/content/sources.js`.
 4. `npm run build && npm test`
 5. Despliega.
 
 Los usuarios con la versión anterior siguen funcionando con normalidad; la nueva
 se aplica la próxima vez que abran la app con Internet.
+
+### 7.1 bis SOS: emergencias sanitarias
+
+Los cinco accesos sanitarios de SOS (parada cardíaca, hemorragia grave,
+atragantamiento, infarto, ictus) se definen en `SOS_SANITARIAS`
+(`public/data/content/emergencias.js`). **No duplican texto médico**: cada uno
+apunta a un artículo de Primeros auxilios (`art`) y SOS lo muestra con su
+cabecera, el botón de llamada y la barra fija del 112. Para añadir otro, crea o
+elige el artículo y añade una entrada.
+
+Infarto e ictus tienen artículo propio (`pa-infarto`, `pa-ictus`) construido
+**solo con lo que el manual ya contenía** (signos del ictus, dolor torácico
+como urgencia, aviso al 112 y cuándo iniciar RCP). Llevan un aviso de que están
+pendientes de ampliar y verificar contra las guías del ERC: no se ha añadido
+contenido médico nuevo.
+
+El botón del 112 es un enlace estándar `tel:112`: el sistema abre el marcador
+y es la persona quien confirma. Sin JavaScript, sin servicios externos; en un
+dispositivo sin teléfono no hace nada o ofrece una app, sin errores.
+
+`GRUPOS_EMERGENCIA` organiza el resto de escenarios en la pantalla SOS.
+
+### 7.1 ter Buscador y sinónimos
+
+La lógica está en `public/assets/js/search.js` (módulo puro, probado con
+`npm run test:unit`) y los datos en `public/data/content/sinonimos.js`:
+
+- **Normalización**: minúsculas, sin tildes y singular/plural.
+- **Palabras vacías** (`STOPWORDS`): lista corta que no puntúa ("de", "mucho"…).
+- **Sinónimos** (`SINONIMOS`): grupos de formas equivalentes. Las expresiones
+  de varias palabras ("corte de luz") se detectan antes que las palabras
+  sueltas. `solo_frase` y `ambiguas` evitan asociaciones falsas (ver el
+  comentario del archivo). Añade solo equivalencias reales.
+- **Ranking**: título ≫ resumen/etiquetas ≫ texto; la forma escrita puntúa
+  más que un sinónimo; se premia cubrir todos los conceptos; ante la duda van
+  primero SOS y los escenarios.
+- **Sin resultados**: corrección de erratas en local (distancia de edición);
+  si hay una corrección clara, se muestran sus resultados directamente.
 
 ### 7.2 Añadir un escenario de emergencia
 

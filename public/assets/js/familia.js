@@ -7,7 +7,7 @@
    ninguna ruta precargada. Se guarda solo en el dispositivo (IndexedDB,
    almacén 'kv'), salvo que el usuario active la sincronización opcional.
    ========================================================================= */
-import { el, esc, toast, uid } from './ui.js';
+import { el, esc, toast, uid, alSalir } from './ui.js';
 import * as store from './store.js';
 import * as ubi from './ubicacion.js';
 import {
@@ -593,6 +593,7 @@ export async function mapaFamiliarView() {
 
   const map = L.map(n.querySelector('#map'), { zoomControl: true }).setView([40.2, -3.7], 6);
   map.attributionControl.setPrefix('Leaflet');
+  alSalir(() => map.remove());
   M.crearCapaRaster(L).addTo(map);
 
   try {

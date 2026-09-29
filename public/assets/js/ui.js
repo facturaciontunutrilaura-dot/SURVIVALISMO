@@ -70,6 +70,19 @@ export function uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
 
+/* ------------------------- Ciclo de vida de las vistas -------------------------
+   Una vista que deja algo vivo fuera de su propio DOM (un mapa de Leaflet,
+   sensores, temporizadores, wake lock, listeners en window) lo registra con
+   alSalir(). El router ejecuta limpiarVista() antes de pintar la siguiente,
+   así nada sigue consumiendo batería en segundo plano. */
+const limpiezas = [];
+export function alSalir(fn) { limpiezas.push(fn); }
+export function limpiarVista() {
+  while (limpiezas.length) {
+    try { limpiezas.pop()(); } catch (e) { console.warn('limpieza de vista:', e); }
+  }
+}
+
 export function confirmar(msg) {
   return window.confirm(msg);
 }

@@ -15,6 +15,9 @@ Alcance: fases 1–3 (diagnóstico, propuesta, priorización). **No se ha modifi
 | 29/09/2026 | La copia de seguridad incluye el plan familiar (`kv`) | A1, E5 |
 | 29/09/2026 | El mapa ya no queda en blanco con conexión pero sin teselas; un único marcador de posición; teselas corruptas gestionadas | A2, A3 (parcial: sin seguimiento continuo), A9, M1, M3, M9 |
 | 29/09/2026 | Importación de GPX además de GeoJSON | parte de D6 |
+| 29/09/2026 | **Fase 1 completada**: brújula solo con rumbo absoluto, compensación de pantalla y suavizado; limpieza de mapas, sensores, temporizadores y wake lock al salir de cada vista; enlace directo al modo calma; sin recargas completas; versión y precache con una sola fuente | A4, A5, A7, A8, A10 |
+| 29/09/2026 | **Fase 2 SOS**: botón `tel:112` y barra fija; cinco accesos sanitarios que reutilizan los artículos; infarto e ictus en fichas propias (solo contenido existente, marcadas como pendientes de ampliar); protocolos agrupados; pestañas en rejilla accesibles por teclado; pantalla encendida en SOS; posición para el 112 | B1, B2, B5, B8, S1–S7 |
+| 29/09/2026 | **Fase 2 búsqueda**: módulo `search.js` con normalización, raíces, palabras vacías, sinónimos estructurados, ranking por campos, fragmento resaltado, motivo, filtros, consulta en la URL y corrección de erratas | §1.8, H3, F1 |
 
 ---
 

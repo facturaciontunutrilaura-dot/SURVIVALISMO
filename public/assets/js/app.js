@@ -3,11 +3,12 @@
    ========================================================================= */
 import {
   VERSION, FECHA_CONTENIDO, SECCIONES, PRIORIDADES, ARTICULOS, ARTICULOS_MAP,
-  articulosDeSeccion, INDICE, EMERGENCIAS, EMERGENCIAS_MAP, CHECKLISTS, CURSOS,
+  articulosDeSeccion, EMERGENCIAS, EMERGENCIAS_MAP, CHECKLISTS, CURSOS,
+  SOS_SANITARIAS, SOS_SANITARIAS_MAP, GRUPOS_EMERGENCIA,
   FRECUENCIAS, SOURCES, SOURCE_MAP, DISCLAIMER,
 } from '../../data/content/index.js';
 import * as store from './store.js';
-import { $, $$, el, esc, toast, topbar, renderBlocks, prBadge, fmtBytes, uid } from './ui.js';
+import { $, $$, el, esc, toast, topbar, renderBlocks, prBadge, fmtBytes, uid, limpiarVista, alSalir } from './ui.js';
 import { CALCS, mountTools } from './calc.js';
 import { compassView } from './compass.js';
 
@@ -71,22 +72,128 @@ function vHome() {
 }
 
 /* ------------------------------ EMERGENCIA ------------------------------ */
-function vEmergenciaLista() {
-  const rows = EMERGENCIAS.map((e) => `
-    <a class="row pr-${e.pr}" href="#/emergencia/${e.id}">
-      <span style="font-size:1.35rem">${e.ic}</span>
-      <div class="rt"><b>${esc(e.t)}</b><span>${esc(e.card[0])}</span></div>
-      <span class="chev">›</span>
-    </a>`).join('');
+/* Jerarquía de SOS, de arriba abajo:
+     1. Cómo llamar a emergencias (tel:112, lo gestiona el sistema operativo).
+     2. Qué hacer ante una emergencia sanitaria (cinco accesos grandes).
+     3. El resto de protocolos, agrupados.
+   El enlace tel: no usa JavaScript: en un móvil abre el marcador con el 112
+   escrito y es la persona quien confirma la llamada; en un dispositivo sin
+   teléfono el sistema lo ignora u ofrece una app, sin errores. */
+function boton112(compacto = false) {
+  return `<a class="btn-112${compacto ? ' compacto' : ''}" href="tel:112" aria-label="Llamar al 112, teléfono de emergencias">
+    <span class="ic" aria-hidden="true">📞</span>
+    <span class="tx"><b>Llamar al 112</b>${compacto ? '' : '<small>Emergencias · gratuito</small>'}</span>
+  </a>`;
+}
 
-  return el(`<div>
-    ${topbar('Modo emergencia', 'Selecciona el escenario')}
-    <div class="emg-hd">
-      <h1>🚨 MODO EMERGENCIA</h1>
-      <p>Llama al <b>112</b> si hay riesgo para la vida. Sigue siempre las instrucciones de las autoridades.</p>
-    </div>
-    <div class="list">${rows}</div>
-  </div>`, { emg: true });
+/* Barra fija inferior con el 112 en las fichas: se alcanza con el pulgar
+   sin volver arriba mientras se leen los pasos. */
+function barra112() {
+  return `<div class="sos-bar">${boton112(true)}</div>`;
+}
+
+/** Posición para dictar al 112: se pide solo cuando el usuario pulsa. */
+function montarPosicion112(n) {
+  const b = n.querySelector('[data-pos112]');
+  if (!b) return;
+  const out = n.querySelector('#pos112');
+  b.addEventListener('click', () => {
+    if (!navigator.geolocation) { out.innerHTML = '<div class="blk-warn">Este dispositivo no ofrece ubicación.</div>'; return; }
+    out.innerHTML = '<div class="muted">Obteniendo posición… (sin cobertura puede tardar)</div>';
+    navigator.geolocation.getCurrentPosition((p) => {
+      const { latitude: la, longitude: lo, accuracy: ac } = p.coords;
+      const txt = `${la.toFixed(5)}, ${lo.toFixed(5)}`;
+      out.innerHTML = `<div class="pos112"><div class="mono big">${esc(txt)}</div>
+        <div class="muted">Precisión ±${Math.round(ac)} m · Díctalo dígito a dígito. La longitud oeste es NEGATIVA.</div>
+        <button class="btn sm ghost" type="button" data-copiar>Copiar</button></div>`;
+      out.querySelector('[data-copiar]').addEventListener('click', async () => {
+        try { await navigator.clipboard.writeText(txt); toast('Coordenadas copiadas'); } catch { toast(txt); }
+      });
+    }, (e) => {
+      out.innerHTML = `<div class="blk-warn">No se pudo obtener la posición (${esc(e.message || 'sin permiso')}). Describe dónde estás: calle, punto kilométrico o referencias visibles.</div>`;
+    }, { enableHighAccuracy: true, timeout: 20000, maximumAge: 30000 });
+  });
+}
+
+function resumenSanitaria(a) {
+  return a?.body?.find((x) => x.card)?.card.lines[0] || (a?.sum || '').split('. ')[0];
+}
+
+function vEmergenciaLista() {
+  const sanitarias = SOS_SANITARIAS.map((s) => {
+    const a = ARTICULOS_MAP[s.art];
+    return `<a class="sos-med" href="#/emergencia/sanitaria/${s.id}">
+      <span class="ic" aria-hidden="true">${s.ic}</span>
+      <span class="tx"><b>${esc(s.t)}</b><small>${esc(resumenSanitaria(a))}</small></span>
+    </a>`;
+  }).join('');
+
+  const agrupados = new Set(GRUPOS_EMERGENCIA.flatMap((g) => g.ids));
+  const grupos = GRUPOS_EMERGENCIA.map((g) => ({
+    ...g,
+    items: g.id === 'general'
+      ? [...g.ids, ...EMERGENCIAS.map((e) => e.id).filter((id) => !agrupados.has(id))]
+      : g.ids,
+  }));
+  const fila = (e) => `<a class="row pr-${e.pr}" href="#/emergencia/${e.id}">
+      <span class="ric" aria-hidden="true">${e.ic}</span>
+      <div class="rt"><b>${esc(e.t)}</b><span>${esc(e.card[0])}</span></div>
+      <span class="chev" aria-hidden="true">›</span>
+    </a>`;
+  const protocolos = grupos.map((g) => {
+    const es = g.items.map((id) => EMERGENCIAS_MAP[id]).filter(Boolean);
+    return es.length ? `<h3 class="sos-grupo">${esc(g.t)}</h3><div class="list">${es.map(fila).join('')}</div>` : '';
+  }).join('');
+
+  const n = el(`<div class="sos">
+    ${topbar('SOS', 'Emergencias')}
+    <section class="sos-llamar" aria-labelledby="sos-h-llamar">
+      <h1 id="sos-h-llamar" class="vh">Llamar a emergencias</h1>
+      ${boton112()}
+      <p class="sos-nota">Si hay riesgo para la vida, llama primero. Sigue siempre las instrucciones de las autoridades.</p>
+      <p class="sos-nota solo-escritorio">Este dispositivo quizá no pueda hacer llamadas: marca el 112 desde un teléfono.</p>
+      <button class="btn ghost wide sm" type="button" data-pos112>📍 Mi posición para dar al 112</button>
+      <div id="pos112" aria-live="polite"></div>
+    </section>
+
+    <section aria-labelledby="sos-h-med">
+      <h2 id="sos-h-med">Emergencia sanitaria</h2>
+      <div class="sos-meds">${sanitarias}</div>
+      <a class="sos-mas" href="#/sec/primeros-auxilios">Más primeros auxilios ›</a>
+    </section>
+
+    <section aria-labelledby="sos-h-prot">
+      <h2 id="sos-h-prot">Otros protocolos</h2>
+      ${protocolos}
+    </section>
+  </div>`);
+  montarPosicion112(n);
+  return { node: n, emg: true };
+}
+
+/* Pestañas accesibles: rejilla que nunca oculta ninguna (en móvil 3×2,
+   en pantallas anchas una fila), con navegación por flechas. */
+function pestanas(n, pintar) {
+  const tabs = [...n.querySelectorAll('[role="tab"]')];
+  const activar = (b, foco = false) => {
+    tabs.forEach((x) => {
+      const on = x === b;
+      x.setAttribute('aria-selected', String(on));
+      x.tabIndex = on ? 0 : -1;
+    });
+    if (foco) b.focus();
+    pintar(b.dataset.t);
+  };
+  tabs.forEach((b, i) => {
+    b.addEventListener('click', () => activar(b));
+    b.addEventListener('keydown', (e) => {
+      const d = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+      if (d) { e.preventDefault(); activar(tabs[(i + d + tabs.length) % tabs.length], true); }
+      if (e.key === 'Home') { e.preventDefault(); activar(tabs[0], true); }
+      if (e.key === 'End') { e.preventDefault(); activar(tabs[tabs.length - 1], true); }
+    });
+  });
+  activar(tabs[0]);
 }
 
 function vEmergencia(id) {
@@ -94,50 +201,77 @@ function vEmergencia(id) {
   if (!e) return v404();
 
   const panel = (arr, cls = 'steps') => `<ol class="${cls}">${arr.map((i) => `<li>${esc(i)}</li>`).join('')}</ol>`;
+  const TABS = [
+    ['ahora', 'Ahora'], ['horas', 'Próximas horas'], ['dias', 'Próximos días'],
+    ['no', 'No hacer'], ['eq', 'Equipo'], ['ev', 'Evacuar o quedarse'],
+  ];
 
-  const n = el(`<div>
-    ${topbar(e.t, 'Modo emergencia', '#/emergencia')}
-    <div class="emg-hd"><h1>${e.ic} ${esc(e.t.toUpperCase())}</h1><p>Emergencias: 112</p></div>
+  const n = el(`<div class="sos">
+    ${topbar(e.t, 'SOS', '#/emergencia')}
+    <div class="emg-hd"><h1><span aria-hidden="true">${e.ic}</span> ${esc(e.t.toUpperCase())}</h1></div>
 
     <div class="qcard"><h4>TARJETA RÁPIDA</h4><ol>${e.card.map((l) => `<li>${esc(l)}</li>`).join('')}</ol></div>
 
-    <div class="tabs" role="tablist">
-      <button role="tab" data-t="ahora" aria-selected="true">Ahora</button>
-      <button role="tab" data-t="horas" aria-selected="false">Próximas horas</button>
-      <button role="tab" data-t="dias" aria-selected="false">Próximos días</button>
-      <button role="tab" data-t="no" class="no" aria-selected="false">No hacer</button>
-      <button role="tab" data-t="eq" aria-selected="false">Equipo</button>
-      <button role="tab" data-t="ev" aria-selected="false">Evacuar / refugiarse</button>
+    <div class="tabs tabs-sos" role="tablist" aria-label="Qué hacer">
+      ${TABS.map(([t, l]) => `<button role="tab" type="button" id="tab-${t}" aria-controls="emg-body" data-t="${t}"${t === 'no' ? ' class="no"' : ''} aria-selected="false">${t === 'no' ? '<span aria-hidden="true">✕ </span>' : ''}${l}</button>`).join('')}
     </div>
-    <div id="emg-body"></div>
+    <div id="emg-body" role="tabpanel" tabindex="0"></div>
 
     <div class="card">
       <h3>Fuentes</h3>
       <div>${e.src.map((s) => SOURCE_MAP[s] ? `<span class="tag">${esc(SOURCE_MAP[s].org)}</span>` : '').join('')}</div>
       <a class="btn ghost sm" href="#/sec/fuentes" style="margin-top:8px">Ver referencias completas</a>
     </div>
+    ${barra112()}
   </div>`);
 
   const body = n.querySelector('#emg-body');
   const paint = (t) => {
+    body.setAttribute('aria-labelledby', `tab-${t}`);
     if (t === 'ahora') body.innerHTML = `<h2>Primeros minutos</h2>${panel(e.ahora)}`;
     else if (t === 'horas') body.innerHTML = `<h2>Próximas horas</h2>${panel(e.horas)}`;
     else if (t === 'dias') body.innerHTML = `<h2>Próximos días</h2>${panel(e.dias)}`;
-    else if (t === 'no') body.innerHTML = `<h2>Errores peligrosos</h2>${panel(e.no, 'steps no')}`;
+    else if (t === 'no') body.innerHTML = `<h2>Errores peligrosos: no hacer</h2>${panel(e.no, 'steps no')}`;
     else if (t === 'eq') body.innerHTML = `<h2>Equipo útil</h2><ul>${e.eq.map((i) => `<li>${esc(i)}</li>`).join('')}</ul>`;
     else body.innerHTML = `<h2>Quedarse o evacuar</h2>
       <h3>Motivos para permanecer / confinarse</h3><ul>${e.ev.quedarse.map((i) => `<li>${esc(i)}</li>`).join('') || '<li>—</li>'}</ul>
       <h3>Motivos para evacuar</h3><ul>${e.ev.evacuar.map((i) => `<li>${esc(i)}</li>`).join('') || '<li>—</li>'}</ul>
       <div class="blk-note">${esc(e.ev.nota)}</div>`;
   };
-  n.querySelectorAll('.tabs button').forEach((b) =>
-    b.addEventListener('click', () => {
-      n.querySelectorAll('.tabs button').forEach((x) => x.setAttribute('aria-selected', String(x === b)));
-      paint(b.dataset.t);
-    })
-  );
-  paint('ahora');
+  pestanas(n, paint);
+  mantenerPantalla();
   return { node: n, emg: true };
+}
+
+/* Emergencia sanitaria: muestra el artículo de primeros auxilios (misma
+   fuente de datos) con la cabecera de SOS y el 112 siempre a mano. */
+function vSanitaria(id) {
+  const s = SOS_SANITARIAS_MAP[id];
+  const a = s && ARTICULOS_MAP[s.art];
+  if (!a) return v404();
+  const n = el(`<div class="sos">
+    ${topbar(s.t, 'SOS · Emergencia sanitaria', '#/emergencia')}
+    <div class="emg-hd"><h1><span aria-hidden="true">${s.ic}</span> ${esc(s.t.toUpperCase())}</h1><p>${esc(a.sum)}</p></div>
+    ${boton112()}
+    <div class="sp"></div>
+    ${renderBlocks(a.body)}
+    <div class="card">
+      <h3>Fuentes</h3>
+      <ul>${(a.src || []).map((x) => SOURCE_MAP[x] ? `<li><b>${esc(SOURCE_MAP[x].org)}</b> — ${esc(SOURCE_MAP[x].titulo)}</li>` : '').join('')}</ul>
+      <a class="btn ghost sm" href="#/art/${a.id}">Ver en Primeros auxilios</a>
+    </div>
+    ${barra112()}
+  </div>`);
+  mantenerPantalla();
+  return { node: n, emg: true };
+}
+
+/* En SOS la pantalla no debe apagarse mientras se leen los pasos. Se libera
+   al salir de la vista. Si el navegador no lo permite, no pasa nada. */
+function mantenerPantalla() {
+  let lock = null, vivo = true;
+  navigator.wakeLock?.request('screen').then((l) => { if (vivo) lock = l; else l.release().catch(() => {}); }).catch(() => {});
+  alSalir(() => { vivo = false; lock?.release?.().catch(() => {}); });
 }
 
 /* ------------------------------- ARTÍCULO ------------------------------- */
@@ -161,7 +295,7 @@ function vArticulo(id) {
 }
 
 /* ------------------------------- SECCIÓN ------------------------------- */
-async function vSeccion(id) {
+async function vSeccion(id, sub) {
   const s = secMap[id];
   if (!s) return v404();
 
@@ -174,7 +308,7 @@ async function vSeccion(id) {
   if (id === 'juegos') {
     const { juegosView } = await import('./juegos.js');
     const w = el(`<div>${topbar(s.t, s.desc)}<h1>${s.ic} ${esc(s.t)}</h1></div>`);
-    w.appendChild(juegosView());
+    w.appendChild(juegosView(sub));
     return w;
   }
   if (id === 'audio') {
@@ -215,7 +349,7 @@ async function vSeccion(id) {
     <p class="muted">Actividades para reducir el estrés, el aburrimiento y la tensión durante un aislamiento prolongado, especialmente con niños o adolescentes. Todo funciona sin conexión.</p>
     <div class="btnrow">
       <a class="btn sm" href="#/sec/juegos">🎮 Abrir juegos</a>
-      <a class="btn sm ghost" href="#/sec/juegos">🧘 Modo calma</a>
+      <a class="btn sm ghost" href="#/sec/juegos/calma">🧘 Modo calma</a>
     </div></div>`);
   if (id === 'avila') extra.push(`<div class="card"><h3>Herramientas de la guía de Ávila</h3>
     <div class="btnrow">
@@ -413,7 +547,8 @@ async function vChecklist(id) {
   n.querySelector('#ck-clr').addEventListener('click', async () => {
     if (!confirm('¿Reiniciar todas las marcas de este checklist?')) return;
     for (const k of items) await store.del('checks', k);
-    location.reload();
+    toast('Checklist reiniciado');
+    route();
   });
 
   await refresh();
@@ -594,63 +729,140 @@ function vCalculadoras() {
 }
 
 /* ------------------------------ BUSCADOR ------------------------------ */
-function vBuscar() {
+/* La lógica (normalización, sinónimos, ranking) vive en search.js y los
+   sinónimos en data/content/sinonimos.js. Aquí solo se pinta. */
+const TIPOS_BUSQUEDA = {
+  sos: { t: 'SOS', ic: '🚨', f: 'sos' },
+  emergencia: { t: 'Emergencia', ic: '🚨', f: 'sos' },
+  articulo: { t: 'Manual', ic: '📄', f: 'manual' },
+  checklist: { t: 'Checklist', ic: '☑', f: 'listas' },
+  curso: { t: 'Curso', ic: '🎓', f: 'otros' },
+  frecuencia: { t: 'Radio', ic: '📻', f: 'otros' },
+  riesgo: { t: 'Riesgo', ic: '📊', f: 'otros' },
+  ruta: { t: 'Ruta', ic: '🛣️', f: 'otros' },
+  juego: { t: 'Juegos', ic: '🎮', f: 'otros' },
+  audio: { t: 'Audio', ic: '🎵', f: 'otros' },
+  familia: { t: 'Familia', ic: '👨‍👩‍👧', f: 'otros' },
+};
+const FILTROS_BUSQUEDA = [['todo', 'Todo'], ['sos', '🚨 SOS'], ['manual', '📄 Manual'], ['listas', '☑ Checklists'], ['otros', 'Otros']];
+let buscador = null;
+
+async function vBuscar(inicial = '') {
+  const [{ crearBuscador }, { INDICE }, { BUSQUEDAS_FRECUENTES }] = await Promise.all([
+    import('./search.js'), import('../../data/content/index.js'), import('../../data/content/sinonimos.js'),
+  ]);
+  buscador ||= crearBuscador(INDICE);
+
   const n = el(`<div>
     ${topbar('Buscar')}
-    <div class="searchbar">
-      <input id="q" type="search" placeholder="agua, apagón, incendio, RCP, nudos…" autocomplete="off" enterkeyhint="search">
+    <div class="searchbar" role="search">
+      <label for="q" class="vh">Buscar en el manual</label>
+      <input id="q" type="search" placeholder="sangrado, apagón, incendio, RCP…" autocomplete="off" enterkeyhint="search" value="${esc(inicial)}">
+      <div class="filtros-busq" id="fb" role="group" aria-label="Filtrar resultados"></div>
     </div>
-    <div id="res"></div>
+    <div id="res" aria-live="polite"></div>
   </div>`);
 
   const res = n.querySelector('#res');
   const input = n.querySelector('#q');
+  const fb = n.querySelector('#fb');
+  let filtro = 'todo';
+  let ultimo = null;
+  let consultaAnterior = '';
 
-  const sugerencias = ['apagón', 'agua', 'incendio forestal', 'RCP', 'evacuar', 'nieve', 'brújula', 'mochila', 'Ávila', 'frecuencias', 'hipotermia', 'inundación'];
+  const chip = (q) => `<button class="btn ghost sm" data-sug="${esc(q)}" type="button">${esc(q)}</button>`;
+  const enganchaSug = () => res.querySelectorAll('[data-sug]').forEach((b) => b.addEventListener('click', () => { input.value = b.dataset.sug; buscar(); input.focus(); }));
 
   const pintaSug = () => {
-    res.innerHTML = `<p class="muted">Búsquedas frecuentes:</p><div>${sugerencias.map((s) => `<button class="btn ghost sm" data-sug="${esc(s)}" type="button" style="margin:0 6px 6px 0">${esc(s)}</button>`).join('')}</div>`;
-    res.querySelectorAll('[data-sug]').forEach((b) => b.addEventListener('click', () => { input.value = b.dataset.sug; buscar(); }));
+    fb.innerHTML = '';
+    res.innerHTML = `<p class="muted">Búsquedas frecuentes:</p><div class="sugs">${BUSQUEDAS_FRECUENTES.map(chip).join('')}</div>
+      <p class="muted" style="margin-top:14px">Puedes escribir como hablas: «sangra mucho», «se ha ido la luz», «no respira». Funciona sin conexión.</p>`;
+    enganchaSug();
   };
 
-  const norm = (s) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const motivo = (m, it) => {
+    if (m.donde === 'titulo') return m.sinonimo ? `Por equivalencia: «${m.buscado}» → ${it.t}` : 'Coincide con el título';
+    const base = m.donde === 'resumen' ? 'En el resumen' : 'En el texto';
+    return m.sinonimo ? `${base}, por equivalencia de «${m.buscado}»` : base;
+  };
 
-  function buscar() {
-    const q = norm(input.value.trim());
-    if (q.length < 2) return pintaSug();
-    const terms = q.split(/\s+/);
-    const hits = INDICE.map((it) => {
-      const t = norm(it.t), tx = norm(it.texto), sm = norm(it.sum || '');
-      let score = 0;
-      for (const term of terms) {
-        if (t.includes(term)) score += 12;
-        if (sm.includes(term)) score += 5;
-        const c = (tx.match(new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length;
-        score += Math.min(c, 8);
-      }
-      if (score > 0) {
-        if (it.pr === 'critico') score += 3;
-        if (it.tipo === 'emergencia') score += 2;
-      }
-      return { it, score };
-    }).filter((h) => h.score > 0).sort((a, b) => b.score - a.score).slice(0, 60);
+  const tarjeta = ({ it, motivo: m, fragmento: fr }) => {
+    const tp = TIPOS_BUSQUEDA[it.tipo] || { t: it.tipo, ic: '•' };
+    const sec = secMap[it.sec];
+    const cat = [tp.t, sec && sec.t.toUpperCase() !== tp.t.toUpperCase() ? sec.t : null].filter(Boolean).join(' · ');
+    const frag = fr ? `<span class="frag">${esc(fr.antes)}<mark>${esc(fr.marca)}</mark>${esc(fr.despues)}</span>` : `<span class="frag">${esc((it.sum || '').slice(0, 140))}</span>`;
+    return `<a class="row res pr-${it.pr}" href="${it.ruta}">
+      <span class="ric" aria-hidden="true">${tp.ic}</span>
+      <div class="rt">
+        <span class="cat">${esc(cat)}</span>
+        <b>${esc(it.t)}</b>
+        ${frag}
+        <span class="por">${esc(motivo(m, it))}${m.parcial ? ' · coincidencia parcial' : ''}</span>
+      </div>
+      <span class="chev" aria-hidden="true">›</span></a>`;
+  };
 
-    if (!hits.length) {
-      res.innerHTML = `<p class="sr-empty">Sin resultados para «${esc(input.value)}». Prueba con otra palabra: agua, fuego, refugio, radio, mapa…</p>`;
+  function pintaFiltros(r) {
+    const cuenta = { todo: r.resultados.length };
+    for (const x of r.resultados) { const f = TIPOS_BUSQUEDA[x.it.tipo]?.f || 'otros'; cuenta[f] = (cuenta[f] || 0) + 1; }
+    fb.innerHTML = FILTROS_BUSQUEDA.filter(([k]) => k === 'todo' || cuenta[k])
+      .map(([k, t]) => `<button type="button" data-f="${k}" aria-pressed="${k === filtro}">${t} <span>${cuenta[k] || 0}</span></button>`).join('');
+    fb.querySelectorAll('[data-f]').forEach((b) => b.addEventListener('click', () => { filtro = b.dataset.f; pinta(ultimo); }));
+  }
+
+  function pinta(r) {
+    pintaFiltros(r);
+    const lista = r.resultados.filter((x) => filtro === 'todo' || (TIPOS_BUSQUEDA[x.it.tipo]?.f || 'otros') === filtro);
+    const cs = r.conceptos.filter((c) => c.grupo && c.texto !== c.principal).map((c) => c.texto);
+    res.innerHTML = `<p class="muted">${lista.length} resultado(s)${cs.length ? ` · incluye equivalencias de: ${cs.map((x) => `«${esc(x)}»`).join(', ')}` : ''}</p>
+      <div class="list">${lista.map(tarjeta).join('')}</div>`;
+  }
+
+  function sinResultados(q) {
+    fb.innerHTML = '';
+    const sug = buscador.sugerir(q);
+    // Error de escritura evidente: se muestran ya los resultados de la
+    // corrección, sin obligar a pulsar nada más.
+    if (sug.length) {
+      const r = buscador.buscar(sug[0]);
+      ultimo = r;
+      filtro = 'todo';
+      pinta(r);
+      res.insertAdjacentHTML('afterbegin', `<div class="blk-note corregida">No hay nada para «${esc(q)}». Mostrando resultados de <b>«${esc(sug[0])}»</b>.
+        ${sug.length > 1 ? `<div class="sugs" style="margin-top:6px">${sug.slice(1).map(chip).join('')}</div>` : ''}</div>`);
+      enganchaSug();
       return;
     }
-    const tipoIc = { articulo: '📄', emergencia: '🚨', checklist: '☑', curso: '🎓', frecuencia: '📻' };
-    res.innerHTML = `<p class="muted">${hits.length} resultado(s)</p><div class="list">${hits.map(({ it }) => `
-      <a class="row pr-${it.pr}" href="${it.ruta}">
-        <span>${tipoIc[it.tipo] || '•'}</span>
-        <div class="rt"><b>${esc(it.t)}</b><span>${esc((it.sum || '').slice(0, 120))}</span></div>
-        <span class="chev">›</span></a>`).join('')}</div>`;
+    res.innerHTML = `<div class="sr-empty">
+      <p>No hay nada en el manual para «${esc(q)}».</p>
+      <p>Prueba con otra palabra o con una de estas:</p>
+      <div class="sugs">${BUSQUEDAS_FRECUENTES.slice(0, 8).map(chip).join('')}</div>
+      <a class="btn wide" href="#/emergencia" style="margin-top:12px">🚨 Ir a SOS</a>
+    </div>`;
+    enganchaSug();
+  }
+
+  function buscar() {
+    const q = input.value.trim();
+    // La consulta queda en la dirección: al volver atrás desde un resultado
+    // se recupera la búsqueda en vez de empezar de cero.
+    history.replaceState(null, '', q ? `#/buscar?q=${encodeURIComponent(q)}` : '#/buscar');
+    if (q.length < 2) { ultimo = null; return pintaSug(); }
+    // Cada búsqueda nueva empieza en "Todo": un filtro olvidado de la
+    // anterior podría esconder justo la ficha de emergencia.
+    if (q !== consultaAnterior) filtro = 'todo';
+    consultaAnterior = q;
+    const r = buscador.buscar(q);
+    ultimo = r;
+    if (!r.resultados.length) return sinResultados(q);
+    pinta(r);
   }
 
   let to;
   input.addEventListener('input', () => { clearTimeout(to); to = setTimeout(buscar, 120); });
-  pintaSug();
-  setTimeout(() => input.focus(), 60);
+  input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { clearTimeout(to); buscar(); input.blur(); } });
+  if (inicial) buscar(); else pintaSug();
+  if (!inicial) setTimeout(() => input.focus(), 60);
   return n;
 }
 
@@ -849,13 +1061,14 @@ async function vConfig() {
     const f = e.target.files?.[0]; if (!f) return;
     try {
       await store.importAll(JSON.parse(await f.text()), { merge: true });
-      toast('Datos importados'); setTimeout(() => location.reload(), 800);
+      toast('Datos importados');
+      route();
     } catch (err) { toast('Error: ' + err.message); }
   });
 
   n.querySelector('#cfg-tiles').addEventListener('click', async () => {
     if (!confirm('¿Borrar todas las teselas de mapa descargadas?')) return;
-    await store.clear('tiles'); toast('Teselas borradas'); setTimeout(() => location.reload(), 600);
+    await store.clear('tiles'); toast('Teselas borradas'); route();
   });
 
   await montarSync(n.querySelector('#cfg-sync'));
@@ -1041,19 +1254,22 @@ function v404() {
 
 /* ================================ ROUTER ================================ */
 async function route() {
+  limpiarVista();
   const hash = location.hash.replace(/^#/, '') || '/';
-  const [, a, b] = hash.split('/');
+  const [ruta, consulta = ''] = hash.split('?');
+  const [, a, b, c] = ruta.split('/');
+  const params = new URLSearchParams(consulta);
   setNav('/' + (a || ''), b);
 
   let out;
   try {
     if (!a) out = vHome();
-    else if (a === 'emergencia') out = b ? vEmergencia(b) : vEmergenciaLista();
+    else if (a === 'emergencia') out = b === 'sanitaria' ? vSanitaria(c) : b ? vEmergencia(b) : vEmergenciaLista();
     else if (a === 'art') out = vArticulo(b);
-    else if (a === 'sec') out = await vSeccion(b);
+    else if (a === 'sec') out = await vSeccion(b, c);
     else if (a === 'check') out = await vChecklist(b);
     else if (a === 'curso') out = await vCurso(b);
-    else if (a === 'buscar') out = vBuscar();
+    else if (a === 'buscar') out = await vBuscar(params.get('q') || '');
     else if (a === 'mapa') {
       const { mapView } = await import('./maps.js');
       const wrap = el(`<div>${topbar('Mapa offline', 'Vectorial IGN + teselas descargadas')}</div>`);

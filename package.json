@@ -10,9 +10,10 @@
     "build": "npm run build:geo && npm run build:assets",
     "dev": "node tools/serve.mjs",
     "start": "node tools/serve.mjs",
-    "test": "node tools/test.mjs && node tools/test-sync.mjs",
+    "test": "node --test tools/test-unit.mjs && node tools/test.mjs && node tools/test-sync.mjs",
     "test:app": "node tools/test.mjs",
-    "test:sync": "node tools/test-sync.mjs"
+    "test:sync": "node tools/test-sync.mjs",
+    "test:unit": "node --test tools/test-unit.mjs"
   },
   "dependencies": {
     "es-atlas": "^0.6.0",
