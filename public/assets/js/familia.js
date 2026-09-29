@@ -19,6 +19,7 @@ const kv = async (id, def) => (await store.get('kv', id))?.v ?? def;
 const setKv = (id, v) => store.put('kv', { id, v });
 
 const CLAVE = 'familia.nodos';
+const O = '<span class="opc">(opcional)</span>';   // marca de campo opcional
 const letra = (i) => String.fromCharCode(65 + (i % 26));
 const norm = (s = '') => String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
 
@@ -91,15 +92,28 @@ export async function familiaView() {
     </div>
   </div>`);
 
-  const guardar = () => guardarNodos(ns);
+  /* Todo se guarda solo; el indicador «✓ Guardado» lo confirma sin avisos
+     emergentes, junto a lo que se está editando. */
+  const guardar = async () => {
+    await guardarNodos(ns);
+    const hora = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+    n.querySelectorAll('.guardado').forEach((g) => { g.textContent = `✓ Guardado en este dispositivo · ${hora}`; });
+  };
   let tGuardar;
   const guardarLuego = () => { clearTimeout(tGuardar); tGuardar = setTimeout(guardar, 350); };
 
   function pintaTop() {
     const top = n.querySelector('#fa-top');
     const hayEjemplo = ns.some((x) => x.ejemplo);
+    const b0 = base(ns), ds0 = destinos(ns);
+    const pasos = [
+      ['1 · Tu casa', !!b0],
+      ['2 · Tu familia', ds0.length > 0],
+      ['3 · Sus rutas', ds0.length > 0 && ds0.every((d) => d.rutas.length > 0)],
+    ];
     const puedeIr = base(ns) && destinos(ns).length;
     top.innerHTML = `
+      <ol class="pasos-fam" aria-label="Pasos para configurar el plan">${pasos.map(([t, h]) => `<li class="${h ? 'hecho' : ''}">${h ? '✓' : '○'} ${t}</li>`).join('')}</ol>
       ${hayEjemplo ? `<div class="blk-warn"><b>Estás viendo datos de EJEMPLO ficticios.</b> Edítalos con tus datos reales o bórralos.
         <div class="btnrow"><button class="btn danger" id="fa-borrar-ej" type="button">Borrar el ejemplo</button></div></div>` : ''}
       ${puedeIr ? '<a class="btn wide heart" href="#/familia/ir" style="margin-bottom:12px">❤️ QUIERO LLEGAR A MI FAMILIA</a>' : ''}`;
@@ -124,6 +138,8 @@ export async function familiaView() {
           <button class="btn" id="fa-add-base" type="button">🏠 Añadir mi casa</button>
           <button class="btn ghost" id="fa-ejemplo" type="button">👀 Ver un ejemplo ficticio</button>
         </div>
+        <p class="muted">Solo son necesarios el nombre, el papel (casa o familia) y la provincia; lo demás es opcional. Todo se guarda solo, en este dispositivo, y lo puedes cambiar cuando quieras.</p>
+        <a class="btn ghost sm" href="#/sec/plan-familiar">📇 Contactos y acuerdos del plan</a>
       </div>`;
       c.querySelector('#fa-add-base').addEventListener('click', () => anadir('base'));
       c.querySelector('#fa-ejemplo').addEventListener('click', async () => {
@@ -197,25 +213,26 @@ export async function familiaView() {
 
     const d = el(`<details class="card nodo" data-nodo="${esc(nd.id)}"><summary>${esc(nd.ic)} ${esc(nd.nombre || 'Nueva ubicación')}${nd.persona ? ' — ' + esc(nd.persona) : ''}
         <span class="badge">${nd.rol === 'base' ? 'base' : 'familia'}</span>${nd.ejemplo ? ' <span class="badge warn">ejemplo</span>' : ''}</summary><div>
+      <div class="guardado" aria-live="polite"></div>
       <div class="fieldrow">
         <div>${campo('nombre', 'Nombre del lugar', 'placeholder="Ej. Casa, casa de los abuelos…"')}</div>
-        <div>${campo('persona', 'Quién vive aquí', 'placeholder="Ej. Abuela y abuelo"')}</div>
+        <div>${campo('persona', 'Quién vive aquí ' + O, 'placeholder="Ej. Abuela y abuelo"')}</div>
       </div>
       <div class="fieldrow">
         <div><label for="${id('rol')}">Papel</label><select id="${id('rol')}" data-f="rol">
           <option value="base"${nd.rol === 'base' ? ' selected' : ''}>🏠 Base (desde donde partimos)</option>
           <option value="familia"${nd.rol !== 'base' ? ' selected' : ''}>👨‍👩‍👧 Familia (a donde queremos llegar)</option>
         </select></div>
-        <div><label for="${id('ic')}">Icono</label><select id="${id('ic')}" data-f="ic">${ICONOS_NODO.map((i) => `<option${i === nd.ic ? ' selected' : ''}>${i}</option>`).join('')}</select></div>
+        <div><label for="${id('ic')}">Icono ${O}</label><select id="${id('ic')}" data-f="ic">${ICONOS_NODO.map((i) => `<option${i === nd.ic ? ' selected' : ''}>${i}</option>`).join('')}</select></div>
       </div>
       <div class="fieldrow">
         <div><label for="${id('cod')}">Provincia</label><select id="${id('cod')}" data-f="cod"><option value="">— Provincia —</option>${provs}</select></div>
-        <div>${campo('municipio', 'Municipio')}</div>
+        <div>${campo('municipio', 'Municipio ' + O)}</div>
       </div>
-      ${campo('tel', 'Teléfonos', 'inputmode="tel" placeholder="Separados por comas"')}
-      ${campo('dir', 'Dirección')}
-      ${campo('encuentro', 'Punto de encuentro acordado', 'placeholder="Un lugar concreto que todos conozcáis"')}
-      <label for="${id('notas')}">Notas</label><textarea id="${id('notas')}" data-f="notas">${esc(nd.notas || '')}</textarea>
+      ${campo('tel', 'Teléfonos ' + O, 'inputmode="tel" placeholder="Separados por comas"')}
+      ${campo('dir', 'Dirección ' + O)}
+      ${campo('encuentro', 'Punto de encuentro acordado ' + O, 'placeholder="Un lugar concreto que todos conozcáis"')}
+      <label for="${id('notas')}">Notas ${O}</label><textarea id="${id('notas')}" data-f="notas">${esc(nd.notas || '')}</textarea>
 
       <h4>Personas en esta ubicación</h4>
       <div class="fieldrow">${num('adultos', 'Adultos')}${num('ninos', 'Niños')}</div>

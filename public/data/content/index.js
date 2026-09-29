@@ -45,6 +45,17 @@ export const SECCIONES = [
   { id: 'config', t: 'CONFIGURACIÓN', ic: '⚙️', desc: 'Estado offline, copias de seguridad y ajustes' },
 ];
 
+/* Organización de la portada en cuatro bloques. SOS y el buscador van
+   aparte, arriba. «plan-familiar» no tiene tarjeta propia: se llega desde
+   Familia (Contactos y acuerdos). Toda sección, salvo esas dos, debe
+   aparecer exactamente una vez (lo comprueba tools/test-unit.mjs). */
+export const PORTADA = {
+  plan: ['familia', 'mapa', 'orientacion', 'equipo', 'calculadoras', 'comunicaciones'],
+  manual: ['primeros-auxilios', 'agua', 'fuego', 'refugio', 'alimentacion', 'psicologia',
+    'vehiculo', 'mascotas', 'bushcraft', 'espana', 'avila', 'biblioteca'],
+  mas: ['riesgos', 'juegos', 'audio', 'cursos', 'manual', 'fuentes', 'config'],
+};
+
 export const PRIORIDADES = {
   critico: { t: 'CRÍTICO', ic: '🔴', ord: 0 },
   importante: { t: 'IMPORTANTE', ic: '🟠', ord: 1 },

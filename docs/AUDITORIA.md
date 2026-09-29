@@ -21,6 +21,8 @@ Alcance: fases 1–3 (diagnóstico, propuesta, priorización). **No se ha modifi
 
 | 29/09/2026 | **Cierre de la fase 2**: corregida una carrera en el modo calma (salir mientras se concede el wake lock dejaba el temporizador y el bloqueo activos); prueba instrumentada de intervalos, ticks, listeners y wake lock; infarto e ictus marcadas como incompletas con contenido congelado por prueba; prueba de importación; validación de plantillas WMTS y CSP | A5, S2 |
 
+| 29/09/2026 | **Fase 3 (UX para uso bajo estrés)**: modo noche sin elementos fuera de pantalla y con contraste AA; borrar con «Deshacer»; audio y descargas se detienen al salir; checklists para el pulgar; 44 px en todo; mapa (solo UX); modo calma primero; «←» con historial; portada en cuatro bloques; nombre visible SUPERVIVENCIA; etiquetas y tamaños accesibles. Detalle y métricas en `docs/FASE-3-UX.md` | B3, B4, B5, B7, B9, G1–G5, M1–M9 de fase 3 |
+
 ### Pendiente de verificación manual (no automatizable aquí)
 
 - **Mapas IGN en dispositivo real**: ver la lista del README (§4, «Pendiente de verificar en un dispositivo real»).

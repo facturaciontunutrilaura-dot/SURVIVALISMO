@@ -262,3 +262,16 @@ test('mapas IGN: la CSP permite las teselas del IGN y nada más de terceros para
     assert.ok(!/openstreetmap|opentopomap/.test(img + con), `${f}: restos de OSM`);
   }
 });
+
+/* ------------------------------ Portada ------------------------------ */
+test('portada: cada sección aparece una sola vez y «Plan familiar» sigue accesible', async () => {
+  const { SECCIONES, PORTADA } = await imp('data/content/index.js');
+  const enPortada = [...PORTADA.plan, ...PORTADA.manual, ...PORTADA.mas];
+  assert.equal(new Set(enPortada).size, enPortada.length, 'duplicadas');
+  const ids = SECCIONES.map((s) => s.id);
+  for (const id of enPortada) assert.ok(ids.includes(id), `sección inexistente: ${id}`);
+  const fuera = ids.filter((id) => !enPortada.includes(id));
+  assert.deepEqual(fuera.sort(), ['emergencia', 'plan-familiar'], 'solo SOS (arriba) y Plan familiar (desde Familia) quedan fuera');
+  const fam = fs.readFileSync(path.join(PUB, 'assets/js/familia.js'), 'utf8');
+  assert.ok(fam.includes('#/sec/plan-familiar'), 'Familia debe enlazar a Contactos y acuerdos');
+});

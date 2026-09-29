@@ -61,7 +61,7 @@ export async function audioView() {
 
     <div class="card">
       <h3>➕ Añadir audio</h3>
-      <input type="file" id="au-file" accept="audio/*" multiple>
+      <input type="file" id="au-file" accept="audio/*" multiple aria-label="Elegir archivos de audio para guardar en el dispositivo">
       <label>Categoría</label>
       <select id="au-cat">${CATEGORIAS.map((c) => `<option value="${c.id}">${c.ic} ${esc(c.t)}</option>`).join('')}</select>
       <div id="au-prog" class="muted"></div>

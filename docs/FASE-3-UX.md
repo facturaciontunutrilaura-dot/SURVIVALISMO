@@ -1,7 +1,8 @@
 # Fase 3 — Auditoría UX/UI para uso en situaciones de estrés
 
 Fecha: 29/09/2026 · Versión auditada: 1.5.0 (commit `a92cfc9`, fase 2 cerrada).
-**Estado: diagnóstico. No se ha modificado código.** Pendiente de aprobación.
+**Estado: IMPLEMENTADA** (ver §G al final). El diagnóstico original se conserva
+tal cual en las secciones 0–F.
 
 ---
 
@@ -159,12 +160,208 @@ pueden aprobar por separado.
 - «←» vuelve a los resultados de búsqueda;
 - ningún campo sin nombre accesible.
 
-## Preguntas para ti
+## Decisiones tomadas
 
-1. **Audio (A5):** ¿se para al salir de la pantalla, o sigue sonando con un
-   mini-reproductor fijo para pararlo?
-2. **Portada (M2):** ¿te parece bien el reparto en cuatro bloques y que
-   «Plan familiar» deje de tener tarjeta propia (seguiría accesible desde
-   Familia)?
-3. **Nombre:** la app se presenta como «SURVIVAL OFFLINE» y tú la llamas
-   «SUPERVIVENCIA». ¿Cambio el nombre visible? No lo toco sin tu decisión.
+1. **Audio:** se detiene al salir de la pantalla. Sin mini-reproductor global.
+2. **Portada:** cuatro bloques aprobados; «Plan familiar» sin tarjeta propia
+   (accesible desde Familia → Contactos y acuerdos).
+3. **Nombre visible:** SUPERVIVENCIA, con el subtítulo «Herramientas de
+   preparación y emergencia offline». No cambian repositorio, URLs,
+   identificadores, service worker ni rutas.
+
+---
+
+## G. Implementación
+
+Todo en el orden aprobado, un commit por bloque. Tras cada bloque se ejecutó
+la suite; al final, la suite completa.
+
+### Bloque 1 — Modo noche (C1, A1)
+- Quitado el `filter` del `<body>`. Era la causa de que la navegación, la barra
+  del 112 y los avisos salieran de la pantalla. La baja luminosidad se consigue
+  solo con la paleta. Comentario en el CSS para que no se reintroduzca.
+- Paleta nocturna recalculada: texto 6,4:1, secundarios 5,4 y 5,1:1, títulos
+  5,5:1, subtítulos 5,7:1.
+- «Contraste alto» también actúa en modo noche y cubre `--dim2`.
+- Tema normal: `--dim`/`--dim2` pasan de 4,46/4,36:1 a 5,5/4,9:1.
+
+### Bloque 2 — Borrados con «Deshacer» (A2, M9)
+- `borrarConDeshacer()` en `ui.js`: se borra al momento y el aviso ofrece
+  «Deshacer» durante unos 6 s. Sin confirmaciones.
+- `store.restaurar()` vuelve a guardar el registro y retira su lápida, para que
+  la sincronización no propague un borrado deshecho.
+- Aplicado a:
+  - contactos, frecuencias propias y entradas del registro de radio;
+  - audios, que se recuperan con el archivo;
+  - puntos del mapa y capas importadas;
+  - puntos de encuentro;
+  - ubicaciones familiares, con sus rutas, trazas y estado;
+  - rutas, el ejemplo ficticio y el reinicio de un checklist.
+- **Se mantiene la confirmación** solo donde deshacer no es razonable: borrar
+  TODOS los datos (doble confirmación), borrar todas las teselas y borrar
+  todos los audios.
+- Avisos:
+  - con tipo (✓ o ⚠, y `role="alert"` para los errores);
+  - duración según la longitud del texto;
+  - botón de acción de 44 px;
+  - en SOS aparecen por encima de la barra del 112.
+
+### Bloque 3 — Procesos al salir de una pantalla (A5)
+- El audio se detiene y libera el archivo al salir.
+- Descarga de teselas:
+  - botón «Cancelar»;
+  - también se cancela al cerrar el panel o al salir del mapa;
+  - `AbortController` corta la petición en curso;
+  - lo ya descargado se conserva;
+  - la lógica de teselas no se ha tocado.
+- **Fallo encontrado y corregido:** una búsqueda pendiente (120 ms) podía
+  reescribir la dirección de la pantalla siguiente.
+
+### Bloque 4 — Checklists (A3)
+- Tocar el texto del elemento marca o desmarca «tengo».
+- «Falta», «Comprar» y «Revisar» son botones de 44 px en una sola fila.
+- La fecha de caducidad está plegada y aparece si tiene valor o se pide. Avisa
+  de «caducado» o «caduca en N días».
+- Grupos plegables con su progreso. Se abre el primero con cosas pendientes.
+  Botones «Desplegar todo» y «Solo pendiente».
+- Progreso grande con recuento por estado.
+- «Reiniciar» pasa al final y se puede deshacer.
+- La clave de guardado no cambia.
+- **Resultado:** de 13,7 a 3,0 pantallas a 375 px, y de 238 controles
+  pequeños a 0.
+
+### Bloque 5 — Una mano (M6, M7, B1, B3)
+- Barra fija del 112 también en la lista SOS.
+- `.btn.sm` pasa de 36 a 44 px. Los teléfonos de la tabla de rutas son
+  botones de llamada.
+- Foco visible: contorno de 3 px con `:focus-visible`. Corregida la regla que
+  aplicaba siempre contorno a `select`.
+- Buscador: botón «✕» propio de 44 px que devuelve el foco. Sin mayúscula ni
+  corrector automáticos en el campo.
+
+### Bloque 6 — Mapa, solo UX (A4)
+- Las cuatro acciones en una sola fila: Punto, Mi posición, Descargar, Capas.
+- El estado y el progreso de descarga se muestran encima del mapa, visibles.
+- La altura del mapa se ajusta para no quedar bajo la navegación.
+- Zoom y botón de capas de 44 px, con nombre accesible. Atribución a 11 px.
+- **No se ha tocado nada de teselas, proveedor ni descarga.**
+
+### Bloque 7 — Modo calma (A6)
+- Pestañas de Juegos en rejilla (2×2 en móvil): ninguna queda oculta a 320 px.
+- El texto informativo pasa al final, plegado. El ejercicio aparece primero.
+- Título «Modo calma» al entrar por su enlace.
+- Se mantienen las correcciones de la fase 2 y no se añaden procesos.
+
+### Bloque 8 — Navegación (M1, M3)
+- «←» usa el historial cuando hay una pantalla anterior de la app. Si se entró
+  por enlace directo, va a la pantalla padre.
+- Al volver se recupera la posición de desplazamiento de la lista.
+- El H1 repetido se oculta a la vista (se conserva para lectores de pantalla)
+  **solo si la cabecera muestra el título entero**. Si el título aparece
+  cortado con «…», el H1 sigue visible.
+
+### Bloque 9 — Portada (M2) y nombre
+- **SUPERVIVENCIA** con subtítulo. Los cuatro bloques de la portada:
+  1. **SOS y búsqueda:** tarjeta SOS, botón directo `tel:112` y buscador,
+     todos en la primera pantalla.
+  2. **Mi plan y herramientas:** Familia, Mapa, Orientación, Equipo,
+     Calculadoras y Comunicaciones.
+  3. **Manual:** lista compacta de dos columnas.
+  4. **Más:** Riesgos, Juegos, Audio, Formación, Manual, Fuentes y
+     Configuración.
+- La organización vive en datos (`PORTADA` en `data/content/index.js`). Una
+  prueba verifica que toda sección aparece una sola vez, salvo SOS (arriba) y
+  «Plan familiar» (desde Familia).
+- Nombre visible cambiado en la portada, en `<title>`, en la pantalla de carga
+  y en el nombre de instalación (manifest). No se han tocado el service worker,
+  los identificadores técnicos ni las rutas.
+- **Resultado:** la portada pasa de 3,3 a 2,5 pantallas a 375 px.
+
+### Bloque 10 — Accesibilidad (M4, M5, M8, B2, B4)
+- Enlace automático etiqueta ↔ campo (`asociarEtiquetas`, también para los
+  paneles que se crean después). Nombre accesible en los campos que no tenían
+  etiqueta.
+- Tamaños mínimos:
+  - etiquetas de 12,8 px;
+  - subtítulo de cabecera, insignias y navegación inferior de 11–12 px (antes
+    había textos de 9 px);
+  - nada por debajo de 11 px.
+- Lo crítico se indica con texto en los listados, no solo con color.
+- Configuración: la sincronización queda plegada si no está configurada.
+- Centro familiar:
+  - pasos 1-2-3 con su estado;
+  - «(opcional)» en todo menos nombre, papel y provincia;
+  - «✓ Guardado» discreto junto a lo editado;
+  - acceso a Contactos y acuerdos también cuando aún no hay ubicaciones.
+
+### Resultado medido
+
+La medición es la misma que la del diagnóstico: 20 pantallas y 5 tamaños.
+
+| Métrica | Antes | Después |
+|---|---|---|
+| Controles de menos de 44 px (375 px, 20 pantallas) | Más de 290 (238 solo en un checklist) | **0** en los 5 tamaños |
+| Textos con contraste por debajo de AA (tema normal) | Decenas (4,36–4,46:1) | **0** |
+| Contraste mínimo en modo noche | 2,16:1 | **≥ 4,5:1** (probado en 4 temas) |
+| Campos sin nombre accesible | 60 | **0** |
+| Textos por debajo de 11 px | Varios (9–10,6 px) | **0** (quedan etiquetas de 11–12 px, como se previó) |
+| Navegación y 112 en pantalla en modo noche | No | **Sí** |
+| Longitud del checklist Nivel 2 (375 px) | 13,7 pantallas | **3,0** |
+| Longitud de la portada (375 px) | 3,3 pantallas | **2,5** |
+| Desplazamiento horizontal y errores de consola | 0 | 0 |
+
+### Pruebas añadidas en esta fase (tools/test.mjs y tools/test-unit.mjs)
+
+- **Temas:** en los cuatro temas, la navegación, el 112 y los avisos siguen en
+  pantalla, y el texto cumple AA en 10 pantallas.
+- **Deshacer:** borrado sin confirmación y recuperación de contactos, audios
+  (con archivo), ubicaciones (con rutas, traza y estado) y checklists. Botones
+  de 44 px. Retirada de la lápida.
+- **Procesos:**
+  - el audio se detiene al salir y empieza limpio al volver;
+  - la descarga de teselas se cancela con su botón y al salir del mapa (con
+    servidor simulado y comprobando que antes estaba descargando de verdad);
+  - la búsqueda pendiente no reescribe la dirección.
+- **Batería:** tras recorrer las pantallas que activan algo (SOS, mapa y mi
+  posición, brújula y modo manual, modo calma, juegos, buscador, mapa familiar,
+  audio), no queda ningún intervalo, bloqueo de pantalla, listener de window,
+  audio sonando ni seguimiento de GPS.
+- **Checklists:** tocar el texto marca, todos los controles miden 44 px o más,
+  grupos, longitud, fecha plegada y aviso de caducidad, «Solo pendiente»,
+  reiniciar al final y deshacer.
+- **Una mano:** 44 px o más en todos los controles de 8 pantallas frecuentes,
+  112 abajo en toda SOS, foco de 3 px y limpiar la búsqueda.
+- **Mapa (UX):** acciones en una fila, estado visible y mapa sin quedar bajo la
+  navegación.
+- **Modo calma a 320 px:** pestañas visibles y ejercicio primero.
+- **Navegación:**
+  - «←» vuelve a la lista SOS en la misma posición;
+  - vuelve a los resultados de búsqueda;
+  - con enlace directo va a la sección padre;
+  - el H1 repetido se oculta solo si el título cabe entero.
+- **Portada:** nombre, cuatro bloques, SOS, 112 y buscador en la primera
+  pantalla, sin tarjeta de «Plan familiar» y con Familia accesible. En la
+  prueba unitaria, cada sección aparece una sola vez.
+- **Accesibilidad:** en 17 pantallas, sin campos, botones o enlaces sin
+  nombre, y ningún texto por debajo de 11 px (navegación incluida). Lo crítico
+  se indica con texto.
+- **Centro familiar:** pasos, campos marcados como opcionales y confirmación
+  de guardado.
+
+### Pendiente y verificación en móvil real
+
+- **Modo noche en pantallas OLED con poca luz:** comprobar que la paleta
+  nueva, algo más clara que la anterior por contraste, sigue siendo cómoda de
+  noche. Si deslumbra, se puede bajar un poco sin salir de AA.
+- **Uso con una mano en móviles grandes** (6,7"): alcance real de la barra del
+  112 y de «Deshacer».
+- **Teclado virtual:** que el buscador y los formularios no queden tapados por
+  la barra inferior en Android/iOS.
+- **«←» con el gesto atrás de iOS y el botón atrás de Android:** coherencia
+  con la pila propia.
+- **Mapas del IGN:** siguen pendientes de la prueba en dispositivo de la fase
+  anterior. Esta fase solo tocó su interfaz.
+- **Guiones silábicos en español** en las tarjetas de la portada (en el
+  entorno de pruebas no hay diccionario).
+- **No hecho a propósito:** iconos SVG propios (fase estética), tema claro,
+  animaciones.

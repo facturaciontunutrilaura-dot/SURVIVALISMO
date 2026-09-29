@@ -2,7 +2,7 @@
    app.js — router y vistas
    ========================================================================= */
 import {
-  VERSION, FECHA_CONTENIDO, SECCIONES, PRIORIDADES, ARTICULOS, ARTICULOS_MAP,
+  VERSION, FECHA_CONTENIDO, SECCIONES, PORTADA, PRIORIDADES, ARTICULOS, ARTICULOS_MAP,
   articulosDeSeccion, EMERGENCIAS, EMERGENCIAS_MAP, CHECKLISTS, CURSOS,
   SOS_SANITARIAS, SOS_SANITARIAS_MAP, GRUPOS_EMERGENCIA,
   FRECUENCIAS, SOURCES, SOURCE_MAP, DISCLAIMER,
@@ -31,7 +31,34 @@ function render(node, { emg = false, scroll = 0 } = {}) {
   app.replaceChildren(node);
   mountTools(app);
   ocultarTituloRepetido(node);
+  asociarEtiquetas(node);
   window.scrollTo(0, scroll);
+}
+
+/* Accesibilidad: muchas plantillas escriben <label>Texto</label><input>. Aquí
+   se enlaza cada etiqueta con su campo (for/id) para que los lectores de
+   pantalla anuncien el nombre del campo y tocar la etiqueta enfoque el campo.
+   Se cubren las dos formas usadas: campo justo después de la etiqueta, o
+   etiqueta y campo dentro del mismo contenedor de .fieldrow. */
+let idsAuto = 0;
+/* Los paneles que se crean después (nuevo punto del mapa, descarga,
+   sincronización…) también se enlazan: un único observador, agrupado por
+   microtarea para no recorrer el DOM en cada cambio. */
+let enlacePendiente = false;
+new MutationObserver(() => {
+  if (enlacePendiente) return;
+  enlacePendiente = true;
+  queueMicrotask(() => { enlacePendiente = false; asociarEtiquetas(app); });
+}).observe(app, { childList: true, subtree: true });
+export function asociarEtiquetas(root) {
+  for (const lab of root.querySelectorAll('label:not([for])')) {
+    if (lab.querySelector('input, select, textarea')) continue;       // ya envuelve su campo
+    let campo = lab.nextElementSibling;
+    if (!campo || !campo.matches('input, select, textarea')) campo = lab.parentElement?.querySelector(':scope > input, :scope > select, :scope > textarea');
+    if (!campo || campo.labels?.length) continue;
+    if (!campo.id) campo.id = `campo-${++idsAuto}`;
+    lab.htmlFor = campo.id;
+  }
 }
 
 /* La cabecera fija ya muestra el título de la pantalla. Si el H1 de debajo
@@ -79,26 +106,57 @@ netBadge();
 
 /* ================================ VISTAS ================================ */
 
-function vHome() {
-  const tiles = SECCIONES.filter((s) => s.id !== 'manual' || true).map((s) => `
-    <a class="tile ${s.cls || ''}" href="#/${s.id === 'emergencia' ? 'emergencia' : s.id === 'mapa' ? 'mapa' : 'sec/' + s.id}">
-      <span class="ic">${s.ic}</span>
-      <span><span class="nm">${esc(s.t)}</span><span class="ds">${esc(s.desc)}</span></span>
-    </a>`).join('');
+/* Portada en cuatro bloques, de más a menos urgente:
+     1. SOS (con el 112 directo) y el buscador.
+     2. Mi plan y herramientas: lo que se usa y se configura.
+     3. Manual: los temas, en una lista compacta.
+     4. Más: el resto.
+   Nada tiene el mismo peso que SOS, y no es un panel de tarjetas. */
+const rutaSeccion = (id) => (id === 'mapa' ? '#/mapa' : `#/sec/${id}`);
 
-  return el(`<div>
-    <div class="brand">
-      <h1>SURVIVAL OFFLINE</h1>
-      <div class="sub">Manual de campo · España · v${VERSION}</div>
-    </div>
-    <a class="row" href="#/buscar" style="margin-bottom:12px">
-      <span>🔍</span><div class="rt"><b>Buscar en todo el manual</b><span>Escribe "agua", "apagón", "incendio"…</span></div><span class="chev">›</span>
-    </a>
-    <div class="grid">${tiles}</div>
-    <div class="sp"></div>
-    <div class="card">
+function vHome() {
+  const sec = (id) => secMap[id];
+  const tarjeta = (id) => { const s = sec(id); return s ? `<a class="tile" href="${rutaSeccion(id)}">
+      <span class="ic" aria-hidden="true">${s.ic}</span>
+      <span><span class="nm">${esc(s.t)}</span><span class="ds">${esc(s.desc)}</span></span>
+    </a>` : ''; };
+  const enlace = (id) => { const s = sec(id); return s ? `<a class="home-enlace" href="${rutaSeccion(id)}"><span aria-hidden="true">${s.ic}</span> ${esc(s.t)}</a>` : ''; };
+
+  return el(`<div class="home">
+    <header class="brand">
+      <h1>SUPERVIVENCIA</h1>
+      <div class="sub">Herramientas de preparación y emergencia offline</div>
+    </header>
+
+    <section class="home-bloque home-sos" aria-label="Emergencia y búsqueda">
+      <div class="home-sos-fila">
+        <a class="tile sos" href="#/emergencia">
+          <span class="ic" aria-hidden="true">🚨</span>
+          <span><span class="nm">SOS</span><span class="ds">Emergencia: qué hacer ahora</span></span>
+        </a>
+        <a class="home-112" href="tel:112" aria-label="Llamar al 112, emergencias"><span aria-hidden="true">📞</span><b>112</b></a>
+      </div>
+      <a class="home-buscar" href="#/buscar"><span aria-hidden="true">🔍</span> Buscar en el manual: «sangrado», «apagón»…</a>
+    </section>
+
+    <section class="home-bloque" aria-labelledby="h-plan">
+      <h2 id="h-plan">Mi plan y herramientas</h2>
+      <div class="grid">${PORTADA.plan.map(tarjeta).join('')}</div>
+    </section>
+
+    <section class="home-bloque" aria-labelledby="h-manual">
+      <h2 id="h-manual">Manual</h2>
+      <nav class="home-lista" aria-labelledby="h-manual">${PORTADA.manual.map(enlace).join('')}</nav>
+    </section>
+
+    <section class="home-bloque" aria-labelledby="h-mas">
+      <h2 id="h-mas">Más</h2>
+      <nav class="home-lista" aria-labelledby="h-mas">${PORTADA.mas.map(enlace).join('')}</nav>
+    </section>
+
+    <div class="card home-pie">
       <p class="muted" style="margin:0">${esc(DISCLAIMER)}</p>
-      <p class="muted" style="margin:.6em 0 0">Emergencias: <b>112</b> · Contenido actualizado el ${esc(FECHA_CONTENIDO)} · Todos tus datos se guardan solo en este dispositivo.</p>
+      <p class="muted" style="margin:.6em 0 0">Contenido actualizado el ${esc(FECHA_CONTENIDO)} · v${esc(VERSION)} · Tus datos se guardan solo en este dispositivo.</p>
     </div>
   </div>`);
 }
@@ -1130,8 +1188,10 @@ async function vConfig() {
       <div class="blk-note">El modo noche reduce la luminosidad global y evita superficies claras. Útil para conservar la visión nocturna y ahorrar batería en pantallas OLED.</div>
     </div>
 
-    <h2>Sincronización entre dispositivos</h2>
-    <div class="card" id="cfg-sync"></div>
+    <details class="card plegable" ${localStorage.getItem('survival.sync') ? 'open' : ''}>
+      <summary><b>Sincronización entre dispositivos</b> <span class="muted">(opcional)</span></summary>
+      <div id="cfg-sync"></div>
+    </details>
 
     <h2>Copias de seguridad</h2>
     <div class="card">
@@ -1252,14 +1312,14 @@ async function montarSync(box) {
 
         <details style="margin-top:12px"><summary>Atajo opcional: pegar todo de golpe</summary><div>
           <p class="muted">Si no quieres copiar los dos valores por separado, pega aquí el bloque de código de <b>Connect</b>, un <span class="mono">.env</span>, o la URL y la clave una debajo de otra. La app las separa sola y rellena los campos de arriba. <b>No hace falta usarlo.</b></p>
-          <textarea id="sy-pegar" rows="3" placeholder="const supabase = createClient('https://….supabase.co', 'sb_publishable_…')"></textarea>
+          <textarea id="sy-pegar" rows="3" aria-label="Pegar el bloque de conexión de Supabase" placeholder="const supabase = createClient('https://….supabase.co', 'sb_publishable_…')"></textarea>
           <button class="btn ghost wide sm" id="sy-detect" type="button" style="margin-top:8px">✨ Detectar URL y clave</button>
         </div></details>
       </div></details>
 
       <details id="sy-d2"><summary>2 · Crear la tabla en Supabase (una sola vez)</summary><div>
         <p class="muted">Ve a tu proyecto → <b>SQL Editor</b> → <b>New query</b>, pega esto y pulsa <b>Run</b>.</p>
-        <textarea id="sy-sql" rows="10" readonly style="font-family:var(--fb);font-size:.72rem">${esc(S.SQL_ESQUEMA)}</textarea>
+        <textarea id="sy-sql" rows="10" readonly aria-label="SQL para crear la tabla en Supabase" style="font-family:var(--fb);font-size:.75rem">${esc(S.SQL_ESQUEMA)}</textarea>
         <button class="btn ghost wide sm" id="sy-copy" type="button" style="margin-top:8px">Copiar SQL</button>
         <div class="blk-warn">La política <span class="mono">RLS</span> del script es lo que impide que nadie más lea tus filas. No la quites.</div>
       </div></details>

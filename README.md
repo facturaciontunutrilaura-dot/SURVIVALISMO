@@ -1,4 +1,6 @@
-# SURVIVAL OFFLINE
+# SUPERVIVENCIA
+
+*Herramientas de preparación y emergencia offline.* (Nombre técnico del proyecto y del paquete: `survival-offline`.)
 
 **Manual de campo offline de supervivencia, autoprotección, preparación ante emergencias y bushcraft para España. Incluye además una guía provincial detallada de Ávila.**
 
@@ -12,7 +14,7 @@ Aplicación web progresiva (PWA) sin dependencias externas en tiempo de ejecuci�
 npm install          # instala leaflet, es-atlas y topojson-client (solo para el build)
 npm run build        # genera geodatos, iconos y el manifiesto de precache
 npm run dev          # servidor local en http://localhost:8080
-npm test             # 276 pruebas: 25 unitarias (buscador, datos, build, mapas) + 204 end-to-end de app + 47 de sincronización, incluida la prueba offline real
+npm test             # 348 pruebas: 26 unitarias (buscador, datos, build, mapas, portada) + 275 end-to-end de app + 47 de sincronización, incluida la prueba offline real
 ```
 
 No hay bundler, ni transpilador, ni framework. El directorio `public/` es la
@@ -758,6 +760,8 @@ el papel no se queda sin batería.
 ---
 
 ## 9. Diseño y accesibilidad
+
+> La auditoría de uso móvil y bajo estrés, con lo implementado y medido, está en `docs/FASE-3-UX.md`.
 
 - **Mobile-first**, usable con una mano: objetivos táctiles de 44–52 px,
   navegación inferior fija de cinco destinos, botones grandes.

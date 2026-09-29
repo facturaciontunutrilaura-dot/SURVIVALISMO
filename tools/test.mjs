@@ -21,6 +21,7 @@ function ok(name, cond, extra = '') {
   else { fail++; console.log(`  ❌ ${name} ${extra}`); errors.push(name + ' ' + extra); }
 }
 
+let srv2 = null;   // segundo servidor (tras la prueba de hosting caído); se para siempre en finally
 const srv = spawn(process.execPath, [path.join(ROOT, 'tools/serve.mjs')], {
   env: { ...process.env, PORT: String(PORT) }, stdio: 'ignore',
 });
@@ -53,8 +54,16 @@ try {
   await page.goto(BASE, { waitUntil: 'networkidle' });
   await page.waitForSelector('.tile.sos', { timeout: 10000 });
   ok('Portada renderiza el botón de emergencia', await page.locator('.tile.sos').isVisible());
-  ok('Se muestran todas las secciones', (await page.locator('.grid .tile').count()) >= 20);
-  ok('Título correcto', (await page.title()).includes('SURVIVAL'));
+  const enlacesPortada = await page.locator('#app a[href^="#/sec/"], #app a[href="#/mapa"]').count();
+  ok('Se muestran todas las secciones', enlacesPortada >= 25, `(${enlacesPortada})`);
+  ok('Portada: nombre visible SUPERVIVENCIA', (await page.textContent('.brand h1')).trim() === 'SUPERVIVENCIA');
+  ok('Portada: cuatro bloques (SOS y búsqueda · Mi plan · Manual · Más)', (await page.locator('.home-bloque').count()) === 4
+    && /Mi plan y herramientas/i.test(await page.textContent('#h-plan')) && /Manual/i.test(await page.textContent('#h-manual')) && /Más/i.test(await page.textContent('#h-mas')));
+  ok('Portada: SOS, 112 y buscador en la primera pantalla', await page.evaluate(() => ['.tile.sos', '.home-112', '.home-buscar'].every((s) => document.querySelector(s).getBoundingClientRect().bottom <= innerHeight)));
+  ok('Portada: el 112 es una llamada directa', (await page.getAttribute('.home-112', 'href')) === 'tel:112');
+  ok('Portada: sin tarjeta propia de «Plan familiar»', (await page.locator('#app a[href="#/sec/plan-familiar"]').count()) === 0);
+  ok('Portada: Familia accesible desde «Mi plan»', (await page.locator('.home-bloque .grid a[href="#/sec/familia"]').count()) === 1);
+  ok('Título correcto', (await page.title()).includes('SUPERVIVENCIA'));
 
   /* --------------------------- 2. Modo emergencia --------------------------- */
   console.log('\n▸ Modo emergencia');
@@ -888,7 +897,7 @@ try {
   await new Promise((r) => roto.close(r));
 
   // Se vuelve a levantar el servidor: la sección anterior lo apagó a propósito.
-  const srv2 = spawn(process.execPath, [path.join(ROOT, 'tools/serve.mjs')], {
+  srv2 = spawn(process.execPath, [path.join(ROOT, 'tools/serve.mjs')], {
     env: { ...process.env, PORT: String(PORT) }, stdio: 'ignore',
   });
   await new Promise((r) => setTimeout(r, 800));
@@ -1162,6 +1171,124 @@ try {
     await cm.close();
   }
 
+  /* ----------------------- 13 quinquies. Accesibilidad ----------------------- */
+  console.log('\n▸ Accesibilidad: nombres, tamaños y estados');
+  {
+    const ca = await browser.newContext({ viewport: { width: 375, height: 667 }, isMobile: true, hasTouch: true });
+    const pa = await ca.newPage();
+    const revisar = () => pa.evaluate(() => {
+      const vis = (e) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
+      const sinNombre = [...document.querySelectorAll('#app input:not([type=hidden]), #app select, #app textarea')].filter(vis)
+        .filter((e) => !(e.labels && e.labels.length) && !e.getAttribute('aria-label') && !e.getAttribute('aria-labelledby'))
+        .map((e) => e.id || e.name || e.placeholder || e.tagName);
+      const botonesMudos = [...document.querySelectorAll('#app button, #app a[href]')].filter(vis)
+        .filter((e) => !(e.textContent.trim() || e.getAttribute('aria-label'))).map((e) => e.outerHTML.slice(0, 60));
+      const diminutos = [...document.querySelectorAll('#app *, .bottomnav *, .offbadge')].filter((e) => vis(e) && [...e.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim().length > 1))
+        .filter((e) => parseFloat(getComputedStyle(e).fontSize) < 11).map((e) => `${parseFloat(getComputedStyle(e).fontSize).toFixed(1)}px «${e.textContent.trim().slice(0, 20)}»`);
+      return { sinNombre, botonesMudos, diminutos };
+    });
+    await pa.goto(BASE + '#/sec/familia'); await pa.waitForSelector('#fa-nodos');
+    if (await pa.locator('#fa-ejemplo').count()) { await pa.click('#fa-ejemplo'); await pa.waitForSelector('details.nodo'); }
+    const probl = { sinNombre: [], botonesMudos: [], diminutos: [] };
+    for (const [r, sel, antes] of [
+      ['/', '.tile.sos'], ['/emergencia', '.btn-112'], ['/emergencia/incendio-forestal', '.qcard'], ['/buscar', '#q'],
+      ['/sec/familia', 'details.nodo', async () => { await pa.locator('details.nodo summary').first().click(); await pa.locator('details.nodo').nth(1).locator('summary').click(); }],
+      ['/familia/rutas', '.ruta'],
+      ['/familia/reunion', '#re-list', async () => { await pa.locator('summary', { hasText: 'Añadir punto' }).click(); }],
+      ['/sec/plan-familiar', '#k-punto', async () => { await pa.locator('summary', { hasText: 'Añadir contacto' }).click(); }],
+      ['/sec/calculadoras', '#calcs'],
+      ['/sec/config', '#cfg-export', async () => { await pa.locator('details.plegable > summary').first().click(); }], ['/sec/comunicaciones', '#uf-list', async () => { for (const t of ['Añadir frecuencia', 'Nueva entrada']) await pa.locator('summary', { hasText: t }).click(); }],
+      ['/sec/riesgos', '#rz'], ['/mapa', '#map.leaflet-container', async () => { await pa.click('#m-add'); await pa.waitForSelector('#np-n'); }],
+      ['/sec/orientacion', '#cp-start'], ['/sec/juegos/calma', '#ca-start'], ['/check/nivel2', '.chk-item'], ['/sec/audio', '#au-file'],
+    ]) {
+      await pa.goto(BASE + '#' + r); await pa.waitForSelector(sel); await pa.waitForTimeout(200);
+      if (antes) await antes();
+      await pa.waitForTimeout(150);
+      const x = await revisar();
+      for (const k of Object.keys(probl)) probl[k].push(...x[k].map((v) => `${r}: ${v}`));
+    }
+    ok('Accesibilidad: ningún campo de formulario sin nombre', probl.sinNombre.length === 0, probl.sinNombre.slice(0, 6).join(' | '));
+    ok('Accesibilidad: ningún botón o enlace sin nombre', probl.botonesMudos.length === 0, probl.botonesMudos.slice(0, 3).join(' | '));
+    ok('Accesibilidad: ningún texto por debajo de 11 px', probl.diminutos.length === 0, probl.diminutos.slice(0, 6).join(' | '));
+
+    await pa.goto(BASE + '#/sec/primeros-auxilios'); await pa.waitForSelector('.list .row');
+    const marca = await pa.evaluate(() => getComputedStyle(document.querySelector('.list .row.pr-critico .rt > b'), '::after').content);
+    ok('Accesibilidad: lo crítico se indica con texto, no solo con color', /crítico/.test(marca), marca);
+
+    // Centro familiar: se entiende qué es opcional y se confirma el guardado.
+    await pa.goto(BASE + '#/sec/familia'); await pa.waitForSelector('details.nodo');
+    ok('Familia: pasos del plan visibles', (await pa.locator('.pasos-fam li').count()) === 3);
+    await pa.locator('details.nodo summary').first().click();
+    ok('Familia: los campos opcionales se marcan como tales', (await pa.locator('details.nodo').first().locator('.opc').count()) >= 5);
+    await pa.locator('details.nodo').first().locator('[data-f="tel"]').fill('600123123');
+    await pa.waitForTimeout(700);
+    ok('Familia: se confirma el guardado automático', /Guardado/.test(await pa.locator('details.nodo').first().locator('.guardado').textContent()));
+    await ca.close();
+  }
+
+  /* ---- 13 sexies. Nada queda activo tras abandonar las pantallas ---- */
+  console.log('\n▸ Batería: ningún proceso activo tras salir de las pantallas');
+  {
+    const cp = await browser.newContext({ ...devices['Pixel 7'], serviceWorkers: 'block', geolocation: { latitude: 40.4, longitude: -3.7 }, permissions: ['geolocation'] });
+    await cp.route('https://www.ign.es/**', (route) => route.fulfill({ status: 200, contentType: 'image/png', body: PNG_1PX, headers: { 'Access-Control-Allow-Origin': '*' } }));
+    await cp.addInitScript(() => {
+      const si = window.setInterval.bind(window), ci = window.clearInterval.bind(window);
+      const P = window.__proc = { intervalos: new Set(), locks: 0, win: {}, vigilancias: 0 };
+      window.setInterval = (fn, ms, ...a) => { const id = si(fn, ms, ...a); P.intervalos.add(id); return id; };
+      window.clearInterval = (id) => { P.intervalos.delete(id); return ci(id); };
+      Object.defineProperty(navigator, 'wakeLock', { configurable: true, value: { request: async () => { P.locks++; const l = { released: false, release: async () => { if (!l.released) { l.released = true; P.locks--; } } }; return l; } } });
+      const add = window.addEventListener.bind(window), rem = window.removeEventListener.bind(window);
+      window.addEventListener = (t, ...r) => { P.win[t] = (P.win[t] || 0) + 1; return add(t, ...r); };
+      window.removeEventListener = (t, ...r) => { P.win[t] = (P.win[t] || 0) - 1; return rem(t, ...r); };
+      const wp = navigator.geolocation?.watchPosition?.bind(navigator.geolocation);
+      if (wp) navigator.geolocation.watchPosition = (...a) => { P.vigilancias++; return wp(...a); };
+    });
+    const pp = await cp.newPage();
+    const estado = () => pp.evaluate(() => ({ intervalos: window.__proc.intervalos.size, locks: window.__proc.locks, win: { ...window.__proc.win }, vigilancias: window.__proc.vigilancias, audio: [...document.querySelectorAll('audio')].some((a) => !a.paused) || !!window.__au && !window.__au.paused }));
+    await pp.goto(BASE + '#/'); await pp.waitForSelector('.tile.sos');
+    const base0 = await estado();
+    const visitas = [
+      ['/emergencia/incendio-forestal', '.qcard'],
+      ['/emergencia/sanitaria/ictus', '.qcard'],
+      ['/emergencia', '.btn-112', async () => { await pp.click('[data-pos112]'); await pp.waitForTimeout(400); }],
+      ['/mapa', '#map.leaflet-container', async () => { await pp.click('#m-me'); await pp.waitForTimeout(500); }],
+      ['/sec/orientacion', '#cp-start', async () => { await pp.click('#cp-start'); await pp.click('#cp-manual'); }],
+      ['/sec/juegos/calma', '#ca-start', async () => { await pp.click('#ca-start'); await pp.waitForTimeout(1200); }],
+      ['/sec/juegos', '.ttt-c', async () => { await pp.click('#jg-tabs [data-t="mem"]'); }],
+      ['/buscar', '#q', async () => { await pp.fill('#q', 'hipotermia'); }],
+      ['/familia/mapa', '#map.leaflet-container'],
+      ['/check/nivel2', '.chk-item'],
+    ];
+    for (const [r, sel, accion] of visitas) {
+      await pp.goto(BASE + '#' + r); await pp.waitForSelector(sel); await pp.waitForTimeout(300);
+      if (accion) await accion();
+      await pp.goto(BASE + '#/'); await pp.waitForSelector('.tile.sos'); await pp.waitForTimeout(150);
+    }
+    // Audio: se inyecta y se reproduce uno de verdad.
+    await pp.evaluate(async () => {
+      const st = await import('./assets/js/store.js');
+      const n = 8000, buf = new ArrayBuffer(44 + n * 2), dv = new DataView(buf);
+      const wr = (o, s) => { for (let i = 0; i < s.length; i++) dv.setUint8(o + i, s.charCodeAt(i)); };
+      wr(0, 'RIFF'); dv.setUint32(4, 36 + n * 2, true); wr(8, 'WAVEfmt '); dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, 1, true);
+      dv.setUint32(24, 8000, true); dv.setUint32(28, 16000, true); dv.setUint16(32, 2, true); dv.setUint16(34, 16, true); wr(36, 'data'); dv.setUint32(40, n * 2, true);
+      await st.put('audio', { id: 'p1', nombre: 'Prueba', tipo: 'audio/wav', tam: buf.byteLength, dur: 1, cat: 'voz', blob: new Blob([buf], { type: 'audio/wav' }), ts: Date.now() });
+    });
+    await pp.goto(BASE + '#/sec/audio'); await pp.waitForSelector('[data-play="0"]');
+    await pp.click('[data-play="0"]'); await pp.waitForTimeout(300);
+    await pp.evaluate(() => { window.__au = document.querySelector('#au-el'); });
+    await pp.goto(BASE + '#/'); await pp.waitForSelector('.tile.sos');
+    await pp.waitForTimeout(1500);
+    const fin = await estado();
+    const tipos = new Set([...Object.keys(base0.win), ...Object.keys(fin.win)]);
+    const desbalance = [...tipos].filter((t) => (base0.win[t] || 0) !== (fin.win[t] || 0)).map((t) => `${t}:${base0.win[t] || 0}→${fin.win[t] || 0}`);
+    ok('Batería: ningún intervalo activo tras recorrer la app', fin.intervalos === 0, JSON.stringify(fin.intervalos));
+    ok('Batería: ningún bloqueo de pantalla activo', fin.locks === 0, String(fin.locks));
+    ok('Batería: ningún listener de window pendiente', desbalance.length === 0, desbalance.join(', '));
+    ok('Batería: ningún audio sonando', !fin.audio);
+    ok('Batería: sin seguimiento continuo del GPS', fin.vigilancias === 0);
+    await cp.close();
+  }
+
   /* ------------------ 13 ter. Temas: modo noche y contraste ------------------ */
   console.log('\n▸ Temas: modo noche, contraste alto y elementos fijos');
   {
@@ -1195,7 +1322,7 @@ try {
       });
       ok(`Tema ${tema}/${cont}: navegación, 112 y avisos siguen en pantalla`, pos.nav && pos.bar && pos.toast, JSON.stringify(pos));
       const malos = [];
-      for (const r of ['/', '/emergencia', '/emergencia/incendio-forestal', '/check/nivel2', '/sec/familia']) {
+      for (const r of ['/', '/emergencia', '/emergencia/incendio-forestal', '/check/nivel2', '/sec/familia', '/sec/plan-familiar', '/sec/calculadoras', '/sec/config', '/sec/primeros-auxilios']) {
         await pt.goto(BASE + '#' + r); await pt.waitForTimeout(250);
         malos.push(...(await contraste(pt)).map((m) => r + ' ' + m));
       }
@@ -1223,6 +1350,7 @@ try {
 } finally {
   await browser.close();
   try { srv.kill(); } catch {}
+  try { srv2?.kill(); } catch {}
 }
 
 console.log(`\n${'─'.repeat(60)}\nRESULTADO: ${pass} correctas · ${fail} fallidas`);

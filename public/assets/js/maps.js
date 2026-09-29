@@ -408,6 +408,9 @@ export async function mapView() {
     { collapsed: true }
   ).addTo(map);
   vector.addTo(map);
+  // Leaflet no da nombre accesible al botón de capas (solo un title en inglés).
+  const botonCapas = n.querySelector('.leaflet-control-layers-toggle');
+  if (botonCapas) { botonCapas.setAttribute('aria-label', 'Elegir el mapa de fondo y las capas'); botonCapas.title = 'Capas'; botonCapas.setAttribute('role', 'button'); }
 
   // Al cambiar de capa base se recalcula el relleno del vectorial.
   map.on('baselayerchange', (e) => {
