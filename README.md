@@ -14,7 +14,7 @@ Aplicación web progresiva (PWA) sin dependencias externas en tiempo de ejecuci�
 npm install          # instala leaflet, es-atlas y topojson-client (solo para el build)
 npm run build        # genera geodatos, iconos y el manifiesto de precache
 npm run dev          # servidor local en http://localhost:8080
-npm test             # 348 pruebas: 26 unitarias (buscador, datos, build, mapas, portada) + 275 end-to-end de app + 47 de sincronización, incluida la prueba offline real
+npm test             # 349 pruebas: 26 unitarias (buscador, datos, build, mapas, portada) + 276 end-to-end de app + 47 de sincronización, incluida la prueba offline real
 ```
 
 No hay bundler, ni transpilador, ni framework. El directorio `public/` es la

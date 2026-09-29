@@ -204,7 +204,11 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.4em 0; }
 .home-bloque h2 { font-size: .95rem; color: var(--dim); letter-spacing: .1em; margin: 0 0 8px; }
 .home-sos-fila { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-bottom: 8px; }
 .home-sos-fila .tile.sos { min-height: 88px; grid-column: auto; }
-.home .grid .tile .nm { font-size: clamp(.82rem, 3.7vw, 1rem); overflow-wrap: normal; word-break: normal; hyphens: auto; }
+/* El tamaño se ajusta para que «COMUNICACIONES» quepa entera a 320 px. Si aun
+   así no cabe (letra grande en Ajustes, o navegador sin diccionario de
+   guiones), primero se intenta el guion silábico y, como último recurso, se
+   parte la palabra antes que dejar que se salga de la tarjeta. */
+.home .grid .tile .nm { font-size: clamp(.7rem, 3.5vw, 1rem); overflow-wrap: anywhere; word-break: normal; hyphens: auto; -webkit-hyphens: auto; }
 .home-112 {
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
   min-width: 88px; padding: 8px; border-radius: var(--r); text-decoration: none;
@@ -225,6 +229,7 @@ html[data-theme='night'] .home-112 { background: #7A1D16; border-color: #A4473A;
   background: var(--panel); border: 1px solid var(--line); border-radius: var(--r);
   color: var(--txt); text-decoration: none; font-family: var(--ff); font-weight: 700;
   text-transform: uppercase; font-size: .85rem; letter-spacing: .02em; line-height: 1.15;
+  min-width: 0; overflow-wrap: anywhere; hyphens: auto; -webkit-hyphens: auto;
 }
 .home-enlace:active, .home-buscar:active { background: var(--panel2); }
 .home .grid .tile { min-height: 84px; }
@@ -247,7 +252,7 @@ html[data-theme='night'] .home-112 { background: #7A1D16; border-color: #A4473A;
 .tile .nm {
   display: block; font-family: var(--ff); text-transform: uppercase; font-weight: 700;
   font-size: clamp(.8rem, 3.6vw, .95rem); letter-spacing: .02em; margin-top: 8px; line-height: 1.15;
-  overflow-wrap: break-word; hyphens: auto;
+  overflow-wrap: break-word; hyphens: auto; -webkit-hyphens: auto;
 }
 .tile .ds { display: block; font-size: .78rem; color: var(--dim2); line-height: 1.28; margin-top: 3px; overflow-wrap: anywhere; }
 
@@ -476,10 +481,20 @@ body.emg { --bg: #0A0E06; }
 /* Pantalla de mapa: acciones en una fila y mapa que llega justo hasta la
    navegación inferior (cabecera ~74 px + acciones ~52 + estado ~40 + nav 58). */
 .mapa-acciones { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-bottom: 6px; }
-.mapa-acciones .btn { flex-direction: column; gap: 0; padding: 4px 2px; min-height: 52px; font-size: .8rem; letter-spacing: 0; line-height: 1.1; text-transform: none; }
+.mapa-acciones .btn { flex-direction: column; gap: 0; padding: 4px 2px; min-height: 52px; font-size: clamp(.72rem, 3.4vw, .8rem); letter-spacing: 0; line-height: 1.1; text-transform: none; overflow-wrap: anywhere; }
 .mapa-acciones .btn span { display: block; margin-top: 2px; }
 .mapa-estado { font-size: .85rem; color: var(--dim); min-height: 22px; margin: 2px 0 6px; line-height: 1.35; }
 .mapa-vista #map { height: calc(100dvh - 250px - env(safe-area-inset-bottom)); min-height: 280px; }
+/* Pantallas de 320–359 px: se recupera el espacio justo para que «Descargar» y
+   «COMUNICACIONES» quepan enteras sin partirse (medido con la fuente de
+   reserva más ancha). */
+@media (max-width: 359px) {
+  .mapa-acciones { gap: 4px; }
+  .mapa-acciones .btn { padding: 4px 0; }
+  .home .grid .tile { padding-left: 9px; padding-right: 9px; }
+  .home .grid .tile .nm { letter-spacing: 0; }
+  .home-enlace { gap: 5px; padding: 6px 6px; font-size: .7rem; letter-spacing: 0; }
+}
 @media (min-width: 760px) { .mapa-acciones .btn { flex-direction: row; gap: 6px; font-size: .85rem; } .mapa-acciones .btn span { margin: 0; } }
 /* Controles de Leaflet a tamaño táctil. */
 .leaflet-touch .leaflet-bar a, .leaflet-bar a { width: 44px !important; height: 44px !important; line-height: 44px !important; font-size: 1.3rem !important; }
@@ -637,7 +652,7 @@ body.emg #app { padding-bottom: 170px; }
 .filtros-busq { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .filtros-busq:empty { display: none; }
 .filtros-busq button {
-  min-height: 38px; padding: 4px 12px; border-radius: 999px; cursor: pointer;
+  min-height: 44px; padding: 4px 12px; border-radius: 999px; cursor: pointer;
   background: var(--panel); border: 1px solid var(--line2); color: var(--dim); font: inherit; font-size: .85rem;
 }
 .filtros-busq button span { font-family: var(--fb); font-size: .75rem; opacity: .8; margin-left: 2px; }

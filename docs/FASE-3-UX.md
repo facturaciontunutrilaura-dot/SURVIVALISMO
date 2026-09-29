@@ -300,7 +300,7 @@ La medición es la misma que la del diagnóstico: 20 pantallas y 5 tamaños.
 
 | Métrica | Antes | Después |
 |---|---|---|
-| Controles de menos de 44 px (375 px, 20 pantallas) | Más de 290 (238 solo en un checklist) | **0** en los 5 tamaños |
+| Controles de menos de 44 px (375 px, 20 pantallas) | Más de 290 (238 solo en un checklist) | **0** en los 5 tamaños (corregido en la verificación final, §H: los filtros del buscador con resultados medían 38 px) |
 | Textos con contraste por debajo de AA (tema normal) | Decenas (4,36–4,46:1) | **0** |
 | Contraste mínimo en modo noche | 2,16:1 | **≥ 4,5:1** (probado en 4 temas) |
 | Campos sin nombre accesible | 60 | **0** |
@@ -362,6 +362,123 @@ La medición es la misma que la del diagnóstico: 20 pantallas y 5 tamaños.
 - **Mapas del IGN:** siguen pendientes de la prueba en dispositivo de la fase
   anterior. Esta fase solo tocó su interfaz.
 - **Guiones silábicos en español** en las tarjetas de la portada (en el
-  entorno de pruebas no hay diccionario).
+  entorno de pruebas no hay diccionario). Ejemplos concretos en §H.
 - **No hecho a propósito:** iconos SVG propios (fase estética), tema claro,
   animaciones.
+
+## H. Verificación final de la fase 3
+
+Revisión hecha antes de dar la fase por cerrada. **No incluye cambios de la
+fase 4.** Que las pruebas pasen no equivale a validación en un móvil físico:
+todo lo que depende del dispositivo se marca abajo como
+**PENDIENTE DE VERIFICACIÓN EN DISPOSITIVO REAL**.
+
+### Cómo se ha revisado
+
+- Suite completa: `npm test`.
+- Recorrido visual automatizado con Chromium (sin guiones en español) sobre
+  19 pantallas a 320, 375, 390, 430 y 1280 px, en tema normal y modo noche
+  (190 capturas medidas). Se ha medido:
+  - desplazamiento horizontal y elementos que se salen de la pantalla;
+  - controles de menos de 44 px;
+  - elementos fijos fuera de la pantalla y solape de la barra 112 con la
+    navegación;
+  - contenido final tapado por los fijos;
+  - palabras partidas o que se salen de su tarjeta;
+  - alto del mapa y errores de página.
+- Tamaños de letra «M», «L» y «XL» en los cinco anchos para desbordes de texto.
+- Teclado simulado reduciendo el alto de la ventana al 55 % con el foco en el
+  buscador y en un campo de formulario. Esto **no** reproduce el teclado real.
+
+### Problemas encontrados y corregidos
+
+| Problema | Evidencia | Corrección |
+|---|---|---|
+| Filtros del buscador (Todo · SOS · Manual · Otros) de **38 px** de alto | Aparecen solo con resultados. La prueba de «una mano» medía `/buscar` vacío, por eso no lo detectó. | `min-height: 44px`. La prueba ahora mide también `/buscar?q=sangra`. |
+| «COMUNICACIONES» se salía de su tarjeta en la portada a 320 px (palabra de 118 px en 113 px) | Medido con la fuente de reserva, la más ancha. `scrollWidth 151 > 137`. | Tamaño `clamp(.7rem, 3.5vw, 1rem)`. Por debajo de 360 px, 9 px de margen y sin espaciado entre letras. Como último recurso, `overflow-wrap: anywhere`. |
+| «ALIMENTACIÓN» y «CONFIGURACIÓN» se salían de su botón en la lista Manual/Más a 320 px | Los detectó la prueba nueva. | Por debajo de 360 px: letra de 0,7 rem, menos margen y hueco. Además, guiones y partido de palabra como último recurso. |
+| «Descargar» se partía («Descarga-r») en la barra del mapa a 320 px (66 px en 63 px) | Captura y medida. | Por debajo de 360 px, hueco de 4 px y sin margen lateral. Solo interfaz: la lógica del mapa no se ha tocado. |
+| Safari necesita `-webkit-hyphens` y faltaba en dos reglas de tarjetas | Revisión del CSS. | Añadido el prefijo. |
+
+Prueba nueva: «A 320 px: ninguna palabra de la portada ni del mapa se sale o
+se parte». Falla sin la corrección y pasa con ella.
+
+### Señales descartadas (no son errores)
+
+- «Saltar al contenido» (25 px) está fuera de la pantalla hasta que se usa el
+  tabulador. Es un atajo de teclado, no un control táctil.
+- «Contenido tapado al final» en checklist, configuración, juegos y
+  comunicaciones: era contenido de apartados plegados (`<details>` cerrados).
+  Las capturas al final de cada página muestran el último elemento por encima
+  de la navegación.
+- «Campo bajo la barra con teclado» en el plan de reunificación: el campo está
+  dentro de un apartado plegado. En campos visibles (buscador, calculadoras),
+  al tocar el campo se desplaza por encima de la barra.
+
+### Guiones silábicos: ejemplos concretos
+
+El entorno de pruebas no tiene diccionario de español, así que aquí las
+palabras largas se parten sin guion o se desbordan. Casos vistos:
+
+| Dónde | Ancho | Qué pasaba | Estado |
+|---|---|---|---|
+| Accesos sanitarios SOS | < 480 px | «HEMORRA/GIA», «ATRAGANT/AMIENTO» | Resuelto en el bloque 5: una columna por debajo de 480 px, la palabra cabe entera. |
+| Portada, tarjeta Comunicaciones | 320 px, letra M | «COMUNICACIONE/S» o desborde | Resuelto: cabe entera (prueba nueva). |
+| Portada, lista Manual/Más | 320 px, letra M | «ALIMENTACIÓN» y «CONFIGURACIÓN» desbordaban | Resuelto: caben enteras (prueba nueva). |
+| Mapa, botón Descargar | 320 px | «Descarga/r» | Resuelto. |
+| Portada con letra **XL** | 320 px | «ALIMENTACI/ÓN», «CONFIGURAC/IÓN», «CALCULADOR/AS», «COMUNICACI/ONES». No desbordan, pero se parten sin guion. | **PENDIENTE DE VERIFICACIÓN EN DISPOSITIVO REAL.** Con diccionario (Chrome Android, Safari iOS) deberían partirse por sílabas con guion («ALIMENTA-CIÓN»). |
+
+Qué probar en el móvil: *Ajustes → Tamaño de letra XL*, en un móvil estrecho
+(o con zoom de pantalla del sistema). Hay que mirar la portada (tarjetas y
+lista Manual/Más), la lista SOS y la barra del mapa. Correcto: ninguna palabra
+sale de su tarjeta y los cortes llevan guion en una sílaba. Incorrecto: cortes
+sin guion o a mitad de sílaba.
+
+### Mapas del IGN: qué cubren las pruebas
+
+Todas las pruebas simulan el servidor del IGN: responden con una imagen de 1 px
+y cabecera CORS. **No se ha probado contra el servidor real ni en un móvil.
+No está validado.**
+
+| Aspecto | Cubierto por prueba | No cubierto |
+|---|---|---|
+| Proveedor | Plantillas WMTS de las 3 capas bien formadas, CSP y atribución visible (unitarias y E2E). Las teselas se piden al WMTS del IGN. | Que el servidor real responda con esas plantillas, los zooms nativos (17/16/19) y `image/jpeg`. |
+| Carga de teselas | Se piden y el vectorial deja de tapar. Con el servidor caído, el vectorial se rellena y lo explica. | Carga visual real de las tres capas. Si el IGN permite leer las teselas desde JavaScript (CORS real). |
+| Descarga | Empieza y hace peticiones reales al servidor simulado. El botón pasa a «Cancelar». | Que el contador de teselas guardadas sube con el IGN real. Límite de 3000 teselas en uso real. |
+| Cancelación | «Cancelar» detiene las peticiones, informa de lo guardado y se puede volver a empezar. | — |
+| Al salir del mapa | Salir detiene la descarga (no hay más peticiones). | Comportamiento con la app en segundo plano o la pantalla bloqueada. |
+| Recuperación de teselas descargadas | **Ninguna prueba** comprueba que se guardan en IndexedDB ni que se sirven sin red. Solo hay indicios: la prueba sin red comprueba el vectorial, y con el servidor simulado el estado muestra «N teselas guardadas». | Modo avión con una zona descargada: que se ve el mapa ráster, no solo el vectorial. |
+
+**PENDIENTE DE VERIFICACIÓN EN DISPOSITIVO REAL.** Seguir los cinco puntos del
+README («Pendiente de verificar en un dispositivo real»).
+
+### Resto de comprobaciones que requieren un móvil físico
+
+Todas: **PENDIENTE DE VERIFICACIÓN EN DISPOSITIVO REAL.**
+
+| Área | Qué probar exactamente | Correcto si… |
+|---|---|---|
+| Modo noche en OLED | Brillo mínimo, a oscuras, 5 minutos en SOS, en una ficha, en un checklist y en el mapa. | Se lee sin deslumbrar. La navegación inferior y la barra del 112 se ven. El rojo del 112 no molesta. |
+| Barra del 112 y «Deshacer» con el pulgar | Móvil de 6,7" sujeto con una mano (derecha e izquierda). Pulsar «Llamar al 112» en SOS (solo abrir el marcador, **no llamar**). Borrar un contacto y pulsar «Deshacer». | Se alcanzan sin cambiar de agarre. El marcador se abre con 112 escrito. «Deshacer» recupera el contacto. |
+| Teclado virtual | Android (Chrome) e iOS (Safari, y como app instalada): tocar el buscador, escribir y cerrar el teclado. Repetir en Contactos, Centro familiar (abrir un apartado y tocar un campo) y Calculadoras. | El campo activo queda visible encima del teclado. La barra inferior no tapa el campo ni el texto. Al cerrar el teclado no quedan huecos. |
+| Búsqueda | Escribir «sangra», «me he cortado» y «sin luz». Tocar un filtro, abrir un resultado y volver. | Resultados al teclear. Los filtros se pulsan bien (44 px). Al volver, la búsqueda y los resultados siguen ahí. |
+| Formularios | Añadir una ubicación, una ruta y un punto de encuentro. Guardar, borrar y deshacer. | Se ve «Guardado». El teclado numérico aparece en latitud/longitud. Se puede deshacer. |
+| Gesto atrás de iOS | Portada → SOS → Hemorragia; deslizar desde el borde izquierdo dos veces. Buscar → resultado → deslizar. | Vuelve a la pantalla anterior, en la misma posición, sin salir de la app ni recargar. |
+| Botón atrás de Android | Mismo recorrido con el botón o gesto atrás, en navegador y en la app instalada. Desde la portada, atrás. | Mismo resultado que con «←». Desde la portada, la app se cierra o va al historial del navegador, sin bucles. |
+| Wake lock, brújula y 112 | Los de la lista de `AUDITORIA.md`. | — |
+
+### Infarto e ictus
+
+Siguen marcadas como **pendientes de revisión clínica**. No se han validado ni
+se ha cambiado su contenido:
+- `revision: 'pendiente'` en `art-tecnicas.js` (`pa-infarto` y `pa-ictus`);
+- aviso visible «Ficha incompleta…» en la cabecera de la ficha (comprobado en
+  las capturas a 320 px, en modo normal y noche);
+- en la lista SOS solo esas dos se marcan como incompletas;
+- el texto está congelado por la prueba unitaria «infarto e ictus: marcadas
+  como incompletas y sin texto nuevo sin revisar».
+
+### Resultado de las pruebas
+
+**349/349**: 26 unitarias, 276 E2E y 47 de sincronización. Hay una prueba E2E
+nueva y la prueba de «una mano» amplía su lista de pantallas.

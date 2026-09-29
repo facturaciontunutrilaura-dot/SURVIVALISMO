@@ -1081,7 +1081,7 @@ try {
       .filter((e) => { const r = e.getBoundingClientRect(); return Math.min(r.width, r.height) < 44; })
       .map((e) => `${(e.textContent || e.getAttribute('aria-label') || e.tagName).trim().slice(0, 18)} ${Math.round(e.getBoundingClientRect().width)}×${Math.round(e.getBoundingClientRect().height)}`));
     const fallos = [];
-    for (const [r, sel] of [['/emergencia', '.btn-112'], ['/emergencia/incendio-forestal', '.qcard'], ['/emergencia/sanitaria/hemorragia', '.qcard, .emg-hd'], ['/buscar', '#q'], ['/mapa', '#map.leaflet-container'], ['/sec/orientacion', '#cp-start'], ['/sec/juegos/calma', '#ca-start'], ['/check/nivel2', '.chk-item']]) {
+    for (const [r, sel] of [['/emergencia', '.btn-112'], ['/emergencia/incendio-forestal', '.qcard'], ['/emergencia/sanitaria/hemorragia', '.qcard, .emg-hd'], ['/buscar', '#q'], ['/buscar?q=sangra', '.filtros-busq button'], ['/mapa', '#map.leaflet-container'], ['/sec/orientacion', '#cp-start'], ['/sec/juegos/calma', '#ca-start'], ['/check/nivel2', '.chk-item']]) {
       await ir(r, sel);
       fallos.push(...(await pequenos()).map((x) => `${r}: ${x}`));
     }
@@ -1090,6 +1090,34 @@ try {
     await ir('/emergencia', '.btn-112');
     const barra = await pm.evaluate(() => { const r = document.querySelector('.sos-bar a[href="tel:112"]').getBoundingClientRect(); return r.bottom <= innerHeight && r.top > innerHeight / 2; });
     ok('Una mano: la lista SOS también tiene el 112 abajo, al alcance del pulgar', barra);
+
+    // A 320 px ninguna palabra de la portada ni de la barra del mapa se sale de
+    // su tarjeta o botón ni se parte a mitad («COMUNICACIONE-S», «Descarga-r»).
+    {
+      const c3 = await browser.newContext({ viewport: { width: 320, height: 640 }, isMobile: true, hasTouch: true });
+      const p3 = await c3.newPage();
+      const partidas = () => p3.evaluate(() => {
+        const out = [];
+        for (const e of document.querySelectorAll('.home .tile .nm, .home-lista a, .mapa-acciones .btn span')) {
+          if (e.scrollWidth > e.clientWidth + 1 || e.closest('.tile, .btn, a').scrollWidth > e.closest('.tile, .btn, a').clientWidth + 1) out.push('desborda: ' + e.textContent.trim());
+          const w = document.createTreeWalker(e, NodeFilter.SHOW_TEXT);
+          for (let n; (n = w.nextNode());) {
+            let i = 0;
+            for (const pal of n.textContent.split(/(\s+)/)) {
+              if (pal.trim().length > 3) { const r = document.createRange(); r.setStart(n, i); r.setEnd(n, i + pal.length); if (new Set([...r.getClientRects()].map((x) => Math.round(x.top))).size > 1) out.push('partida: ' + pal); }
+              i += pal.length;
+            }
+          }
+        }
+        return out;
+      });
+      await p3.goto(BASE + '#/'); await p3.waitForSelector('.home-bloque'); await p3.waitForTimeout(200);
+      const enPortada = await partidas();
+      await p3.goto(BASE + '#/mapa'); await p3.waitForSelector('.mapa-acciones'); await p3.waitForTimeout(200);
+      const enMapa = await partidas();
+      ok('A 320 px: ninguna palabra de la portada ni del mapa se sale o se parte', enPortada.length + enMapa.length === 0, [...enPortada, ...enMapa].join(' | '));
+      await c3.close();
+    }
 
     // Foco visible con teclado.
     const cd = await browser.newContext({ viewport: { width: 1280, height: 800 } });
