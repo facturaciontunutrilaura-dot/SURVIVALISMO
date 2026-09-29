@@ -655,7 +655,7 @@ export async function mapView() {
         const rec = await store.get('geo', b.dataset.gdel);
         const fila = b.closest('.row');
         await borrarConDeshacer({
-          que: 'Capa', borrar: () => store.del('geo', rec.id), restaurar: () => store.restaurar('geo', rec),
+          que: 'Capa', f: true, borrar: () => store.del('geo', rec.id), restaurar: () => store.restaurar('geo', rec),
           repintar: async () => { if (fila.isConnected) fila.hidden = !(await store.get('geo', rec.id)); },
         });
       })

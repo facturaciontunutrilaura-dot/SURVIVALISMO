@@ -359,22 +359,70 @@ body.emg { --bg: #0A0E06; }
 .steps.no li::before { content: '✕'; background: #52201a; color: #ffb9ae; border: 1px solid var(--red); }
 
 /* ------------------------------ CHECKLIST ------------------------------ */
-.chk-item { border: 1px solid var(--line); border-radius: var(--r); background: var(--panel); margin-bottom: 6px; padding: 8px 10px; }
-.chk-item .lbl { font-size: .95rem; margin-bottom: 6px; }
-.chk-states { display: flex; gap: 4px; flex-wrap: wrap; }
-.chk-states button {
-  flex: 1 1 auto; min-width: 62px; min-height: 34px; padding: 4px 6px;
-  background: var(--bg2); border: 1px solid var(--line2); border-radius: 3px;
-  color: var(--dim2); font-family: var(--fb); font-size: .66rem;
-  letter-spacing: .06em; text-transform: uppercase; cursor: pointer;
+.chk-grupo { border: 1px solid var(--line); border-radius: var(--r); background: var(--bg2); margin-bottom: 8px; }
+.chk-grupo > summary {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  min-height: 52px; padding: 8px 12px; cursor: pointer; list-style: none;
+  font-family: var(--ff); text-transform: uppercase; font-weight: 700; letter-spacing: .03em; color: var(--sand);
 }
-.chk-states button[aria-pressed='true'] { color: #f2f1e6; }
-.chk-states button[data-s='tengo'][aria-pressed='true'] { background: #2c4423; border-color: var(--green); }
+.chk-grupo > summary::-webkit-details-marker { display: none; }
+.chk-grupo > summary::before { content: '▸'; color: var(--dim2); margin-right: 4px; }
+.chk-grupo[open] > summary::before { content: '▾'; }
+.chk-grupo > summary .gt { flex: 1; }
+.chk-grupo > summary .gp { font-family: var(--fb); font-size: .85rem; color: var(--dim); }
+.chk-grupo.completo > summary .gp { color: var(--olive3); }
+.chk-grupo[open] { padding: 0 8px 8px; }
+.chk-grupo[open] > summary { padding-left: 4px; padding-right: 4px; }
+
+.chk-item { border: 1px solid var(--line); border-radius: var(--r); background: var(--panel); margin-bottom: 6px; padding: 4px 6px 6px; }
+/* El texto del elemento es el botón principal: marca «tengo». */
+.chk-main {
+  display: flex; align-items: flex-start; gap: 12px; width: 100%; min-height: 48px; padding: 10px 6px;
+  background: none; border: 0; color: var(--txt); font: inherit; text-align: left; cursor: pointer;
+}
+.chk-main .lbl { font-size: 1rem; line-height: 1.35; margin: 0; }
+.chk-box {
+  flex: 0 0 auto; width: 26px; height: 26px; margin-top: 1px; border-radius: 4px;
+  border: 2px solid var(--line2); background: var(--bg2); display: grid; place-items: center; font-weight: 700;
+}
+.chk-main[aria-pressed='true'] .chk-box { background: #2c4423; border-color: var(--green); color: #e7f3da; }
+.chk-main[aria-pressed='true'] .chk-box::after { content: '✓'; }
+.chk-main[aria-pressed='true'] .lbl { color: var(--dim); }
+.chk-item[data-estado='falta'] .chk-box::after { content: '✕'; color: #F0A89C; }
+.chk-item[data-estado='comprar'] .chk-box::after { content: '🛒'; font-size: .8rem; }
+.chk-item[data-estado='revisar'] .chk-box::after { content: '↻'; color: #E6DC9A; }
+.chk-states { display: flex; gap: 6px; flex-wrap: wrap; padding-left: 44px; }
+.chk-states button {
+  min-height: 44px; min-width: 44px; padding: 4px 10px; cursor: pointer;
+  background: var(--bg2); border: 1px solid var(--line); border-radius: var(--r);
+  color: var(--dim); font: inherit; font-size: .85rem;
+}
+.chk-states button[aria-pressed='true'] { color: #f2f1e6; font-weight: 700; }
 .chk-states button[data-s='falta'][aria-pressed='true'] { background: #52201a; border-color: var(--red); }
 .chk-states button[data-s='comprar'][aria-pressed='true'] { background: #4d3410; border-color: var(--amber); }
 .chk-states button[data-s='revisar'][aria-pressed='true'] { background: #3d3a12; border-color: var(--yellow); }
-.chk-item input[type='date'] { min-height: 34px; margin-top: 6px; font-size: .82rem; }
-
+.chk-states .chk-cad[aria-expanded='true'] { border-color: var(--olive2); color: var(--txt); }
+.chk-fecha { padding: 6px 0 0 44px; }
+.chk-fecha label { margin-top: 2px; }
+.chk-fecha input { min-height: 44px; }
+.cad { display: inline-block; margin-top: 4px; font-size: .85rem; color: var(--dim); }
+.cad.pronto { color: #F0C48C; }
+.cad.caducado { color: #F0A89C; font-weight: 700; }
+.chk-progreso { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 10px 12px; margin-bottom: 10px; }
+.chk-progreso .num { font-family: var(--fb); font-size: 1rem; color: var(--dim); }
+.chk-progreso .num b { font-size: 1.8rem; color: var(--txt); }
+.chk-progreso .progress { height: 12px; margin: 6px 0; }
+.chk-progreso .progress > i { background: var(--green); }
+.solo-pendiente .chk-item[data-estado='tengo'], .solo-pendiente .chk-grupo.completo { display: none; }
+.chk-fin { margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--line); }
+/* En móvil, sin sangría: los tres estados y la fecha caben en una fila. */
+@media (max-width: 479px) {
+  .chk-states, .chk-fecha { padding-left: 0; }
+  .chk-states { flex-wrap: nowrap; }
+  .chk-states button { flex: 1 1 auto; padding: 4px 6px; }
+  .chk-states .chk-cad { flex: 0 0 44px; }
+}
+@media (max-width: 360px) { .chk-states button:not(.chk-cad) span[aria-hidden] { display: none; } }
 .progress { height: 8px; background: var(--bg2); border: 1px solid var(--line); border-radius: 2px; overflow: hidden; margin: 6px 0 14px; }
 .progress > i { display: block; height: 100%; background: var(--olive2); }
 

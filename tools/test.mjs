@@ -217,6 +217,41 @@ try {
   ok('Persiste tras recargar', (await page.getAttribute('.chk-item button[data-s="tengo"]', 'aria-pressed')) === 'true');
   ok('Barra de progreso actualizada', (await page.textContent('#ck-txt')).startsWith('1 de'));
 
+  // Diseño para el pulgar: tocar el texto marca «tengo».
+  const segunda = page.locator('.chk-item').nth(1);
+  await segunda.locator('.chk-main .lbl').click();
+  await page.waitForTimeout(250);
+  ok('Checklist: tocar el texto del elemento lo marca', (await segunda.locator('.chk-main').getAttribute('aria-pressed')) === 'true' && (await page.textContent('#ck-n')) === '2');
+  await segunda.locator('.chk-main .lbl').click();
+  await page.waitForTimeout(250);
+  ok('Checklist: volver a tocarlo lo desmarca', (await page.textContent('#ck-n')) === '1');
+  const tallas = await page.$$eval('.chk-grupo[open] .chk-item button, .chk-grupo > summary', (bs) => bs.filter((b) => b.getBoundingClientRect().height > 0).map((b) => Math.round(Math.min(b.getBoundingClientRect().height, b.getBoundingClientRect().width))));
+  ok('Checklist: todos los controles visibles miden ≥ 44 px', tallas.length > 10 && tallas.every((t) => t >= 44), `mín ${Math.min(...tallas)}`);
+  ok('Checklist: grupos plegables con su progreso', (await page.locator('.chk-grupo').count()) >= 4 && /\d+\/\d+/.test(await page.locator('.chk-grupo .gp').first().textContent()));
+  const pantallasChk = await page.evaluate(() => document.documentElement.scrollHeight / innerHeight);
+  ok('Checklist: la lista ya no ocupa 14 pantallas', pantallasChk < 5, pantallasChk.toFixed(1));
+  ok('Checklist: la fecha no ocupa sitio si no se usa', (await segunda.locator('.chk-fecha').isHidden()));
+  await segunda.locator('.chk-cad').click();
+  const hoy = new Date(); const pronto = new Date(hoy.getTime() + 5 * 86400000).toISOString().slice(0, 10);
+  await segunda.locator('.chk-fecha input').fill(pronto);
+  await segunda.locator('.chk-fecha input').dispatchEvent('change');
+  await page.waitForTimeout(300);
+  ok('Checklist: avisa si la fecha está cerca', /Caduca el/.test(await segunda.locator('.chk-aviso').textContent()));
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForSelector('.chk-item');
+  ok('Checklist: la fecha guardada se muestra al volver', !(await page.locator('.chk-item').nth(1).locator('.chk-fecha').isHidden()));
+  await page.click('#ck-pend');
+  ok('Checklist: «Solo pendiente» oculta lo que ya tienes', await page.locator('.chk-item').first().isHidden());
+  await page.click('#ck-pend');
+  ok('Checklist: «Reiniciar» está al final, lejos de las marcas', await page.evaluate(() => document.querySelector('#ck-clr').getBoundingClientRect().top > document.querySelector('.chk-grupo:last-of-type').getBoundingClientRect().top));
+  await page.click('#ck-clr');
+  await page.waitForSelector('.toast .toast-accion');
+  await page.waitForTimeout(300);
+  ok('Checklist: reiniciar sin confirmación y con «Deshacer»', (await page.textContent('#ck-n')) === '0');
+  await page.click('.toast-accion');
+  await page.waitForTimeout(500);
+  ok('Checklist: deshacer recupera las marcas y la fecha', (await page.textContent('#ck-n')) === '1' && !(await page.locator('.chk-item').nth(1).locator('.chk-fecha').isHidden()));
+
   /* --------------------------- 7. Plan familiar --------------------------- */
   console.log('\n▸ Plan familiar (solo local)');
   await page.goto(BASE + '#/sec/plan-familiar');

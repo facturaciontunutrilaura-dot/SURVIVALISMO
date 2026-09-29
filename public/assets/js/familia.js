@@ -285,7 +285,7 @@ export async function familiaView() {
       const est = estados[nd.id], pre = prep[nd.id];
       const trazas = (await Promise.all(nd.rutas.filter((r) => r.geoId).map((r) => store.get('geo', r.geoId)))).filter(Boolean);
       await borrarConDeshacer({
-        que: 'Ubicación',
+        que: 'Ubicación', f: true,
         borrar: async () => {
           for (const g of trazas) await store.del('geo', g.id).catch(() => {});
           ns.splice(ns.indexOf(nd), 1);
@@ -369,7 +369,7 @@ export async function familiaView() {
           const pos = nd.rutas.indexOf(r);
           const traza = r.geoId ? await store.get('geo', r.geoId) : null;
           await borrarConDeshacer({
-            que: 'Ruta',
+            que: 'Ruta', f: true,
             borrar: async () => { if (traza) await store.del('geo', traza.id); nd.rutas.splice(nd.rutas.indexOf(r), 1); await guardar(); },
             restaurar: async () => { if (traza) await store.restaurar('geo', traza); nd.rutas.splice(Math.min(pos, nd.rutas.length), 0, r); await guardar(); },
             repintar: () => w.isConnected && pinta(),

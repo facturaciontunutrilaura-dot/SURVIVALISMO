@@ -46,12 +46,13 @@ export function toast(msg, opts = {}) {
 /** Borra y ofrece deshacer durante unos segundos, sin ventanas de
  *  confirmación. `borrar` y `restaurar` son async; `repintar` refresca la
  *  vista si sigue en pantalla. */
-export async function borrarConDeshacer({ que, borrar, restaurar, repintar = () => {} }) {
+export async function borrarConDeshacer({ que, f = false, hecho, recuperado, borrar, restaurar, repintar = () => {} }) {
   await borrar();
   repintar();
-  toast(`${que} eliminado`, {
+  const o = f ? 'a' : 'o';
+  toast(hecho || `${que} eliminad${o}`, {
     tipo: 'ok',
-    accion: { t: 'Deshacer', fn: async () => { await restaurar(); repintar(); toast(`${que} recuperado`, { tipo: 'ok' }); } },
+    accion: { t: 'Deshacer', fn: async () => { await restaurar(); repintar(); toast(recuperado || `${que} recuperad${o}`, { tipo: 'ok' }); } },
   });
 }
 

@@ -449,7 +449,7 @@ async function frecuenciasPanel() {
     n.querySelectorAll('[data-fdel]').forEach((b) =>
       b.addEventListener('click', async () => {
         const rec = await store.get('frecs', b.dataset.fdel);
-        await borrarConDeshacer({ que: 'Frecuencia', borrar: () => store.del('frecs', rec.id), restaurar: () => store.restaurar('frecs', rec), repintar: () => n.isConnected && paintUF() });
+        await borrarConDeshacer({ que: 'Frecuencia', f: true, borrar: () => store.del('frecs', rec.id), restaurar: () => store.restaurar('frecs', rec), repintar: () => n.isConnected && paintUF() });
       }));
   };
 
@@ -463,7 +463,7 @@ async function frecuenciasPanel() {
     n.querySelectorAll('[data-ldel]').forEach((b) =>
       b.addEventListener('click', async () => {
         const rec = await store.get('radiolog', b.dataset.ldel);
-        await borrarConDeshacer({ que: 'Entrada del registro', borrar: () => store.del('radiolog', rec.id), restaurar: () => store.restaurar('radiolog', rec), repintar: () => n.isConnected && paintLog() });
+        await borrarConDeshacer({ que: 'Entrada del registro', f: true, borrar: () => store.del('radiolog', rec.id), restaurar: () => store.restaurar('radiolog', rec), repintar: () => n.isConnected && paintLog() });
       }));
   };
 
@@ -497,75 +497,161 @@ async function frecuenciasPanel() {
 }
 
 /* ------------------------------ CHECKLIST ------------------------------ */
+/* Diseño para el pulgar:
+     · Tocar el texto del elemento marca/desmarca «tengo», el estado principal.
+     · «falta», «comprar» y «revisar» son botones secundarios de 44 px.
+     · La fecha de caducidad solo ocupa sitio si tiene valor o se pide.
+     · Los grupos se pliegan y muestran su progreso: la lista deja de ser un
+       muro de 14 pantallas sin perder nada.
+   La clave de cada marca sigue siendo `lista::grupo::índice`. */
+const ESTADOS_CHK = [
+  { id: 'tengo', t: 'Tengo', ic: '✓' },
+  { id: 'falta', t: 'Falta', ic: '✕' },
+  { id: 'comprar', t: 'Comprar', ic: '🛒' },
+  { id: 'revisar', t: 'Revisar', ic: '↻' },
+];
+
+function avisoFecha(fecha) {
+  if (!fecha) return '';
+  const dias = Math.round((new Date(fecha + 'T00:00:00') - new Date(new Date().toDateString())) / 86400000);
+  const f = new Date(fecha + 'T00:00:00').toLocaleDateString('es-ES');
+  if (dias < 0) return `<span class="cad caducado">⚠ Caducado el ${esc(f)}</span>`;
+  if (dias <= 30) return `<span class="cad pronto">⚠ Caduca el ${esc(f)} (${dias} d)</span>`;
+  return `<span class="cad">📅 ${esc(f)}</span>`;
+}
+
 async function vChecklist(id) {
   const c = CHECKLISTS.find((x) => x.id === id);
   if (!c) return v404();
-  const estados = ['tengo', 'falta', 'comprar', 'revisar'];
   const saved = Object.fromEntries((await store.all('checks')).map((r) => [r.id, r]));
+  const claves = [];
 
-  const items = [];
-  const html = c.grupos.map((g) => `
-    <h3>${esc(g.g)}</h3>
-    ${g.items.map((it, i) => {
-      const key = `${c.id}::${g.g}::${i}`;
-      items.push(key);
-      const cur = saved[key] || {};
-      return `<div class="chk-item" data-k="${esc(key)}">
-        <div class="lbl">${esc(it)}</div>
-        <div class="chk-states">
-          ${estados.map((e2) => `<button type="button" data-s="${e2}" aria-pressed="${cur.estado === e2}">${e2}</button>`).join('')}
-        </div>
-        <input type="date" value="${esc(cur.fecha || '')}" aria-label="Fecha de caducidad o revisión">
-      </div>`;
-    }).join('')}`).join('');
+  const item = (g, it, i) => {
+    const key = `${c.id}::${g.g}::${i}`;
+    claves.push(key);
+    const cur = saved[key] || {};
+    const uidf = `f-${c.id}-${claves.length}`;
+    return `<div class="chk-item" data-k="${esc(key)}" data-estado="${esc(cur.estado || '')}">
+      <button type="button" class="chk-main" data-s="tengo" aria-pressed="${cur.estado === 'tengo'}">
+        <span class="chk-box" aria-hidden="true"></span><span class="lbl">${esc(it)}</span>
+      </button>
+      <div class="chk-states" role="group" aria-label="Otros estados de «${esc(it)}»">
+        ${ESTADOS_CHK.slice(1).map((e) => `<button type="button" data-s="${e.id}" aria-pressed="${cur.estado === e.id}"><span aria-hidden="true">${e.ic}</span> ${e.t}</button>`).join('')}
+        <button type="button" class="chk-cad" aria-expanded="${cur.fecha ? 'true' : 'false'}" aria-controls="${uidf}">📅<span class="vh"> Caducidad</span></button>
+      </div>
+      <div class="chk-fecha" ${cur.fecha ? '' : 'hidden'}>
+        <label for="${uidf}">Caducidad o revisión</label>
+        <input id="${uidf}" type="date" value="${esc(cur.fecha || '')}">
+        <span class="chk-aviso">${avisoFecha(cur.fecha)}</span>
+      </div>
+    </div>`;
+  };
+
+  const grupos = c.grupos.map((g, gi) => {
+    const html = g.items.map((it, i) => item(g, it, i)).join('');
+    return `<details class="chk-grupo" data-g="${gi}"><summary><span class="gt">${esc(g.g)}</span><span class="gp" data-gp="${gi}"></span></summary>${html}</details>`;
+  }).join('');
 
   const n = el(`<div>
     ${topbar(c.t, 'Checklist', '#/sec/equipo')}
     <h1>☑ ${esc(c.t)}</h1>
     <p class="muted">${esc(c.desc)}</p>
-    <div class="progress"><i id="ck-bar" style="width:0"></i></div>
-    <div class="muted" id="ck-txt"></div>
-    <div class="btnrow" style="margin-top:10px">
-      <button class="btn ghost sm" id="ck-clr" type="button">Reiniciar este checklist</button>
+    <div class="chk-progreso" aria-live="polite">
+      <div class="num"><b id="ck-n">0</b> / ${claves.length || c.grupos.reduce((a, g) => a + g.items.length, 0)} <span>tengo</span></div>
+      <div class="progress"><i id="ck-bar" style="width:0"></i></div>
+      <div class="muted" id="ck-txt"></div>
     </div>
-    ${html}
+    <div class="btnrow chk-herr">
+      <button class="btn ghost sm" id="ck-abrir" type="button">Desplegar todo</button>
+      <button class="btn ghost sm" id="ck-pend" type="button" aria-pressed="false">Solo pendiente</button>
+    </div>
+    ${grupos}
+    <div class="chk-fin">
+      <button class="btn ghost danger" id="ck-clr" type="button">Reiniciar este checklist</button>
+      <p class="muted">Borra las marcas y fechas de esta lista. Podrás deshacerlo durante unos segundos.</p>
+    </div>
   </div>`);
 
+  const total = claves.length;
   const refresh = async () => {
-    const rows = await store.all('checks');
-    const mine = rows.filter((r) => r.id.startsWith(c.id + '::'));
-    const tengo = mine.filter((r) => r.estado === 'tengo').length;
-    const pct = items.length ? (tengo / items.length) * 100 : 0;
+    const rows = Object.fromEntries((await store.all('checks')).filter((r) => r.id.startsWith(c.id + '::')).map((r) => [r.id, r]));
+    const cuenta = { tengo: 0, falta: 0, comprar: 0, revisar: 0 };
+    for (const k of claves) if (rows[k]?.estado) cuenta[rows[k].estado] = (cuenta[rows[k].estado] || 0) + 1;
+    const pct = total ? (cuenta.tengo / total) * 100 : 0;
+    n.querySelector('#ck-n').textContent = cuenta.tengo;
     n.querySelector('#ck-bar').style.width = pct + '%';
-    n.querySelector('#ck-txt').textContent = `${tengo} de ${items.length} completados (${pct.toFixed(0)} %)`;
+    n.querySelector('#ck-txt').textContent = `${cuenta.tengo} de ${total} completados (${pct.toFixed(0)} %)`
+      + (cuenta.falta || cuenta.comprar || cuenta.revisar ? ` · falta ${cuenta.falta} · comprar ${cuenta.comprar} · revisar ${cuenta.revisar}` : '');
+    c.grupos.forEach((g, gi) => {
+      const ks = g.items.map((_, i) => `${c.id}::${g.g}::${i}`);
+      const t = ks.filter((k) => rows[k]?.estado === 'tengo').length;
+      n.querySelector(`[data-gp="${gi}"]`).textContent = t === ks.length ? `✓ ${t}/${ks.length}` : `${t}/${ks.length}`;
+      n.querySelector(`[data-g="${gi}"]`).classList.toggle('completo', t === ks.length);
+    });
+  };
+
+  const guardar = async (key, cambios) => {
+    const cur = { ...((await store.get('checks', key)) || { id: key }), ...cambios };
+    await store.put('checks', cur);
+    return cur;
   };
 
   n.querySelectorAll('.chk-item').forEach((box) => {
     const key = box.dataset.k;
-    box.querySelectorAll('.chk-states button').forEach((b) => {
-      b.addEventListener('click', async () => {
-        const cur = (await store.get('checks', key)) || { id: key };
-        cur.estado = cur.estado === b.dataset.s ? '' : b.dataset.s;
-        await store.put('checks', cur);
-        box.querySelectorAll('.chk-states button').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.s === cur.estado)));
-        refresh();
-      });
+    box.querySelectorAll('[data-s]').forEach((b) => b.addEventListener('click', async () => {
+      const actual = box.dataset.estado;
+      const nuevo = actual === b.dataset.s ? '' : b.dataset.s;
+      await guardar(key, { estado: nuevo });
+      box.dataset.estado = nuevo;
+      box.querySelectorAll('[data-s]').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.s === nuevo)));
+      refresh();
+    }));
+    const fecha = box.querySelector('.chk-fecha');
+    const bcad = box.querySelector('.chk-cad');
+    bcad.addEventListener('click', () => {
+      fecha.hidden = !fecha.hidden;
+      bcad.setAttribute('aria-expanded', String(!fecha.hidden));
+      if (!fecha.hidden) fecha.querySelector('input').focus();
     });
-    box.querySelector('input[type=date]').addEventListener('change', async (e2) => {
-      const cur = (await store.get('checks', key)) || { id: key };
-      cur.fecha = e2.target.value;
-      await store.put('checks', cur);
+    fecha.querySelector('input').addEventListener('change', async (e2) => {
+      await guardar(key, { fecha: e2.target.value });
+      box.querySelector('.chk-aviso').innerHTML = avisoFecha(e2.target.value);
+      toast(e2.target.value ? 'Fecha guardada' : 'Fecha quitada', { tipo: 'ok', ms: 1800 });
     });
+  });
+
+  // Se abre el primer grupo con cosas pendientes; el resto, plegados.
+  const abrirPrimero = async () => {
+    await refresh();
+    const primero = [...n.querySelectorAll('.chk-grupo')].find((d) => !d.classList.contains('completo')) || n.querySelector('.chk-grupo');
+    if (primero) primero.open = true;
+  };
+
+  n.querySelector('#ck-abrir').addEventListener('click', (e) => {
+    const abrir = e.currentTarget.textContent.startsWith('Desplegar');
+    n.querySelectorAll('.chk-grupo').forEach((d) => { d.open = abrir; });
+    e.currentTarget.textContent = abrir ? 'Plegar todo' : 'Desplegar todo';
+  });
+  n.querySelector('#ck-pend').addEventListener('click', (e) => {
+    const on = e.currentTarget.getAttribute('aria-pressed') !== 'true';
+    e.currentTarget.setAttribute('aria-pressed', String(on));
+    n.classList.toggle('solo-pendiente', on);
+    if (on) n.querySelectorAll('.chk-grupo:not(.completo)').forEach((d) => { d.open = true; });
   });
 
   n.querySelector('#ck-clr').addEventListener('click', async () => {
-    if (!confirm('¿Reiniciar todas las marcas de este checklist?')) return;
-    for (const k of items) await store.del('checks', k);
-    toast('Checklist reiniciado');
-    route();
+    const copia = (await store.all('checks')).filter((r) => claves.includes(r.id));
+    if (!copia.length) return toast('Este checklist no tiene marcas');
+    await borrarConDeshacer({
+      que: 'Marcas', hecho: 'Checklist reiniciado', recuperado: 'Marcas recuperadas',
+      borrar: async () => { for (const r of copia) await store.del('checks', r.id); },
+      restaurar: async () => { for (const r of copia) await store.restaurar('checks', r); },
+      // Repintar reconstruye la vista: se compara la dirección, no el nodo.
+      repintar: () => { if (location.hash === `#/check/${c.id}`) route(); },
+    });
   });
 
-  await refresh();
+  await abrirPrimero();
   return n;
 }
 
