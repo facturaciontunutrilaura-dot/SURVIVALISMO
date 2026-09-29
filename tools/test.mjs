@@ -878,6 +878,131 @@ try {
     await ci.close();
   }
 
+  /* ------------- 11 ter. Mapas: descarga robusta y persistencia (fase 5) ------------- */
+  console.log('\n▸ Mapas: descarga robusta y persistencia');
+  {
+    const CORS = { 'Access-Control-Allow-Origin': '*' };
+    let modo = 'ok', nTesela = 0, retraso = 0;
+    const cm = await browser.newContext({ ...devices['Pixel 7'], serviceWorkers: 'allow' });
+    await cm.route('https://www.ign.es/**', async (route) => {
+      nTesela++;
+      if (retraso) await new Promise((r) => setTimeout(r, retraso));
+      if (modo === 'xml') return route.fulfill({ status: 200, contentType: 'text/xml', body: '<ExceptionReport/>', headers: CORS }).catch(() => {});
+      if (modo === 'mixto' && nTesela % 3 === 0) return route.fulfill({ status: 500, contentType: 'text/plain', body: 'error', headers: CORS }).catch(() => {});
+      return route.fulfill({ status: 200, contentType: 'image/png', body: PNG_1PX, headers: CORS }).catch(() => {});
+    });
+    const pm = await cm.newPage();
+    await pm.goto(BASE, { waitUntil: 'networkidle' });
+    await pm.evaluate(() => navigator.serviceWorker.ready);
+    await pm.reload({ waitUntil: 'networkidle' });
+    await pm.waitForFunction(() => !!navigator.serviceWorker.controller, null, { timeout: 15000 });
+    const teselas = () => pm.evaluate(async () => (await import('./assets/js/store.js')).count('tiles'));
+    const limpiar = () => pm.evaluate(async () => (await import('./assets/js/store.js')).clear('tiles'));
+    const abrirMapa = async () => { await pm.goto(BASE + '#/'); await pm.goto(BASE + '#/mapa'); await pm.waitForSelector('#map.leaflet-container'); await pm.waitForTimeout(900); };
+    const descargar = async (z0, z1, durante) => {
+      await pm.click('#m-dl');
+      await pm.fill('#dl-z0', String(z0)); await pm.fill('#dl-z1', String(z1));
+      await pm.click('#dl-go');
+      if (durante) await durante();
+      await pm.waitForFunction(() => /^Descargar$/.test(document.querySelector('#dl-go')?.textContent || '') && (document.querySelector('#dl-log')?.textContent || '').length > 20, null, { timeout: 30000 });
+      return pm.textContent('#dl-log');
+    };
+
+    // a) El servidor responde 200 con un error XML: no se guarda nada.
+    modo = 'xml'; await abrirMapa(); await limpiar();
+    const logXml = await descargar(6, 7);
+    ok('Mapas: una respuesta que no es imagen no se guarda como tesela', (await teselas()) === 0 && /ninguna tesela/.test(logXml), logXml.slice(0, 120));
+
+    // b) Descarga parcial: se dice que falta, no «ya puedes usarla sin conexión».
+    modo = 'mixto'; await abrirMapa(); await limpiar();
+    const logParcial = await descargar(6, 8);
+    ok('Mapas: una descarga parcial se presenta como incompleta', /Descarga incompleta: faltan \d+/.test(logParcial) && !/Ya puedes usar/.test(logParcial), logParcial.slice(0, 160));
+    // c) Reintentar completa la zona sin volver a bajar lo guardado.
+    modo = 'ok';
+    const logRe = await descargar(6, 8);
+    ok('Mapas: reintentar completa la zona y no repite lo ya guardado', /Descarga completa/.test(logRe) && /ya guardadas: [1-9]/.test(logRe), logRe.slice(0, 160));
+
+    // d) Se pierde la conexión a mitad: se detiene y lo dice; lo guardado se queda.
+    await abrirMapa(); await limpiar(); retraso = 80;
+    const logRed = await descargar(6, 8, async () => { await pm.waitForTimeout(700); await cm.setOffline(true); });
+    retraso = 0;
+    const trasCorte = await teselas();
+    ok('Mapas: al perder la conexión la descarga se detiene y lo explica', /Se ha perdido la conexión/.test(logRed) && /Guardadas \d+ de \d+/.test(logRed), logRed.slice(0, 160));
+    ok('Mapas: lo descargado antes del corte se conserva', trasCorte > 0, String(trasCorte));
+    await cm.setOffline(false);
+
+    // e) Sin espacio: se detiene y lo dice.
+    await abrirMapa(); await limpiar();
+    await pm.evaluate(() => {
+      const put = IDBObjectStore.prototype.put; let n = 0;
+      window.__putOriginal = put;
+      IDBObjectStore.prototype.put = function (...a) { if (this.name === 'tiles' && ++n > 3) throw new DOMException('Sin espacio', 'QuotaExceededError'); return put.apply(this, a); };
+    });
+    const logEspacio = await descargar(6, 8);
+    await pm.evaluate(() => { IDBObjectStore.prototype.put = window.__putOriginal; });
+    ok('Mapas: sin espacio en el dispositivo, se detiene y lo dice', /No queda espacio en el dispositivo/.test(logEspacio), logEspacio.slice(0, 160));
+
+    // f) Persistencia: se descarga, se CIERRA la app y se abre SIN RED.
+    await abrirMapa(); await limpiar();
+    const logOk = await descargar(6, 7);
+    const guardadas = await teselas();
+    ok('Mapas: la descarga completa guarda las teselas', /Descarga completa/.test(logOk) && guardadas > 0, `${guardadas}`);
+    await pm.close();
+    await cm.setOffline(true);
+    const pm2 = await cm.newPage();
+    await pm2.goto(BASE + '#/mapa', { waitUntil: 'domcontentloaded' });
+    await pm2.waitForSelector('#map.leaflet-container', { timeout: 15000 });
+    await pm2.waitForTimeout(1800);
+    const off = await pm2.evaluate(() => ({
+      estado: document.getElementById('m-status').textContent,
+      blobs: [...document.querySelectorAll('.leaflet-tile-pane img')].filter((i) => i.src.startsWith('blob:') || (i.complete && i.naturalWidth > 0 && !i.src.startsWith('data:'))).length,
+    }));
+    ok('Mapas: tras cerrar la app y abrirla sin red, se ven las teselas guardadas', off.blobs > 0 && new RegExp(`${guardadas} teselas guardadas`).test(off.estado) && /SIN CONEXIÓN/.test(off.estado), JSON.stringify(off));
+    ok('Mapas: sin red y con la zona descargada no se avisa de «sin teselas»', !/Sin teselas en esta zona/.test(off.estado), off.estado);
+
+    // g) El estado sigue a la conexión sin recargar.
+    await cm.setOffline(false);
+    await pm2.waitForTimeout(400);
+    ok('Mapas: el estado se actualiza al recuperar la conexión', /con conexión/.test(await pm2.textContent('#m-status')));
+
+    // h) Una tesela guardada dañada se borra para volver a descargarse.
+    const clave = await pm2.evaluate(async () => {
+      const s = await import('./assets/js/store.js');
+      const todas = await s.all('tiles');
+      for (const t of todas.filter((t) => t.z === 6)) await s.putRaw('tiles', { ...t, blob: new Blob(['no es una imagen'], { type: 'image/png' }) });
+      return todas.filter((t) => t.z === 6).map((t) => t.id);
+    });
+    await cm.setOffline(true);
+    await pm2.goto(BASE + '#/'); await pm2.goto(BASE + '#/mapa'); await pm2.waitForSelector('#map.leaflet-container'); await pm2.waitForTimeout(1500);
+    const quedan = await pm2.evaluate(async (ids) => { const s = await import('./assets/js/store.js'); let n = 0; for (const id of ids) if (await s.get('tiles', id)) n++; return n; }, clave);
+    ok('Mapas: una tesela guardada que no se puede dibujar se borra (se volverá a descargar)', clave.length > 0 && quedan < clave.length, `${quedan}/${clave.length}`);
+    await cm.setOffline(false);
+
+    // i) Capa importada: visible al momento, sin recargar; y se quita al borrarla.
+    await pm2.goto(BASE + '#/'); await pm2.goto(BASE + '#/mapa'); await pm2.waitForSelector('#map.leaflet-container'); await pm2.waitForTimeout(800);
+    const antesPaths = await pm2.locator('#map path').count();
+    await pm2.click('#m-layers');
+    await pm2.setInputFiles('#gi-f', { name: 'zona.geojson', mimeType: 'application/geo+json', buffer: Buffer.from(JSON.stringify({ type: 'FeatureCollection', features: [{ type: 'Feature', properties: { n: 1 }, geometry: { type: 'Polygon', coordinates: [[[-3.8, 40.3], [-3.6, 40.3], [-3.6, 40.5], [-3.8, 40.5], [-3.8, 40.3]]] } }] })) });
+    await pm2.fill('#gi-n', 'Zona de prueba');
+    await pm2.click('#gi-go'); await pm2.waitForTimeout(600);
+    const tras = await pm2.evaluate(() => ({ control: document.querySelector('.leaflet-control-layers-overlays')?.textContent || '', cuerpo: document.body.innerText }));
+    ok('Mapas: una capa importada se ve al momento (sin «recarga el mapa»)', /Zona de prueba \(importada\)/.test(tras.control) && (await pm2.locator('#map path').count()) > antesPaths && !/Recarga el mapa/.test(tras.cuerpo));
+    await pm2.click('#m-layers'); await pm2.waitForTimeout(200);
+    await pm2.click('[data-gdel]'); await pm2.waitForTimeout(400);
+    ok('Mapas: al borrar la capa desaparece del mapa y del control', !/Zona de prueba/.test(await pm2.textContent('.leaflet-control-layers-overlays')));
+    await cm.close();
+
+    // j) Si el motor de mapas no carga, lo dice y SOS sigue a un toque.
+    const cx = await browser.newContext({ ...devices['Pixel 7'], serviceWorkers: 'block' });
+    await cx.route('**/assets/vendor/leaflet/leaflet.js', (r) => r.abort());
+    const px = await cx.newPage();
+    await px.goto(BASE + '#/mapa'); await px.waitForTimeout(1500);
+    const txtX = await px.textContent('#app');
+    await px.click('.bottomnav a[href="#/emergencia"]'); await px.waitForSelector('.btn-112', { timeout: 5000 }).catch(() => {});
+    ok('Mapas: si el motor de mapas falla, se explica y SOS sigue funcionando', /No se ha podido cargar el motor de mapas/.test(txtX) && (await px.locator('.btn-112').count()) > 0, txtX.slice(0, 120));
+    await cx.close();
+  }
+
   /* --------------------- 12. Service Worker + OFFLINE --------------------- */
   console.log('\n▸ PRUEBA OFFLINE REAL');
   await page.goto(BASE, { waitUntil: 'networkidle' });

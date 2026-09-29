@@ -372,6 +372,24 @@ IGN…) o trazas GPX e importarlas desde `🗺 Mapa → Capas`. El GPX se convie
 GeoJSON en el propio navegador, sin dependencias. Se guardan en IndexedDB y
 quedan disponibles offline.
 
+**Descarga y persistencia de mapas** (fase 5):
+- solo se guardan respuestas que son imágenes. Un error del servidor con
+  código 200 no se guarda como tesela;
+- una tesela guardada que no se puede dibujar se borra y se vuelve a
+  descargar;
+- una descarga parcial se presenta como incompleta: cuántas faltan y que se
+  puede reintentar sin repetir lo ya guardado;
+- si se pierde la conexión o se llena el dispositivo, la descarga se detiene
+  y lo explica. Lo guardado se conserva;
+- el estado del mapa sigue a la conexión;
+- las capas importadas aparecen y desaparecen sin recargar;
+- una prueba cierra la app, la abre sin red y comprueba que se ven las
+  teselas descargadas.
+
+Todo esto se prueba con un servidor del IGN **simulado**. El servidor real
+queda **pendiente de prueba real** (red, CORS y formatos):
+`docs/FASE-5-VERIFICACION.md`.
+
 ### Limitaciones reconocidas
 
 - **No se incluyen capas oficiales de riesgo** (zonas inundables, peligrosidad

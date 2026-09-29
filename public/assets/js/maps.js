@@ -100,6 +100,10 @@ async function getTile(src, z, x, y) {
 async function saveTile(src, z, x, y, blob) {
   return store.put('tiles', { id: tileKey(src, z, x, y), blob, src, z, ts: Date.now() });
 }
+/** Solo se guarda lo que de verdad es una imagen. Si el servidor responde 200
+ *  con un error (XML, HTML), guardarlo dejaría esa zona en blanco para
+ *  siempre: contaría como «ya guardada» y no se volvería a descargar. */
+const esImagen = (blob) => !!blob && blob.size > 0 && /^image\//i.test(blob.type || '');
 const urlTesela = (cfg, z, x, y) => cfg.url.replace('{z}', z).replace('{x}', x).replace('{y}', y);
 
 /** TileLayer que lee de IndexedDB y, si hay red, completa y cachea.
@@ -107,10 +111,10 @@ const urlTesela = (cfg, z, x, y) => cfg.url.replace('{z}', z).replace('{x}', x).
  *  ráster se está viendo de verdad o hay que rellenar la capa vectorial. */
 function makeOfflineLayer(Lf, srcId, onTesela = () => {}) {
   const cfg = TILE_SOURCES[srcId];
-  const pinta = (img, done, blob) => {
+  const pinta = (img, done, blob, alFallar = () => {}) => {
     img.src = URL.createObjectURL(blob);
     img.onload = () => { URL.revokeObjectURL(img.src); onTesela(true); done(null, img); };
-    img.onerror = () => { URL.revokeObjectURL(img.src); vacia(img, done); };
+    img.onerror = () => { URL.revokeObjectURL(img.src); alFallar(); vacia(img, done); };
   };
   const vacia = (img, done) => { img.onload = img.onerror = null; img.src = BLANK; onTesela(false); done(null, img); };
   return Lf.TileLayer.extend({
@@ -120,12 +124,15 @@ function makeOfflineLayer(Lf, srcId, onTesela = () => {}) {
       const { z, x, y } = coords;
       getTile(srcId, z, x, y)
         .then((blob) => {
-          if (blob) return pinta(img, done, blob);
+          // Una tesela guardada que no se puede dibujar está dañada: se borra
+          // para que se vuelva a descargar en lugar de quedar en blanco.
+          if (blob) return pinta(img, done, blob, () => store.delRaw('tiles', tileKey(srcId, z, x, y)).catch(() => {}));
           if (!navigator.onLine) return vacia(img, done);
           const url = urlTesela(cfg, z, x, y);
           fetch(url, { mode: 'cors' })
             .then((r) => (r.ok ? r.blob() : Promise.reject(new Error('HTTP ' + r.status))))
             .then((b) => {
+              if (!esImagen(b)) throw new Error('No es una imagen');
               saveTile(srcId, z, x, y, b).catch(() => {});
               pinta(img, done, b);
             })
@@ -357,17 +364,20 @@ export async function mapView() {
   rasterLayers[TILE_SOURCES[FUENTE_DEFECTO].t].addTo(map);
 
   // --- Capas GeoJSON importadas por el usuario ---
+  const capaGeo = (g) => Lf.geoJSON(g.data, {
+    style: { color: g.color || '#d4842a', weight: 2, fillOpacity: 0.2 },
+    onEachFeature: (f, l) => {
+      const p = f.properties || {};
+      const txt = Object.entries(p).slice(0, 8).map(([k, v]) => `<b>${esc(k)}</b>: ${esc(v)}`).join('<br>');
+      l.bindPopup(`<b>${esc(g.nombre)}</b><br>${txt || '<span class="muted">sin atributos</span>'}`);
+    },
+  });
+  const capasGeo = new Map();   // id → capa de Leaflet (para añadir/quitar sin recargar)
   const userGeo = hayAlmacen ? await store.all('geo') : [];
   for (const g of userGeo) {
     try {
-      const capa = Lf.geoJSON(g.data, {
-        style: { color: g.color || '#d4842a', weight: 2, fillOpacity: 0.2 },
-        onEachFeature: (f, l) => {
-          const p = f.properties || {};
-          const txt = Object.entries(p).slice(0, 8).map(([k, v]) => `<b>${esc(k)}</b>: ${esc(v)}`).join('<br>');
-          l.bindPopup(`<b>${esc(g.nombre)}</b><br>${txt || '<span class="muted">sin atributos</span>'}`);
-        },
-      });
+      const capa = capaGeo(g);
+      capasGeo.set(g.id, capa);
       overlays[`${g.nombre} (importada)`] = capa;
     } catch { /* ignora capas corruptas */ }
   }
@@ -408,11 +418,28 @@ export async function mapView() {
 
   overlays['Mis puntos'] = puntosLayer;
   const soloVectorial = Lf.layerGroup();
-  Lf.control.layers(
+  const controlCapas = Lf.control.layers(
     { ...rasterLayers, 'Solo vectorial (offline)': soloVectorial },
     overlays,
     { collapsed: true }
   ).addTo(map);
+  // Capa importada o recuperada: visible al momento, sin recargar el mapa.
+  const mostrarCapa = (g) => {
+    try {
+      const capa = capaGeo(g);
+      capasGeo.set(g.id, capa);
+      capa.addTo(map);
+      controlCapas.addOverlay(capa, `${g.nombre} (importada)`);
+      const b = capa.getBounds();
+      if (b.isValid()) map.fitBounds(b, { maxZoom: 14 });
+      return true;
+    } catch { return false; }
+  };
+  const quitarCapa = (id) => {
+    const capa = capasGeo.get(id);
+    if (!capa) return;
+    map.removeLayer(capa); controlCapas.removeLayer(capa); capasGeo.delete(id);
+  };
   vector.addTo(map);
   // Leaflet no da nombre accesible al botón de capas (solo un title en inglés).
   const botonCapas = n.querySelector('.leaflet-control-layers-toggle');
@@ -436,6 +463,11 @@ export async function mapView() {
   }
   await refreshStatus();
   statusListo = true;
+  // Perder o recuperar la conexión se refleja al momento en el estado.
+  const alCambiarRed = () => { if (n.isConnected) refreshStatus(); };
+  window.addEventListener('online', alCambiarRed);
+  window.addEventListener('offline', alCambiarRed);
+  alSalir(() => { window.removeEventListener('online', alCambiarRed); window.removeEventListener('offline', alCambiarRed); });
 
   // Teselas de versiones anteriores (OpenStreetMap / OpenTopoMap): ya no se
   // muestran. Se ofrece borrarlas para liberar espacio.
@@ -606,17 +638,31 @@ export async function mapView() {
       boton.textContent = '✕ Cancelar descarga';
       boton.classList.add('danger');
       let ok = 0, skip = 0, err = 0;
+      // Motivo de parada: 'sin-red' si se pierde la conexión, 'sin-espacio' si
+      // el dispositivo no admite más datos. Lo guardado hasta ahí se conserva.
+      let parada = null;
       for (let i = 0; i < tiles.length; i++) {
         if (d.cancelada) break;
+        if (!navigator.onLine) { parada = 'sin-red'; break; }
         const [z, x, y] = tiles[i];
         try {
           if (await getTile(src, z, x, y)) { skip++; }
           else {
             const r = await fetch(urlTesela(cfg, z, x, y), { mode: 'cors', signal: d.ctrl.signal });
-            if (r.ok) { await saveTile(src, z, x, y, await r.blob()); ok++; }
-            else err++;
+            const b = r.ok ? await r.blob() : null;
+            if (esImagen(b)) {
+              try { await saveTile(src, z, x, y, b); ok++; }
+              catch (e) {
+                if (e?.name === 'QuotaExceededError' || /quota/i.test(String(e?.message || e?.name))) { parada = 'sin-espacio'; break; }
+                err++;
+              }
+            } else err++;
           }
-        } catch { if (!d.cancelada) err++; }
+        } catch {
+          if (d.cancelada) break;
+          if (!navigator.onLine) { parada = 'sin-red'; break; }
+          err++;
+        }
         if (i % 5 === 0 || i === tiles.length - 1) {
           bar.style.width = `${((i + 1) / tiles.length) * 100}%`;
           log.textContent = `${i + 1}/${tiles.length} · nuevas ${ok} · ya guardadas ${skip} · fallidas ${err}`;
@@ -633,10 +679,27 @@ export async function mapView() {
         if (n.isConnected) { toast(`Descarga cancelada · ${ok} teselas guardadas`, { tipo: 'info' }); await refreshStatus(); }
         return;
       }
-      log.innerHTML = ok + skip === 0 && err
-        ? `<span style="color:var(--red)"><b>No se ha podido guardar ninguna tesela</b> (${err} fallidas). El servidor del IGN no ha respondido o no permite la descarga desde este navegador. Inténtalo más tarde.</span>`
-        : `<b>Descarga terminada.</b> Nuevas: ${ok} · ya guardadas: ${skip} · fallidas: ${err}. Ya puedes usar esta zona sin conexión.`;
-      toast(ok + skip === 0 && err ? 'No se pudo descargar la zona' : `Zona descargada · ${ok + skip} teselas`, { tipo: ok + skip === 0 && err ? 'error' : 'ok' });
+      const guardadas = ok + skip, faltan = tiles.length - guardadas;
+      const reintentar = 'Vuelve a pulsar «Descargar» con buena conexión: solo se bajan las que faltan.';
+      let mensaje, tipo;
+      if (parada === 'sin-red') {
+        mensaje = `<span style="color:var(--amber)"><b>Se ha perdido la conexión.</b> Guardadas ${guardadas} de ${tiles.length}. ${reintentar} Mientras tanto, las partes que faltan se verán solo con el mapa vectorial.</span>`;
+        tipo = 'error';
+      } else if (parada === 'sin-espacio') {
+        mensaje = `<span style="color:var(--red)"><b>No queda espacio en el dispositivo.</b> Guardadas ${guardadas} de ${tiles.length}. Libera espacio o descarga una zona más pequeña (menos zoom).</span>`;
+        tipo = 'error';
+      } else if (guardadas === 0 && err) {
+        mensaje = `<span style="color:var(--red)"><b>No se ha podido guardar ninguna tesela</b> (${err} fallidas). El servidor del IGN no ha respondido o no permite la descarga desde este navegador. Inténtalo más tarde.</span>`;
+        tipo = 'error';
+      } else if (faltan > 0) {
+        mensaje = `<span style="color:var(--amber)"><b>Descarga incompleta:</b> faltan ${faltan} de ${tiles.length} teselas. Sin conexión, esas partes se verán solo con el mapa vectorial. ${reintentar}</span>`;
+        tipo = 'error';
+      } else {
+        mensaje = `<b>Descarga completa.</b> Nuevas: ${ok} · ya guardadas: ${skip}. Ya puedes usar esta zona sin conexión.`;
+        tipo = 'ok';
+      }
+      log.innerHTML = mensaje;
+      toast(tipo === 'ok' ? `Zona descargada · ${guardadas} teselas` : parada === 'sin-red' ? 'Descarga interrumpida: sin conexión' : parada === 'sin-espacio' ? 'Descarga detenida: no queda espacio' : guardadas ? `Descarga incompleta: faltan ${faltan}` : 'No se pudo descargar la zona', { tipo });
       await refreshStatus();
       await store.persistStorage();
     });
@@ -675,7 +738,9 @@ export async function mapView() {
         const rec = await store.get('geo', b.dataset.gdel);
         const fila = b.closest('.row');
         await borrarConDeshacer({
-          que: 'Capa', f: true, borrar: () => store.del('geo', rec.id), restaurar: () => store.restaurar('geo', rec),
+          que: 'Capa', f: true,
+          borrar: async () => { await store.del('geo', rec.id); quitarCapa(rec.id); },
+          restaurar: async () => { await store.restaurar('geo', rec); if (n.isConnected && !capasGeo.has(rec.id)) mostrarCapa(rec); },
           repintar: async () => { if (fila.isConnected) fila.hidden = !(await store.get('geo', rec.id)); },
         });
       })
@@ -685,12 +750,13 @@ export async function mapView() {
       if (!f) return toast('Selecciona un archivo');
       try {
         const data = await leerCapa(f);
-        await store.put('geo', {
+        const g = {
           id: uid(),
           nombre: panel.querySelector('#gi-n').value.trim() || f.name,
           data, color: '#d4842a', ts: Date.now(),
-        });
-        toast('Capa importada. Recarga el mapa para verla.');
+        };
+        await store.put('geo', g);
+        toast(mostrarCapa(g) ? 'Capa importada: ya se ve en el mapa' : 'Capa guardada, pero no se ha podido dibujar', { tipo: 'ok' });
       } catch (e) { toast('Error: ' + e.message); }
     });
   });
