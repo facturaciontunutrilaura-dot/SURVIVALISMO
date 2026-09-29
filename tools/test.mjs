@@ -1054,6 +1054,90 @@ try {
     await cc.close();
   }
 
+  /* ------------- 11 quinquies. Accesibilidad y emergencia (fase 5) ------------- */
+  console.log('\n▸ Accesibilidad y uso en emergencia');
+  {
+    const ca = await browser.newContext({ ...devices['Pixel 7'], serviceWorkers: 'block' });
+    await ca.route('https://www.ign.es/**', (r) => r.abort());
+    const pa = await ca.newPage();
+    await pa.goto(BASE + '#/emergencia'); await pa.waitForSelector('.btn-112');
+    // Lo que anuncia un lector de pantalla en lo crítico (árbol de accesibilidad).
+    const nav = await pa.locator('#nav').ariaSnapshot();
+    ok('Lector de pantalla: la barra inferior se anuncia sin emojis (Inicio, SOS, Familia, Mapa, Buscar)',
+      ['Inicio', 'SOS', 'Familia', 'Mapa', 'Buscar'].every((t) => nav.includes(`link "${t}"`)), nav.replace(/\n/g, ' ').slice(0, 200));
+    const llamar = await pa.locator('.sos-llamar').ariaSnapshot();
+    ok('Lector de pantalla: SOS anuncia «Llamar al 112, teléfono de emergencias» como enlace', /link "Llamar al 112, teléfono de emergencias"/.test(llamar) && /\/url: tel:112/.test(llamar));
+    ok('Lector de pantalla: «Mi posición» y «Mis datos vitales» sin emojis leídos', /button "Mi posición para dar al 112"/.test(llamar) && /Mis datos vitales/.test(llamar) && !/📍|🩺/.test(llamar), llamar.replace(/\n/g, ' ').slice(0, 300));
+    const barra = await pa.locator('.sos-bar').ariaSnapshot();
+    ok('Lector de pantalla: la barra fija del 112 es un enlace tel:112 con nombre claro', /link "Llamar al 112, teléfono de emergencias"/.test(barra));
+    // Orden de foco en SOS: primero lo más urgente.
+    const orden = [];
+    for (let i = 0; i < 6; i++) { await pa.keyboard.press('Tab'); orden.push(await pa.evaluate(() => (document.activeElement.getAttribute('aria-label') || document.activeElement.textContent).trim())); }
+    ok('Teclado: en SOS el orden es saltar, volver, buscar, 112, mi posición, datos vitales',
+      /Saltar/.test(orden[0]) && orden[1] === 'Volver' && orden[2] === 'Buscar' && /Llamar al 112/.test(orden[3]) && /Mi posición/.test(orden[4]) && /Mis datos vitales/.test(orden[5]), JSON.stringify(orden));
+    // Con teclado, lo enfocado nunca queda debajo de las barras fijas.
+    const tapados = [];
+    for (const r of ['#/emergencia', '#/sec/comunicaciones', '#/check/nivel2']) {
+      await pa.goto(BASE + r); await pa.waitForTimeout(500);
+      await pa.evaluate(() => { window.scrollTo(0, 0); document.activeElement?.blur(); });
+      for (let i = 0; i < 45; i++) {
+        await pa.keyboard.press('Tab');
+        const t = await pa.evaluate(() => {
+          const e = document.activeElement;
+          if (!e || !document.getElementById('app').contains(e) || e.closest('.sos-bar')) return null;
+          const r = e.getBoundingClientRect();
+          const techo = Math.min(innerHeight, ...[...document.querySelectorAll('.bottomnav, .sos-bar')].filter((x) => x.getBoundingClientRect().height).map((x) => x.getBoundingClientRect().top));
+          return r.height && (r.bottom > techo + 1 || r.top < 0) ? `${(e.textContent || '').trim().slice(0, 25)} (${Math.round(r.top)}-${Math.round(r.bottom)} / ${Math.round(techo)})` : null;
+        });
+        if (t) tapados.push(`${r}: ${t}`);
+      }
+    }
+    ok('Teclado: el elemento enfocado nunca queda tapado por las barras fijas', tapados.length === 0, tapados.slice(0, 4).join(' | '));
+    // Botón «Atrás» del navegador (Android) = «←»: vuelve pantalla a pantalla, sin bucles.
+    await pa.goto(BASE + '#/'); await pa.waitForSelector('.home-bloque');
+    const h0 = await pa.evaluate(() => history.length);
+    await pa.click('.home-sos .tile.sos'); await pa.waitForSelector('.btn-112');
+    await pa.click('a.sos-med[href="#/emergencia/sanitaria/ictus"]'); await pa.waitForSelector('.qcard');
+    const h1 = await pa.evaluate(() => history.length);
+    await pa.goBack(); await pa.waitForSelector('.btn-112');
+    const enSOS = await pa.evaluate(() => location.hash);
+    await pa.goBack(); await pa.waitForSelector('.home-bloque');
+    ok('Atrás del navegador: ficha → SOS → portada, una entrada por pantalla', h1 - h0 === 2 && enSOS === '#/emergencia' && (await pa.evaluate(() => location.hash)) === '#/', `${h0}→${h1} ${enSOS}`);
+    // Barra del 112 y barra inferior: separadas, sin riesgo de pulsar una por otra.
+    const hueco = [];
+    for (const w of [320, 375, 430]) {
+      await pa.setViewportSize({ width: w, height: 740 });
+      await pa.goto(BASE + '#/emergencia'); await pa.waitForSelector('.sos-bar a');
+      hueco.push(await pa.evaluate(() => Math.round(document.querySelector('.bottomnav').getBoundingClientRect().top - document.querySelector('.sos-bar a').getBoundingClientRect().bottom)));
+    }
+    ok('Uso con una mano: el botón del 112 y la barra inferior no se tocan (≥ 4 px de separación)', hueco.every((g) => g >= 4), JSON.stringify(hueco));
+    await ca.close();
+
+    // Letra extragrande a 320 px: nada se sale, nada se corta y todo sigue siendo pulsable.
+    const cx = await browser.newContext({ viewport: { width: 320, height: 640 }, isMobile: true, hasTouch: true, serviceWorkers: 'block' });
+    await cx.addInitScript(() => localStorage.setItem('survival.settings', JSON.stringify({ fs: 'xl' })));
+    await cx.route('https://www.ign.es/**', (r) => r.abort());
+    const px = await cx.newPage();
+    const fallos = [];
+    for (const r of ['#/', '#/emergencia', '#/emergencia/sanitaria/hemorragia', '#/buscar?q=sangra', '#/check/nivel2', '#/sec/familia', '#/sec/config', '#/mapa', '#/sec/juegos/calma', '#/esto-no-existe']) {
+      await px.goto(BASE + '#/'); await px.goto(BASE + r); await px.waitForTimeout(r === '#/mapa' ? 1200 : 600);
+      const f = await px.evaluate(() => {
+        const W = innerWidth, out = [];
+        if (document.scrollingElement.scrollWidth > W + 1) out.push('scroll horizontal');
+        for (const e of document.querySelectorAll('#app a[href], #app button, #app summary, #app input, #app select, .bottomnav a')) {
+          const r = e.getBoundingClientRect();
+          if (!r.width || e.closest('.leaflet-control-attribution') || (e.closest('p, li') && e.tagName === 'A' && !e.classList.contains('btn'))) continue;
+          if (r.right > W + 1) out.push('fuera: ' + (e.textContent || '').trim().slice(0, 20));
+          if (Math.min(r.width, r.height) < 44 && e.type !== 'checkbox') out.push(`<44: ${(e.textContent || e.getAttribute('aria-label') || '').trim().slice(0, 20)} ${Math.round(r.width)}x${Math.round(r.height)}`);
+        }
+        return out;
+      });
+      fallos.push(...f.map((x) => `${r} ${x}`));
+    }
+    ok('Letra extragrande a 320 px: sin desbordes y todos los controles ≥ 44 px en 10 pantallas', fallos.length === 0, fallos.slice(0, 5).join(' | '));
+    await cx.close();
+  }
+
   /* --------------------- 12. Service Worker + OFFLINE --------------------- */
   console.log('\n▸ PRUEBA OFFLINE REAL');
   await page.goto(BASE, { waitUntil: 'networkidle' });

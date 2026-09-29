@@ -951,3 +951,8 @@ h1[tabindex="-1"]:focus { outline: none; }
   background: var(--panel); color: var(--txt); font-size: .9rem; pointer-events: none;
 }
 .cargando[hidden] { display: none; }
+
+/* Foco con teclado o lector de pantalla: lo enfocado nunca queda debajo de
+   la barra inferior ni de la barra fija del 112 (fase 5). */
+html { scroll-padding-bottom: calc(90px + env(safe-area-inset-bottom)); }
+html:has(> body.emg) { scroll-padding-bottom: calc(170px + env(safe-area-inset-bottom)); }

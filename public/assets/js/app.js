@@ -285,10 +285,10 @@ function vEmergenciaLista() {
       ${boton112()}
       <p class="sos-nota">Si hay riesgo para la vida, llama primero. Sigue siempre las instrucciones de las autoridades.</p>
       <p class="sos-nota solo-escritorio">Este dispositivo quizá no pueda hacer llamadas: marca el 112 desde un teléfono.</p>
-      <button class="btn ghost wide sm" type="button" data-pos112>📍 Mi posición para dar al 112</button>
+      <button class="btn ghost wide sm" type="button" data-pos112><span aria-hidden="true">📍</span> Mi posición para dar al 112</button>
       <div id="pos112" aria-live="polite"></div>
       <details class="card plegable datos-vitales" id="datos-vitales">
-        <summary>🩺 Mis datos vitales</summary>
+        <summary><span aria-hidden="true">🩺</span> Mis datos vitales</summary>
         <div class="dv-cuerpo" aria-live="polite"><p class="muted">Cargando…</p></div>
       </details>
     </section>
@@ -1630,7 +1630,7 @@ function vSinAlmacenamiento() {
     <h1>No se pueden guardar datos</h1>
     <p class="lead">Esta pantalla necesita guardar información y el navegador no lo permite. <b>SOS y el 112 funcionan con normalidad.</b></p>
     ${boton112()}
-    <a class="btn wide" href="#/emergencia">🚨 Ir a SOS</a>
+    <a class="btn wide" href="#/emergencia"><span aria-hidden="true">🚨</span> Ir a SOS</a>
     ${avisoSinAlmacenamiento()}
   </div>`);
   conectarReintentar(n);
@@ -1643,7 +1643,7 @@ function vSinAlmacenamiento() {
 function salidaSegura() {
   return `${boton112()}
     <div class="btnrow">
-      <a class="btn" href="#/emergencia">🚨 Ir a SOS</a>
+      <a class="btn" href="#/emergencia"><span aria-hidden="true">🚨</span> Ir a SOS</a>
       <a class="btn ghost" href="#/">Volver al inicio</a>
     </div>`;
 }
