@@ -132,8 +132,8 @@ export async function comprobarCopia() {
 
 /* -------------------------------- Conjunto -------------------------------- */
 export async function comprobarTodo() {
-  const [recursos, persistencia, copia] = await Promise.all([comprobarRecursos(), comprobarPersistencia(), comprobarCopia()]);
-  return { recursos, persistencia, instalacion: comprobarInstalacion(), copia };
+  const [recursos, persistencia, copia, almacenamiento] = await Promise.all([comprobarRecursos(), comprobarPersistencia(), comprobarCopia(), store.disponible()]);
+  return { recursos, persistencia, instalacion: comprobarInstalacion(), copia, almacenamiento };
 }
 
 /** Lo que merece un aviso en la PORTADA. Solo problemas reales; lo que el
@@ -142,6 +142,7 @@ export async function comprobarTodo() {
  *  no están ni protegidos ni instalados. */
 export function problemasPortada(e) {
   const p = [];
+  if (!e.almacenamiento) p.push('almacenamiento');
   if (e.recursos.estado === 'incompleto') p.push('recursos');
   if (e.recursos.estado === 'no-disponible') p.push('sin-offline');
   if (['nunca', 'antigua', 'cambios'].includes(e.copia.estado)) p.push('copia');
@@ -241,9 +242,10 @@ export async function montarAvisoPortada(cont) {
   try { e = await comprobarTodo(); } catch { return; }
   if (!cont.isConnected) return;
   const p = problemasPortada(e);
-  const graves = p.filter((x) => x === 'recursos' || x === 'sin-offline');
+  const graves = p.filter((x) => x === 'recursos' || x === 'sin-offline' || x === 'almacenamiento');
   if (!p.length || (!graves.length && avisoOculto())) { cont.hidden = true; return; }
   const txt = {
+    almacenamiento: 'Este navegador no deja guardar datos: tu plan, contactos y checklists no se guardarán. SOS y el 112 funcionan.',
     recursos: 'Faltan archivos para usar la app sin conexión.',
     'sin-offline': 'Este navegador no guarda la app para usarla sin conexión.',
     copia: e.copia.estado === 'nunca' ? 'No tienes ninguna copia de seguridad de tus datos.' : 'Tu copia de seguridad no está al día.',

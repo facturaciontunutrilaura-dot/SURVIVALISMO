@@ -27,6 +27,9 @@ function setNav(route, sub = '') {
   });
 }
 
+/** localStorage que no lanza (navegación privada, almacenamiento bloqueado). */
+const lsGet = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
+
 function render(node, { emg = false, scroll = 0 } = {}) {
   document.body.classList.toggle('emg', emg);
   app.replaceChildren(node);
@@ -1129,8 +1132,9 @@ function vFuentes() {
 async function vConfig() {
   const s = store.settings();
   const est = await store.storageEstimate();
+  const hayAlmacen = await store.disponible();
   const counts = {};
-  for (const st of ['tiles', 'puntos', 'contactos', 'checks', 'frecs', 'radiolog', 'geo', 'progreso']) counts[st] = await store.count(st);
+  for (const st of ['tiles', 'puntos', 'contactos', 'checks', 'frecs', 'radiolog', 'geo', 'progreso']) counts[st] = hayAlmacen ? await store.count(st) : '—';
 
   const swReg = await navigator.serviceWorker?.getRegistration?.();
   const cacheNames = 'caches' in window ? await caches.keys() : [];
@@ -1141,6 +1145,7 @@ async function vConfig() {
     ${topbar('Configuración')}
     <h1>⚙️ CONFIGURACIÓN</h1>
 
+    ${hayAlmacen ? '' : `<h2>No se pueden guardar datos</h2>${avisoSinAlmacenamiento()}`}
     <h2 id="preparacion">¿Está lista tu app?</h2>
     <div id="cfg-prep"></div>
 
@@ -1197,7 +1202,7 @@ async function vConfig() {
       <div class="blk-note">El modo noche reduce la luminosidad global y evita superficies claras. Útil para conservar la visión nocturna y ahorrar batería en pantallas OLED.</div>
     </div>
 
-    <details class="card plegable" ${localStorage.getItem('survival.sync') ? 'open' : ''}>
+    <details class="card plegable" ${lsGet('survival.sync') ? 'open' : ''}>
       <summary><b>Sincronización entre dispositivos</b> <span class="muted">(opcional)</span></summary>
       <div id="cfg-sync"></div>
     </details>
@@ -1263,7 +1268,9 @@ async function vConfig() {
   });
 
   const exportar = async () => {
-    const data = await store.exportAll();
+    let data;
+    try { data = await store.exportAll(); }
+    catch (e) { toast(e?.name === 'ErrorAlmacenamiento' ? 'No se puede hacer la copia: el navegador no deja leer los datos guardados' : 'No se ha podido hacer la copia', { tipo: 'error' }); return; }
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -1291,16 +1298,20 @@ async function vConfig() {
     await store.clear('tiles'); toast('Teselas borradas'); route();
   });
 
-  await montarSync(n.querySelector('#cfg-sync'));
+  // La sincronización guarda su configuración en el navegador: sin
+  // almacenamiento no se puede usar, pero Configuración debe seguir abriendo.
+  try { await montarSync(n.querySelector('#cfg-sync')); }
+  catch { n.querySelector('#cfg-sync').innerHTML = '<p class="muted">La sincronización necesita guardar datos en el dispositivo y ahora no es posible.</p>'; }
 
   n.querySelector('#cfg-wipe').addEventListener('click', async () => {
     if (!confirm('Se borrarán TODOS tus datos: puntos, contactos, checklists, frecuencias, audio y mapas descargados. ¿Continuar?')) return;
     if (!confirm('Esta acción no se puede deshacer. ¿Seguro?')) return;
     for (const st of ['kv', 'checks', 'puntos', 'contactos', 'frecs', 'radiolog', 'tiles', 'geo', 'progreso', 'tombstones', 'audio']) await store.clear(st);
-    localStorage.clear();
+    try { localStorage.clear(); } catch { /* sin localStorage */ }
     toast('Datos borrados'); setTimeout(() => location.reload(), 800);
   });
 
+  conectarReintentar(n);
   return n;
 }
 
@@ -1467,6 +1478,42 @@ async function montarSync(box) {
   pinta();
 }
 
+/* El navegador no deja guardar datos. Se explica en lenguaje llano, con SOS
+   y el 112 lo primero, qué sigue funcionando (todo lo que no guarda nada) y
+   qué se puede hacer. */
+function avisoSinAlmacenamiento() {
+  return `<div class="blk-warn sin-alm">
+    <p><b>Qué ha pasado:</b> este navegador no deja a la app guardar información en el dispositivo. Suele ocurrir en navegación privada, con la memoria del móvil llena o si los ajustes del navegador bloquean los datos de los sitios web.</p>
+    <p><b>Sigue funcionando:</b> SOS y la llamada al 112, las fichas de emergencia y primeros auxilios, el manual, el buscador, el mapa (sin guardar puntos ni zonas), la brújula, las calculadoras y el modo calma.</p>
+    <p><b>No funciona ahora:</b> lo que se guarda —tus checklists, el plan familiar y los contactos, los puntos del mapa, las zonas descargadas y las copias de seguridad—. No se ha borrado nada por mostrar este aviso.</p>
+    <p><b>Qué puedes hacer:</b></p>
+    <ol>
+      <li>Si estás en una ventana privada o de incógnito, abre la app en una ventana normal.</li>
+      <li>Libera espacio en el móvil.</li>
+      <li>En los ajustes del navegador, permite que los sitios guarden datos.</li>
+      <li>Después, pulsa «Reintentar».</li>
+    </ol>
+    <button class="btn" type="button" data-reintentar>🔄 Reintentar</button>
+  </div>`;
+}
+function conectarReintentar(n) {
+  n.querySelector('[data-reintentar]')?.addEventListener('click', async () => {
+    if (await store.reintentar()) { toast('Ya se pueden guardar datos', { tipo: 'ok' }); route(); }
+    else toast('Todavía no se pueden guardar datos', { tipo: 'error' });
+  });
+}
+function vSinAlmacenamiento() {
+  const n = el(`<div>${topbar('Sin almacenamiento')}
+    <h1>No se pueden guardar datos</h1>
+    <p class="lead">Esta pantalla necesita guardar información y el navegador no lo permite. <b>SOS y el 112 funcionan con normalidad.</b></p>
+    ${boton112()}
+    <a class="btn wide" href="#/emergencia">🚨 Ir a SOS</a>
+    ${avisoSinAlmacenamiento()}
+  </div>`);
+  conectarReintentar(n);
+  return n;
+}
+
 function v404() {
   return el(`<div>${topbar('No encontrado')}<h1>No encontrado</h1>
     <p class="muted">Esa página no existe.</p><a class="btn" href="#/">Volver al inicio</a></div>`);
@@ -1535,7 +1582,9 @@ async function route() {
     else out = v404();
   } catch (err) {
     console.error(err);
-    out = el(`<div>${topbar('Error')}<h1>Error</h1><div class="blk-warn">${esc(err.message)}</div><a class="btn" href="#/">Inicio</a></div>`);
+    out = err?.name === 'ErrorAlmacenamiento'
+      ? vSinAlmacenamiento()
+      : el(`<div>${topbar('Error')}<h1>Error</h1><div class="blk-warn">${esc(err.message)}</div><a class="btn" href="#/">Inicio</a></div>`);
   }
 
   if (mia !== navActual) return;   // el usuario ya está en otra pantalla
@@ -1602,7 +1651,7 @@ if ('serviceWorker' in navigator) {
    ni interfiere con el funcionamiento offline. */
 (async () => {
   try {
-    if (!localStorage.getItem('survival.sync')) return;
+    if (!lsGet('survival.sync')) return;
     const S = await import('./sync.js');
     if (!S.cfg().auto) return;
     const lanzar = () => S.autoSync();

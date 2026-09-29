@@ -107,6 +107,18 @@ En la portada solo aparece un aviso, debajo de SOS, cuando algo requiere
 atención. Si faltan archivos, siempre; lo demás se puede posponer 7 días con
 «Ahora no».
 
+**Si el navegador no deja guardar datos** (navegación privada, memoria llena,
+datos de sitios bloqueados), la app no muestra un error técnico:
+- las pantallas que guardan información (checklists, plan familiar) explican
+  qué ha pasado, qué sigue funcionando, qué no y qué hacer, con el 112, SOS y
+  «Reintentar» a un toque;
+- SOS, el manual, el buscador, el modo calma y el mapa (sin puntos ni
+  descargas) funcionan;
+- Configuración abre;
+- la portada avisa.
+
+Si el almacenamiento no responde en 6 s, se trata como no disponible.
+
 ### 3.3 Estrategias del Service Worker
 
 - **Navegaciones**: **caché primero** con revalidación en segundo plano. Es una

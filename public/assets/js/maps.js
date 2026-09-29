@@ -93,8 +93,9 @@ const tileKey = (src, z, x, y) => `${src}/${z}/${x}/${y}`;
 const BLANK = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
 
 async function getTile(src, z, x, y) {
-  const r = await store.get('tiles', tileKey(src, z, x, y));
-  return r?.blob || null;
+  // Sin almacenamiento se trata como «no guardada»: con conexión se sigue
+  // viendo la tesela (sin guardarla); sin conexión, el vectorial.
+  try { return (await store.get('tiles', tileKey(src, z, x, y)))?.blob || null; } catch { return null; }
 }
 async function saveTile(src, z, x, y, blob) {
   return store.put('tiles', { id: tileKey(src, z, x, y), blob, src, z, ts: Date.now() });
@@ -257,6 +258,11 @@ export async function mapView() {
     <div id="m-panel"></div>
   </div>`);
 
+  // Sin almacenamiento el mapa se muestra igual; solo se desactiva lo que
+  // guarda (puntos, descargas).
+  const hayAlmacen = await store.disponible();
+  if (!hayAlmacen) for (const id of ['#m-add', '#m-dl']) { const b = n.querySelector(id); b.disabled = true; b.setAttribute('aria-disabled', 'true'); }
+
   try { await loadLeaflet(); } catch {
     n.querySelector('#map').innerHTML = '<div class="blk-warn">No se ha podido cargar el motor de mapas.</div>';
     return n;
@@ -351,7 +357,7 @@ export async function mapView() {
   rasterLayers[TILE_SOURCES[FUENTE_DEFECTO].t].addTo(map);
 
   // --- Capas GeoJSON importadas por el usuario ---
-  const userGeo = await store.all('geo');
+  const userGeo = hayAlmacen ? await store.all('geo') : [];
   for (const g of userGeo) {
     try {
       const capa = Lf.geoJSON(g.data, {
@@ -370,7 +376,7 @@ export async function mapView() {
   const puntosLayer = Lf.layerGroup().addTo(map);
   async function pintaPuntos() {
     puntosLayer.clearLayers();
-    const pts = await store.all('puntos');
+    const pts = hayAlmacen ? await store.all('puntos') : [];
     for (const p of pts) {
       const t = tipoMap[p.tipo] || tipoMap.nota;
       const icon = Lf.divIcon({
@@ -422,16 +428,18 @@ export async function mapView() {
   // --- Estado ---
   const status = n.querySelector('#m-status');
   async function refreshStatus() {
-    const c = await store.count('tiles');
     const aviso = modoRaster ? '' : '<br><b>⚠ Sin teselas en esta zona: se muestra el mapa vectorial</b>';
-    status.innerHTML = `${c} teselas guardadas · ${navigator.onLine ? 'con conexión' : '<b>SIN CONEXIÓN</b>'}${aviso}`;
+    const red = navigator.onLine ? 'con conexión' : '<b>SIN CONEXIÓN</b>';
+    if (!hayAlmacen) { status.innerHTML = `<b>⚠ Este navegador no deja guardar datos:</b> el mapa se ve, pero no se pueden añadir puntos ni descargar zonas · ${red}${aviso}`; return; }
+    const c = await store.count('tiles');
+    status.innerHTML = `${c} teselas guardadas · ${red}${aviso}`;
   }
   await refreshStatus();
   statusListo = true;
 
   // Teselas de versiones anteriores (OpenStreetMap / OpenTopoMap): ya no se
   // muestran. Se ofrece borrarlas para liberar espacio.
-  (async () => {
+  if (hayAlmacen) (async () => {
     const prefijos = Object.keys(TILE_SOURCES).map((k) => k + '/');
     const viejas = (await store.keys('tiles')).filter((k) => !prefijos.some((p) => String(k).startsWith(p)));
     if (!viejas.length) return;
@@ -637,6 +645,10 @@ export async function mapView() {
   // --- Panel de capas / importación ---
   n.querySelector('#m-layers').addEventListener('click', async () => {
     const panel = n.querySelector('#m-panel');
+    if (!hayAlmacen) {
+      panel.innerHTML = '<div class="card"><h3>Capas y datos</h3><p>Las capas de fondo se eligen con el botón de capas del mapa. Importar capas propias necesita guardar datos, y este navegador no lo permite ahora.</p></div>';
+      return;
+    }
     const gs = await store.all('geo');
     panel.innerHTML = `<div class="card"><h3>Capas y datos</h3>
       <h4>Siempre disponibles offline</h4>

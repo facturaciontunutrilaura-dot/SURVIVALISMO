@@ -953,6 +953,56 @@ try {
     await cc.close();
   }
 
+  /* --------------- 12 a bis. Sin almacenamiento (fase 4) --------------- */
+  console.log('\n▸ El navegador no deja guardar datos');
+  for (const modo of ['idb', 'ls']) {
+    const cs = await browser.newContext({ ...devices['Pixel 7'], serviceWorkers: 'block' });
+    await cs.route('https://www.ign.es/**', (r) => r.abort());
+    await cs.addInitScript((m) => {
+      if (m === 'idb') Object.defineProperty(window, 'indexedDB', { value: { open() { const req = {}; setTimeout(() => { req.error = new DOMException('bloqueado', 'InvalidStateError'); req.onerror && req.onerror(); }, 0); return req; } } });
+      if (m === 'ls') { const th = () => { throw new DOMException('denied', 'SecurityError'); }; Object.defineProperty(window, 'localStorage', { get: th }); }
+    }, modo);
+    const ps = await cs.newPage();
+    const errs = [];
+    ps.on('pageerror', (e) => errs.push(e.message));
+    await ps.goto(BASE + '#/'); await ps.waitForSelector('.home-bloque');
+    const pantallas = {};
+    for (const r of ['#/', '#/emergencia', '#/check/nivel2', '#/sec/familia', '#/familia/reunion', '#/sec/config', '#/mapa', '#/buscar?q=sangra', '#/sec/juegos/calma']) {
+      await ps.evaluate((r) => { location.hash = r; }, r);
+      await ps.waitForTimeout(r === '#/mapa' ? 2000 : 700);
+      pantallas[r] = await ps.evaluate(() => ({
+        texto: document.getElementById('app').innerText,
+        h1: document.querySelector('#app h1')?.textContent || '',
+        tel: !!document.querySelector('#app a[href="tel:112"], .sos-bar a[href="tel:112"]'),
+        sos: !!document.querySelector('#app a[href="#/emergencia"]'),
+        reintentar: !!document.querySelector('[data-reintentar]'),
+        mapa: document.querySelectorAll('#map path').length,
+        punto: document.getElementById('m-add')?.disabled,
+        prep: !!document.getElementById('cfg-prep'),
+      }));
+    }
+    const tecnico = Object.entries(pantallas).filter(([, v]) => /bloqueado|denied|InvalidStateError|SecurityError/.test(v.texto) || v.h1 === 'Error').map(([k]) => k);
+    if (modo === 'idb') {
+      ok('Sin almacenamiento: ninguna pantalla muestra un error técnico', tecnico.length === 0, tecnico.join(','));
+      const c = pantallas['#/check/nivel2'];
+      ok('Sin almacenamiento: el checklist explica qué ha pasado', /no deja a la app guardar información/.test(c.texto));
+      ok('Sin almacenamiento: dice qué sigue funcionando y qué no', /Sigue funcionando/.test(c.texto) && /No funciona ahora/.test(c.texto));
+      ok('Sin almacenamiento: dice qué puede hacer el usuario', /ventana normal/.test(c.texto) && c.reintentar);
+      ok('Sin almacenamiento: 112 y SOS a un toque en la pantalla del aviso', c.tel && c.sos);
+      ok('Sin almacenamiento: el centro familiar muestra el mismo aviso', /no deja a la app guardar información/.test(pantallas['#/sec/familia'].texto) && pantallas['#/sec/familia'].tel);
+      ok('Sin almacenamiento: Configuración abre y lo explica', pantallas['#/sec/config'].prep && /no deja a la app guardar información/.test(pantallas['#/sec/config'].texto));
+      ok('Sin almacenamiento: el mapa se ve (vectorial)', pantallas['#/mapa'].mapa > 40, `(${pantallas['#/mapa'].mapa})`);
+      ok('Sin almacenamiento: el mapa desactiva lo que guarda y lo dice', pantallas['#/mapa'].punto === true && /no deja guardar datos/.test(pantallas['#/mapa'].texto));
+      ok('Sin almacenamiento: SOS, búsqueda y modo calma funcionan', pantallas['#/emergencia'].tel && /Hemorragia/i.test(pantallas['#/buscar?q=sangra'].texto) && /Modo calma/.test(pantallas['#/sec/juegos/calma'].h1));
+      ok('Sin almacenamiento: la portada lo avisa', /no deja guardar datos/.test(pantallas['#/'].texto));
+    } else {
+      ok('Sin localStorage: ninguna pantalla muestra un error técnico', tecnico.length === 0, tecnico.join(','));
+      ok('Sin localStorage: Configuración abre', pantallas['#/sec/config'].prep);
+      ok('Sin localStorage: la app funciona y no hay errores no capturados', pantallas['#/emergencia'].tel && errs.length === 0, errs.slice(0, 3).join(' | '));
+    }
+    await cs.close();
+  }
+
   /* ------------- 12 bis. EL HOSTING CAE (Netlify no responde) ------------- */
   // Escenario distinto a "no hay red": el dispositivo SÍ tiene Internet, pero
   // el servidor está caído, devuelve errores o el dominio ya no existe.

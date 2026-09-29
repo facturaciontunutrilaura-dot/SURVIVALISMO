@@ -27,18 +27,65 @@ const STORES = ['kv', 'checks', 'puntos', 'contactos', 'frecs', 'radiolog', 'til
 export const SYNC_STORES = ['kv', 'checks', 'puntos', 'contactos', 'frecs', 'radiolog', 'geo', 'progreso'];
 
 let _db = null;
+let _apertura = null;   // promesa en curso o fallida (no se reintenta en cada llamada)
+
+/** El navegador no deja guardar datos (navegación privada, almacenamiento
+ *  bloqueado, lleno o dañado). Las vistas lo reconocen por `name` y muestran
+ *  una explicación en lugar de un error técnico. */
+export class ErrorAlmacenamiento extends Error {
+  constructor(causa) {
+    super('No se pueden guardar datos en este dispositivo');
+    this.name = 'ErrorAlmacenamiento';
+    this.causa = causa;
+  }
+}
+let _fallo = null;
+/** Motivo del último fallo al abrir el almacenamiento, o null si funciona. */
+export function falloAlmacenamiento() { return _fallo; }
 
 export function openDB() {
   if (_db) return Promise.resolve(_db);
-  return new Promise((res, rej) => {
-    const req = indexedDB.open(DB_NAME, DB_VER);
+  if (_apertura) return _apertura;
+  _apertura = new Promise((res, rej) => {
+    let terminado = false;
+    const fallar = (e) => {
+      if (terminado) return;
+      terminado = true; clearTimeout(reloj);
+      _fallo = e || new Error('desconocido');
+      rej(new ErrorAlmacenamiento(_fallo));
+    };
+    // Algunos navegadores no responden nunca (ni éxito ni error) cuando el
+    // almacenamiento está bloqueado: sin este límite la vista se quedaría
+    // cargando para siempre.
+    const reloj = setTimeout(() => fallar(new Error('El almacenamiento no responde')), 6000);
+    let req;
+    try {
+      if (typeof indexedDB === 'undefined' || !indexedDB) throw new Error('IndexedDB no disponible');
+      req = indexedDB.open(DB_NAME, DB_VER);
+    } catch (e) { fallar(e); return; }
     req.onupgradeneeded = () => {
       const db = req.result;
       for (const s of STORES) if (!db.objectStoreNames.contains(s)) db.createObjectStore(s, { keyPath: 'id' });
     };
-    req.onsuccess = () => { _db = req.result; res(_db); };
-    req.onerror = () => rej(req.error);
+    req.onsuccess = () => {
+      _db = req.result; _fallo = null;
+      if (terminado) { _apertura = null; return; }   // respondió tarde: la próxima llamada ya funciona
+      terminado = true; clearTimeout(reloj); res(_db);
+    };
+    req.onerror = () => fallar(req.error);
   });
+  _apertura.catch(() => {});
+  return _apertura;
+}
+
+/** ¿Se pueden guardar datos? No lanza. */
+export async function disponible() {
+  try { await openDB(); return true; } catch { return false; }
+}
+/** «Reintentar»: vuelve a intentar abrir el almacenamiento. */
+export async function reintentar() {
+  _apertura = null;
+  return disponible();
 }
 
 function tx(store, mode = 'readonly') {
@@ -169,15 +216,17 @@ const DEFAULTS = {
   lastRoute: '#/',
 };
 
+let _ajustesSesion = null;
 export function settings() {
   try { return { ...DEFAULTS, ...JSON.parse(localStorage.getItem(LS) || '{}') }; }
-  catch { return { ...DEFAULTS }; }
+  catch { return { ...DEFAULTS, ...(_ajustesSesion || {}) }; }
 }
 
 export function setSetting(k, v) {
   const s = settings();
   s[k] = v;
-  localStorage.setItem(LS, JSON.stringify(s));
+  // Sin localStorage el ajuste se aplica igual en esta sesión, sin recordarse.
+  try { localStorage.setItem(LS, JSON.stringify(s)); } catch { _ajustesSesion = s; }
   applySettings();
   return s;
 }
