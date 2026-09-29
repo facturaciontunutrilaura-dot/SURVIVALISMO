@@ -469,7 +469,7 @@ export async function mapView() {
         <button class="btn ghost" id="np-gps" type="button">Usar GPS</button>
         <button class="btn ghost" id="np-x" type="button">Cancelar</button>
       </div>
-      <div class="muted">Se guarda únicamente en este dispositivo.</div></div>`;
+      <div class="muted">Se guarda ${store.dondeSeGuarda()}.</div></div>`;
     panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     panel.querySelector('#np-x').addEventListener('click', () => { panel.innerHTML = ''; });
     panel.querySelector('#np-gps').addEventListener('click', () => {

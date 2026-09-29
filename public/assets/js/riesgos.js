@@ -113,7 +113,7 @@ function ficha(r, zonaId) {
     }).join('')}</div>` : ''}
 
     <div class="verif">
-      <label>Mi verificación (solo en este dispositivo)</label>
+      <label>Mi verificación (se guarda ${store.dondeSeGuarda()})</label>
       <div class="fieldrow">
         <select data-vn="${esc(r.id)}::${esc(zonaId)}">
           <option value="">Sin verificar por mí</option>

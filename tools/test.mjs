@@ -1045,6 +1045,33 @@ try {
     await cs.close();
   }
 
+  /* ------------ 12 a ter. Privacidad según la sincronización ------------ */
+  console.log('\n▸ Privacidad según la sincronización');
+  for (const conSync of [false, true]) {
+    const cp = await browser.newContext({ ...devices['Pixel 7'], serviceWorkers: 'block' });
+    if (conSync) await cp.addInitScript(() => localStorage.setItem('survival.sync', JSON.stringify({ url: 'https://ejemplo.supabase.co', anon: 'x', access_token: 't', user_id: 'u', auto: false })));
+    const pp = await cp.newPage();
+    const leer = async (r, sel) => { await pp.goto(BASE + r); await pp.waitForSelector(sel); await pp.waitForTimeout(300); return pp.textContent('#app'); };
+    const cfgTxt = await leer('#/sec/config', '.privacidad');
+    const privTxt = await pp.textContent('.privacidad');
+    const planTxt = await leer('#/sec/plan-familiar', '.blk-note');
+    const famTxt = await leer('#/sec/familia', '#fa-nodos');
+    const homeTxt = await leer('#/', '.home-pie');
+    const todo = cfgTxt + planTxt + famTxt + homeTxt;
+    if (!conSync) {
+      ok('Privacidad sin sync: dice que no está activada y los datos no se envían', /no está activada/.test(privTxt) && /no se envían a ningún servidor/.test(privTxt));
+      ok('Privacidad sin sync: el plan familiar dice «solo en este dispositivo»', /solo en este dispositivo/.test(planTxt));
+      ok('Privacidad: explica la conexión a los mapas del IGN (qué zona se pide)', /IGN recibe qué zona/.test(privTxt));
+    } else {
+      ok('Privacidad con sync: dice que está activada y qué se envía', /está activada/.test(privTxt) && /información médica/.test(privTxt) && /No se envían las teselas/.test(privTxt));
+      ok('Privacidad con sync: avisa de que no hay cifrado de extremo a extremo', /extremo a extremo/.test(privTxt));
+      ok('Privacidad con sync: el plan familiar dice que se copia en el servidor', /se copia en tu servidor de sincronización/.test(planTxt));
+      ok('Privacidad con sync: el centro familiar y la portada lo reflejan', /al sincronizar/.test(famTxt) && /se sincronizan con tu servidor/.test(homeTxt));
+      ok('Privacidad con sync: ningún texto afirma «solo en este dispositivo» ni «ningún servidor»', !/solo en este dispositivo|no envía ningún dato|No se envía a ningún servidor/.test(todo));
+    }
+    await cp.close();
+  }
+
   /* ------------- 12 bis. EL HOSTING CAE (Netlify no responde) ------------- */
   // Escenario distinto a "no hay red": el dispositivo SÍ tiene Internet, pero
   // el servidor está caído, devuelve errores o el dominio ya no existe.

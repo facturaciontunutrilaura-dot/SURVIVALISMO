@@ -1,6 +1,8 @@
 /* =========================================================================
-   store.js — persistencia 100 % local (IndexedDB + localStorage)
-   Ningún dato sale nunca del dispositivo.
+   store.js — persistencia local (IndexedDB + localStorage)
+   Los datos se guardan en el dispositivo. Solo salen de él si el usuario
+   activa la sincronización opcional (sync.js), y entonces solo los
+   almacenes de SYNC_STORES y hacia el servidor que él configura.
    ========================================================================= */
 
 const DB_NAME = 'survival-offline';
@@ -25,6 +27,22 @@ const STORES = ['kv', 'checks', 'puntos', 'contactos', 'frecs', 'radiolog', 'til
  *  archivos de sonido que reventarían cualquier cuota razonable de base de
  *  datos y que el usuario puede volver a añadir en cada dispositivo. */
 export const SYNC_STORES = ['kv', 'checks', 'puntos', 'contactos', 'frecs', 'radiolog', 'geo', 'progreso'];
+
+/* --------------------- ¿Salen los datos del dispositivo? ---------------------
+   Los textos de privacidad dependen de esto: sin sincronización, los datos
+   se quedan en el dispositivo; con ella (servidor configurado y sesión
+   iniciada), una copia de SYNC_STORES va al servidor de sincronización.
+   Se lee la misma configuración que sync.js sin cargar ese módulo. */
+export function syncActiva() {
+  try {
+    const c = JSON.parse(localStorage.getItem('survival.sync') || '{}');
+    return Boolean(c.url && c.anon && c.access_token && c.user_id);
+  } catch { return false; }
+}
+/** «solo en este dispositivo» o, con sincronización, dónde más se copia. */
+export function dondeSeGuarda() {
+  return syncActiva() ? 'en este dispositivo y, al sincronizar, en tu servidor de sincronización' : 'solo en este dispositivo';
+}
 
 let _db = null;
 let _apertura = null;   // promesa en curso o fallida (no se reintenta en cada llamada)

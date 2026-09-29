@@ -162,7 +162,7 @@ function vHome() {
 
     <div class="card home-pie">
       <p class="muted" style="margin:0">${esc(DISCLAIMER)}</p>
-      <p class="muted" style="margin:.6em 0 0">Contenido actualizado el ${esc(FECHA_CONTENIDO)} · v${esc(VERSION)} · Tus datos se guardan solo en este dispositivo.</p>
+      <p class="muted" style="margin:.6em 0 0">Contenido actualizado el ${esc(FECHA_CONTENIDO)} · v${esc(VERSION)} · ${store.syncActiva() ? 'Tus datos se guardan en este dispositivo y se sincronizan con tu servidor.' : 'Tus datos se guardan en este dispositivo.'}</p>
     </div>
   </div>`);
   // Solo aparece si algo requiere atención (recursos offline, copia, protección).
@@ -834,7 +834,9 @@ async function vPlanFamiliar() {
   const n = el(`<div>
     ${topbar('Plan familiar')}
     <h1>👨‍👩‍👧 PLAN FAMILIAR</h1>
-    <div class="blk-note">Todo lo que escribas aquí se guarda <b>solo en este dispositivo</b>. No se envía a ningún servidor. Haz una copia con Ajustes → Exportar datos e imprime una versión en papel para cada mochila.</div>
+    <div class="blk-note">${store.syncActiva()
+      ? 'Todo lo que escribas aquí se guarda <b>en este dispositivo</b> y, como tienes la sincronización activada, <b>se copia en tu servidor de sincronización</b> (incluida la información médica).'
+      : 'Todo lo que escribas aquí se guarda <b>solo en este dispositivo</b>. No se envía a ningún servidor mientras no actives la sincronización.'} Haz una copia con Ajustes → Exportar datos e imprime una versión en papel para cada mochila.</div>
 
     <h2>Contactos</h2>
     <div id="pf-list" class="list"></div>
@@ -1128,6 +1130,28 @@ function vFuentes() {
   </div>`);
 }
 
+/* Privacidad: lo que la app hace DE VERDAD con los datos, según esté o no
+   activada la sincronización. Sin afirmaciones absolutas que no se cumplan. */
+function textoPrivacidad() {
+  const comun = `<p class="muted">No usa analítica, publicidad ni cookies de terceros. Además de la sincronización (si la activas), la app solo se conecta a Internet para:</p>
+    <ul class="muted">
+      <li>ver o descargar mapas del IGN: el servidor del IGN recibe qué zona del mapa se pide, no tu nombre ni tus datos;</li>
+      <li>comprobar si hay una versión nueva, en el servidor donde está publicada la app.</li>
+    </ul>
+    <p class="muted">Tu posición GPS se usa en el dispositivo y no se envía a ningún sitio.</p>`;
+  if (!store.syncActiva()) {
+    return `<p><b>La sincronización no está activada:</b> tus datos (plan familiar, contactos, información médica, puntos, checklists…) se guardan en este dispositivo y no se envían a ningún servidor.</p>${comun}`;
+  }
+  return `<p><b>La sincronización está activada.</b> Además de guardarse en este dispositivo, cada vez que se sincroniza se envía una copia a <b>tu servidor de sincronización</b> (el proyecto de Supabase que has configurado) de:</p>
+    <ul>
+      <li>el plan familiar: ubicaciones, rutas, estados, puntos de encuentro, acuerdos e <b>información médica</b>;</li>
+      <li>contactos, puntos del mapa y marcas de checklist;</li>
+      <li>frecuencias propias, registro de radio, capas importadas y progreso de cursos.</li>
+    </ul>
+    <p class="muted">No se envían las teselas del mapa, el audio ni los ajustes. La conexión va cifrada (HTTPS), pero los datos no se cifran de extremo a extremo: quien administre ese proyecto de Supabase puede verlos. Si desactivas la sincronización o cierras la sesión, se dejan de enviar; lo ya enviado sigue en el servidor hasta que lo borres allí.</p>
+    ${comun}`;
+}
+
 /* ------------------------------ CONFIGURACIÓN ------------------------------ */
 async function vConfig() {
   const s = store.settings();
@@ -1228,7 +1252,7 @@ async function vConfig() {
     </div>
 
     <h2>Privacidad</h2>
-    <div class="card"><p class="muted">Esta aplicación no envía ningún dato a ningún servidor. No usa analítica, ni cookies de terceros, ni servicios externos. Las únicas conexiones a Internet que puede hacer son: (1) descargar teselas de mapa cuando tú lo pides, y (2) comprobar si hay una versión nueva de la app. Sin esas dos acciones, funciona completamente aislada.</p></div>
+    <div class="card privacidad">${textoPrivacidad()}</div>
   </div>`);
 
   // Persistencia

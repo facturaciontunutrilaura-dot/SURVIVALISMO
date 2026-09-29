@@ -85,7 +85,7 @@ export async function familiaView() {
     <div id="fa-top"></div>
     <div id="fa-cuerpo"></div>
     <h2 style="margin-top:18px">📍 Ubicaciones</h2>
-    <div class="muted" style="margin-bottom:8px">Tu casa (la <b>base</b>, desde donde se parte) y las de las personas a las que querrías llegar. Todo se guarda <b>solo en este dispositivo</b>.</div>
+    <div class="muted" style="margin-bottom:8px">Tu casa (la <b>base</b>, desde donde se parte) y las de las personas a las que querrías llegar. Todo se guarda <b>${store.dondeSeGuarda()}</b>.</div>
     <div id="fa-nodos"></div>
     <div class="btnrow">
       <button class="btn" id="fa-add" type="button">➕ Añadir ubicación</button>
@@ -138,7 +138,7 @@ export async function familiaView() {
           <button class="btn" id="fa-add-base" type="button">🏠 Añadir mi casa</button>
           <button class="btn ghost" id="fa-ejemplo" type="button">👀 Ver un ejemplo ficticio</button>
         </div>
-        <p class="muted">Solo son necesarios el nombre, el papel (casa o familia) y la provincia; lo demás es opcional. Todo se guarda solo, en este dispositivo, y lo puedes cambiar cuando quieras.</p>
+        <p class="muted">Solo son necesarios el nombre, el papel (casa o familia) y la provincia; lo demás es opcional. Todo se guarda solo (${store.dondeSeGuarda()}) y lo puedes cambiar cuando quieras.</p>
         <a class="btn ghost sm" href="#/sec/plan-familiar">📇 Contactos y acuerdos del plan</a>
       </div>`;
       c.querySelector('#fa-add-base').addEventListener('click', () => anadir('base'));
@@ -726,7 +726,7 @@ export async function reunionView() {
   const extra = await kv('familia.encuentros', []);
 
   const n = el(`<div>
-    <div class="blk-note">Un plan de reunificación sirve para decidir <b>en frío</b> qué hacéis si ocurre algo. Escribidlo, acordadlo en voz alta e imprimidlo. Todo se guarda solo en este dispositivo.</div>
+    <div class="blk-note">Un plan de reunificación sirve para decidir <b>en frío</b> qué hacéis si ocurre algo. Escribidlo, acordadlo en voz alta e imprimidlo. Todo se guarda ${store.dondeSeGuarda()}.</div>
 
     <h2>Puntos principales</h2>
     <div class="list">${ns.length ? ns.map((nd, i) => `<div class="row"><span style="font-size:1.3rem">${esc(nd.ic)}</span>

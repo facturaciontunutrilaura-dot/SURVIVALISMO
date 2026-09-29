@@ -777,8 +777,10 @@ prefijo de código INE en `tools/build-geo.mjs` (Ávila es `05`).
 
 ## 8. Copias de seguridad y restauración
 
-Todos los datos del usuario viven **exclusivamente en su dispositivo**. Nada se
-envía a ningún servidor: no hay analítica, ni cookies de terceros, ni backend.
+Los datos del usuario se guardan **en su dispositivo**. No hay analítica,
+cookies de terceros ni backend propio de la app. Solo salen del dispositivo si
+el usuario activa la **sincronización opcional** (§3.7). En ese caso, una copia
+de sus datos va al proyecto de Supabase que él configura.
 
 **Copia de seguridad**
 `⚙️ Configuración → Exportar datos (JSON)`. Descarga un archivo
@@ -834,9 +836,18 @@ el papel no se queda sin batería.
 
 ## 10. Seguridad, privacidad y alcance del contenido
 
-- **Local-first absoluto.** Ninguna petición sale de la app salvo dos, y ambas
-  las inicia el usuario: descargar teselas de mapa y comprobar si hay versión
-  nueva.
+- **Local-first.** Los datos se guardan en el dispositivo. Las conexiones
+  que hace la app son tres:
+  - mapas del IGN al verlos o descargarlos. El IGN recibe qué zona se pide;
+  - comprobar si hay versión nueva;
+  - la **sincronización**, solo si el usuario la activa. Envía al servidor de
+    Supabase que él configura el plan familiar (incluida la información
+    médica), contactos, puntos, checklists, frecuencias, registro de radio,
+    capas y progreso. No se envían teselas, audio ni ajustes. Va por HTTPS,
+    pero sin cifrado de extremo a extremo.
+
+  Los textos de privacidad de la app cambian según esté o no activada
+  (`store.syncActiva()`), para no afirmar nada que no sea cierto.
 - **CSP restrictiva** definida en `netlify.toml`.
 - **Sin `innerHTML` con datos de usuario sin escapar**: todo pasa por `esc()`.
 - **Enfoque exclusivamente defensivo.** El contenido sobre disturbios y conflicto
