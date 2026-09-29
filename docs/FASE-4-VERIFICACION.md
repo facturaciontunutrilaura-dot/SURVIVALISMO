@@ -235,8 +235,21 @@ se puede leer». Se corrigió en el script.
 - Auditoría visual y funcional hechas; problemas corregidos.
 - Suite completa: **435/435** en local.
 - `tools/_audit4.mjs` eliminado; no quedan archivos temporales sin seguimiento.
-- CI de GitHub: ver el apartado siguiente.
+- CI de GitHub: en verde sobre el commit de las correcciones (apartado siguiente).
 
 ### Resultado del CI sobre el commit final
 
-_Se completa tras el push del commit final._
+| Ejecución | Commit | Resultado |
+|---|---|---|
+| #2 · run 36605160403 | `7f26b77` (correcciones de la verificación) | **Correcto.** ✅ dependencias, ✅ Chromium, ✅ **lista de archivos offline al día**, ✅ unitarias (la cadena `&&` continuó), ✅ **app 360/360**, incluida «Batería: ningún listener de window pendiente», ✅ **sincronización 47/47** |
+
+Solo queda el aviso informativo de GitHub sobre Node 20 en `actions/checkout`
+y `actions/setup-node`, que no afecta al resultado.
+
+**Fase 4: cerrada.**
+- Auditoría hecha y problemas corregidos.
+- 435/435 en local.
+- CI de GitHub en verde con el mismo número de pruebas.
+- Sin archivos temporales.
+- Lo que requiere un móvil físico o una revisión profesional queda
+  documentado como pendiente fuera de la fase.
