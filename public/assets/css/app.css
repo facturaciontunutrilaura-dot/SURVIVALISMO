@@ -168,8 +168,24 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.4em 0; }
 /* ------------------------------ LAYOUT ------------------------------ */
 #app { max-width: var(--maxw); margin: 0 auto; padding: 0 var(--pad) 120px; }
 
+/* Zona segura del iPhone (notch / Dynamic Island). Instalada en la pantalla de
+   inicio, la barra de estado es translúcida (black-translucent) y la página
+   empieza debajo del reloj y la cámara: sin esto, el título y la cabecera
+   quedaban tapados. env(...) vale 0 donde no hay nada que esquivar. */
+body {
+  padding-top: env(safe-area-inset-top);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+/* Franja fija bajo la barra de estado: al desplazar, el contenido no se ve
+   pasar por detrás del reloj y la batería. */
+body::before {
+  content: ''; position: fixed; top: 0; left: 0; right: 0; z-index: 45;
+  height: env(safe-area-inset-top); background: var(--bg); pointer-events: none;
+}
+
 .topbar {
-  position: sticky; top: 0; z-index: 40;
+  position: sticky; top: env(safe-area-inset-top); z-index: 40;
   display: flex; align-items: center; gap: 8px;
   background: linear-gradient(180deg, var(--bg) 70%, transparent);
   padding: 10px 0 12px;
@@ -612,7 +628,8 @@ html[data-theme='night'] .sos-med { background: #24110D; border-color: #4A2119; 
 .sos-bar {
   position: fixed; left: 0; right: 0; z-index: 45;
   bottom: calc(58px + env(safe-area-inset-bottom));
-  padding: 8px var(--pad); background: linear-gradient(0deg, var(--bg) 70%, transparent);
+  padding: 8px calc(var(--pad) + env(safe-area-inset-right)) 8px calc(var(--pad) + env(safe-area-inset-left));
+  background: linear-gradient(0deg, var(--bg) 70%, transparent);
 }
 .sos-bar .btn-112 { max-width: calc(var(--maxw) - 2 * var(--pad)); margin: 0 auto; }
 body.emg #app { padding-bottom: 170px; }
@@ -638,7 +655,7 @@ body.emg #app { padding-bottom: 170px; }
 @media (max-width: 330px) { .tabs.tabs-sos { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
 /* ------------------------------ BUSCADOR ------------------------------ */
-.searchbar { position: sticky; top: 62px; z-index: 30; background: var(--bg); padding-bottom: 10px; }
+.searchbar { position: sticky; top: calc(62px + env(safe-area-inset-top)); z-index: 30; background: var(--bg); padding-bottom: 10px; }
 .q-caja { position: relative; }
 .q-caja input { padding-right: 52px; font-size: 1.05rem; min-height: 52px; }
 .q-caja input::-webkit-search-cancel-button { display: none; }
@@ -677,6 +694,7 @@ html[data-theme='night'] mark { background: rgba(156, 183, 104, .10); }   /* 4,9
   display: grid; grid-template-columns: repeat(5, 1fr);
   background: var(--bg2); border-top: 1px solid var(--line);
   padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right);
 }
 .bottomnav a {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -714,7 +732,7 @@ html[data-theme='night'] mark { background: rgba(156, 183, 104, .10); }   /* 4,9
 /* En SOS, el aviso aparece por encima de la barra del 112, nunca encima. */
 body.emg .toast { bottom: calc(140px + env(safe-area-inset-bottom)); }
 .offbadge {
-  position: fixed; right: 10px; top: 10px; z-index: 60;
+  position: fixed; right: calc(10px + env(safe-area-inset-right)); top: calc(10px + env(safe-area-inset-top)); z-index: 60;
   font-family: var(--fb); font-size: .7rem; letter-spacing: .1em;
   padding: 3px 7px; border-radius: 2px; border: 1px solid var(--line2);
   background: var(--panel); color: var(--dim2);

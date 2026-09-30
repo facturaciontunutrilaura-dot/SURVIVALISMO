@@ -1158,6 +1158,34 @@ try {
     await ci.close();
   }
 
+  /* ------------- 11 septies. iPhone: zona segura (notch / Dynamic Island) ------------- */
+  console.log('\n▸ iPhone instalado: zona segura');
+  {
+    const cs = await browser.newContext({ viewport: { width: 393, height: 852 }, isMobile: true, hasTouch: true, deviceScaleFactor: 3, serviceWorkers: 'block' });
+    const ps = await cs.newPage();
+    // Márgenes de un iPhone con Dynamic Island como app instalada (barra de estado translúcida).
+    await (await cs.newCDPSession(ps)).send('Emulation.setSafeAreaInsetsOverride', { insets: { top: 59, bottom: 34, left: 0, right: 0 } });
+    await ps.goto(BASE + '#/'); await ps.waitForSelector('.home-bloque');
+    const home = await ps.evaluate(() => ({
+      h1: Math.round(document.querySelector('.brand h1').getBoundingClientRect().top),
+      sub: Math.round(document.querySelector('.brand .sub').getBoundingClientRect().top),
+    }));
+    ok('iPhone: el título SUPERVIVENCIA y el subtítulo quedan por debajo de la cámara', home.h1 >= 59 && home.sub >= 59, JSON.stringify(home));
+    await ps.goto(BASE + '#/emergencia'); await ps.waitForSelector('.btn-112');
+    await ps.evaluate(() => window.scrollTo(0, 600)); await ps.waitForTimeout(200);
+    const sos = await ps.evaluate(() => {
+      const tb = document.querySelector('.topbar').getBoundingClientRect();
+      const franja = getComputedStyle(document.body, '::before');
+      return { topbar: Math.round(tb.top), franja: franja.position === 'fixed' ? parseFloat(franja.height) : 0, nav: Math.round(innerHeight - document.querySelector('.bottomnav').getBoundingClientRect().bottom) };
+    });
+    ok('iPhone: al desplazar, la cabecera («←», título, 🔍) se queda bajo la cámara, no detrás', sos.topbar >= 59, JSON.stringify(sos));
+    ok('iPhone: una franja fija tapa lo que pasa por detrás de la barra de estado', sos.franja === 59);
+    ok('iPhone: la barra inferior respeta la zona del gesto de inicio', sos.nav === 0 && await ps.evaluate(() => parseFloat(getComputedStyle(document.querySelector('.bottomnav')).paddingBottom) >= 34));
+    await ps.evaluate(() => { document.getElementById('netbadge').hidden = false; });
+    ok('iPhone: el indicador «SIN CONEXIÓN» no queda bajo la cámara', await ps.evaluate(() => document.getElementById('netbadge').getBoundingClientRect().top >= 59));
+    await cs.close();
+  }
+
   /* --------------------- 12. Service Worker + OFFLINE --------------------- */
   console.log('\n▸ PRUEBA OFFLINE REAL');
   await page.goto(BASE, { waitUntil: 'networkidle' });
