@@ -439,6 +439,53 @@ try {
   const ocupadas = await page.locator('.ttt-c').evaluateAll((els) => els.filter((e) => e.textContent.trim()).length);
   ok('La IA responde con una jugada', ocupadas === 2, `(${ocupadas} casillas)`);
 
+  /* ------------------------------ Ajedrez ------------------------------ */
+  {
+    const cl = (i) => page.click(`#aje-tablero [data-i="${i}"]`);
+    const sq = (i) => page.getAttribute(`#aje-tablero [data-i="${i}"]`, 'aria-label');
+    const est = () => page.textContent('#aje-estado');
+    // Casillas: índice 0 = a8 … 63 = h1.
+    const C = Object.fromEntries([...'abcdefgh'].flatMap((f, c) => [1, 2, 3, 4, 5, 6, 7, 8].map((r) => [f + r, (8 - r) * 8 + c])));
+    const juega = async (de, a) => { await cl(C[de]); await cl(C[a]); };
+    await page.click('#jg-tabs button[data-t="aje"]');
+    await page.waitForSelector('.aje-c');
+    ok('Ajedrez: pestaña en Juegos con tablero de 64 casillas y 32 piezas', (await page.locator('.aje-c').count()) === 64 && (await page.locator('#aje-tablero .pz').count()) === 32);
+    ok('Ajedrez: cada casilla se anuncia con su nombre y pieza', (await sq(C.e2)) === 'e2, peón blanco' && (await sq(C.d8)) === 'd8, dama negra' && (await sq(C.e4)) === 'e4, vacía');
+    await cl(C.e2);
+    ok('Ajedrez: al tocar una pieza se marcan sus jugadas posibles', (await page.locator('.aje-c.dest').count()) === 2 && /seleccionada/.test(await sq(C.e2)));
+    await cl(C.e5);
+    ok('Ajedrez: una jugada ilegal no se hace', (await sq(C.e5)) === 'e5, vacía' && (await sq(C.e2)) === 'e2, peón blanco');
+    await juega('f2', 'f3'); await juega('e7', 'e5'); await juega('g2', 'g4');
+    ok('Ajedrez: 2 jugadores alterna el turno', /Turno de las negras/.test(await est()));
+    await juega('d8', 'h4');
+    ok('Ajedrez: detecta el jaque mate', /Jaque mate\. Ganan las negras/.test(await est()) && (await page.locator('.aje-c.jaque').count()) === 1, await est());
+    await page.waitForTimeout(150);
+    ok('Ajedrez: guarda la partida en las estadísticas', /Partidas: 1 .*Ganan negras: 1/.test(await page.textContent('#aje-stats')));
+    await page.click('#aje-undo');
+    ok('Ajedrez: «Deshacer» retrocede la jugada', (await sq(C.d8)) === 'd8, dama negra' && /Turno de las negras/.test(await est()));
+    // Coronación: h4 g5 hxg5 h6 gxh6 Bg7 hxg7 a6 gxh8.
+    await page.click('#aje-new');
+    for (const [de, a] of [['h2', 'h4'], ['g7', 'g5'], ['h4', 'g5'], ['h7', 'h6'], ['g5', 'h6'], ['f8', 'g7'], ['h6', 'g7'], ['a7', 'a6']]) await juega(de, a);
+    await juega('g7', 'h8');
+    ok('Ajedrez: al coronar se elige la pieza', await page.isVisible('#aje-promo') && (await page.locator('#aje-promo button[data-p]').count()) === 5);
+    await page.click('#aje-promo button[data-p="n"]');
+    ok('Ajedrez: el selector de coronación se oculta al elegir', !(await page.isVisible('#aje-promo')));
+    ok('Ajedrez: corona la pieza elegida', (await sq(C.h8)) === 'h8, caballo blanco' && /corona caballo/.test(await est()), await est());
+    // Contra la IA.
+    for (const nivel of ['facil', 'dificil']) {
+      await page.click(`[data-modo="${nivel}"]`);
+      await juega('e2', 'e4');
+      const t0 = Date.now();
+      const pensando = /pensando/.test(await est());
+      const respuesta = Date.now() - t0;   // la pantalla responde mientras la IA piensa
+      await page.waitForFunction(() => /Tu turno/.test(document.querySelector('#aje-estado').textContent), null, { timeout: 10000 });
+      const negras = await page.locator('#aje-tablero .pz.b').evaluateAll((e) => e.map((x) => x.closest('[data-i]').dataset.i).join());
+      ok(`Ajedrez: la IA ${nivel === 'facil' ? 'fácil' : 'difícil'} responde con una jugada`, pensando && respuesta < 500 && negras !== '0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15' && /La IA juega/.test(await est()), await est());
+    }
+    await page.click('#aje-undo');
+    ok('Ajedrez: contra la IA, «Deshacer» vuelve a tu turno anterior', (await sq(C.e2)) === 'e2, peón blanco' && (await page.locator('#aje-tablero .pz').count()) === 32);
+  }
+
   await page.click('#jg-tabs button[data-t="mem"]');
   await page.waitForSelector('.mem-c');
   ok('Memory reparte cartas', (await page.locator('.mem-c').count()) === 16);
@@ -1843,8 +1890,11 @@ try {
       info: !document.querySelector('.jg-info').open,
       antes: document.querySelector('#ca-sel').getBoundingClientRect().top,
     }));
-    ok('Modo calma a 320 px: las cuatro pestañas visibles', calma.tabs);
+    ok('Modo calma a 320 px: todas las pestañas de Juegos visibles', calma.tabs);
     ok('Modo calma: el ejercicio aparece antes que el texto informativo', calma.info && calma.antes < 568, JSON.stringify(calma));
+    await ps.goto(BASE + '#/sec/juegos/ajedrez'); await ps.waitForSelector('.aje-c');
+    const tab = await ps.evaluate(() => { const r = document.querySelector('#aje-tablero').getBoundingClientRect(), c = document.querySelector('.aje-c').getBoundingClientRect(); return { izq: r.left, der: r.right, ancho: innerWidth, scroll: document.documentElement.scrollWidth, casilla: Math.round(c.width) }; });
+    ok('Ajedrez a 320 px: el tablero cabe entero y sin scroll lateral', tab.izq >= 0 && tab.der <= tab.ancho && tab.scroll <= tab.ancho && tab.casilla >= 30, JSON.stringify(tab));
     await cs.close();
 
     // Navegación: «←» vuelve de verdad y recupera la posición.
@@ -1948,7 +1998,9 @@ try {
     await cp.route('https://www.ign.es/**', (route) => route.fulfill({ status: 200, contentType: 'image/png', body: PNG_1PX, headers: { 'Access-Control-Allow-Origin': '*' } }));
     await cp.addInitScript(() => {
       const si = window.setInterval.bind(window), ci = window.clearInterval.bind(window);
-      const P = window.__proc = { intervalos: new Set(), locks: 0, win: {}, vigilancias: 0 };
+      const P = window.__proc = { intervalos: new Set(), locks: 0, win: {}, vigilancias: 0, workers: 0 };
+      const W = window.Worker;
+      window.Worker = class extends W { constructor(...a) { super(...a); P.workers++; } terminate() { if (!this.__fin) { this.__fin = true; P.workers--; } return super.terminate(); } };
       window.setInterval = (fn, ms, ...a) => { const id = si(fn, ms, ...a); P.intervalos.add(id); return id; };
       window.clearInterval = (id) => { P.intervalos.delete(id); return ci(id); };
       Object.defineProperty(navigator, 'wakeLock', { configurable: true, value: { request: async () => { P.locks++; const l = { released: false, release: async () => { if (!l.released) { l.released = true; P.locks--; } } }; return l; } } });
@@ -1959,7 +2011,7 @@ try {
       if (wp) navigator.geolocation.watchPosition = (...a) => { P.vigilancias++; return wp(...a); };
     });
     const pp = await cp.newPage();
-    const estado = () => pp.evaluate(() => ({ intervalos: window.__proc.intervalos.size, locks: window.__proc.locks, win: { ...window.__proc.win }, vigilancias: window.__proc.vigilancias, audio: [...document.querySelectorAll('audio')].some((a) => !a.paused) || !!window.__au && !window.__au.paused }));
+    const estado = () => pp.evaluate(() => ({ intervalos: window.__proc.intervalos.size, locks: window.__proc.locks, win: { ...window.__proc.win }, vigilancias: window.__proc.vigilancias, workers: window.__proc.workers, audio: [...document.querySelectorAll('audio')].some((a) => !a.paused) || !!window.__au && !window.__au.paused }));
     await pp.goto(BASE + '#/'); await pp.waitForSelector('.tile.sos');
     const base0 = await estado();
     const visitas = [
@@ -1970,6 +2022,7 @@ try {
       ['/sec/orientacion', '#cp-start', async () => { await pp.click('#cp-start'); await pp.click('#cp-manual'); }],
       ['/sec/juegos/calma', '#ca-start', async () => { await pp.click('#ca-start'); await pp.waitForTimeout(1200); }],
       ['/sec/juegos', '.ttt-c', async () => { await pp.click('#jg-tabs [data-t="mem"]'); }],
+      ['/sec/juegos/ajedrez', '.aje-c', async () => { await pp.click('[data-modo="dificil"]'); await pp.click('[data-i="52"]'); await pp.click('[data-i="36"]'); await pp.waitForTimeout(200); }],
       ['/buscar', '#q', async () => { await pp.fill('#q', 'hipotermia'); }],
       ['/familia/mapa', '#map.leaflet-container'],
       ['/check/nivel2', '.chk-item'],
@@ -2005,6 +2058,7 @@ try {
     ok('Batería: ningún listener de window pendiente', desbalance.length === 0, desbalance.join(', '));
     ok('Batería: ningún audio sonando', !fin.audio);
     ok('Batería: sin seguimiento continuo del GPS', fin.vigilancias === 0);
+    ok('Batería: el rival de ajedrez deja de pensar al salir', fin.workers === 0, String(fin.workers));
     await cp.close();
   }
 
@@ -2052,7 +2106,7 @@ try {
       });
       ok(`Tema ${tema}/${cont}: navegación, 112 y avisos siguen en pantalla`, pos.nav && pos.bar && pos.toast, JSON.stringify(pos));
       const malos = [];
-      for (const r of ['/', '/emergencia', '/emergencia/incendio-forestal', '/check/nivel2', '/sec/familia', '/sec/plan-familiar', '/sec/calculadoras', '/sec/config', '/sec/primeros-auxilios']) {
+      for (const r of ['/', '/emergencia', '/emergencia/incendio-forestal', '/check/nivel2', '/sec/familia', '/sec/plan-familiar', '/sec/calculadoras', '/sec/config', '/sec/primeros-auxilios', '/sec/juegos/ajedrez']) {
         await pt.goto(BASE + '#' + r); await pt.waitForTimeout(250);
         malos.push(...(await contraste(pt)).map((m) => r + ' ' + m));
       }

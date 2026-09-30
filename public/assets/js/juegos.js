@@ -4,10 +4,12 @@
    ========================================================================= */
 import { el, esc, toast, alSalir } from './ui.js';
 import * as store from './store.js';
+import * as AJ from './ajedrez.js';
 import { MEMORY_CARTAS, QUIZ, QUIZ_CATEGORIAS, DIFICULTAD, RESPIRACIONES, GROUNDING, CALMA_AVISO } from '../../data/content/juegos.js';
 
 const kv = async (id, def) => (await store.get('kv', id))?.v ?? def;
 const setKv = (id, v) => store.put('kv', { id, v });
+const { colorDe } = AJ;
 
 /* ========================================================================
    1 · TRES EN RAYA
@@ -129,6 +131,202 @@ export function tresEnRaya() {
     await setKv('ttt.stats', { partidas: 0, x: 0, o: 0, empates: 0 });
     stats(); toast('Estadísticas borradas');
   });
+
+  nueva(); stats();
+  return n;
+}
+
+/* ========================================================================
+   1 bis · AJEDREZ — 2 jugadores o contra la app (fácil / difícil)
+   Las reglas y el rival están en ajedrez.js; el rival piensa en un Web
+   Worker (ajedrez-ia.js) para no congelar la pantalla.
+   ======================================================================== */
+const BANDO = { w: 'blancas', b: 'negras' };
+const AJE_STATS = { partidas: 0, blancas: 0, negras: 0, tablas: 0 };
+const TABLAS = {
+  ahogado: 'Tablas: rey ahogado (no puede mover y no está en jaque).',
+  material: 'Tablas: no queda material para dar jaque mate.',
+  cincuenta: 'Tablas: 50 jugadas seguidas sin capturas ni movimientos de peón.',
+  repeticion: 'Tablas: la misma posición se ha repetido tres veces.',
+};
+const piezaTexto = (p) => {
+  const t = p.toLowerCase(), fem = t === 'r' || t === 'q';
+  return `${AJ.PIEZAS[t]} ${colorDe(p) === 'w' ? (fem ? 'blanca' : 'blanco') : (fem ? 'negra' : 'negro')}`;
+};
+
+export function ajedrez() {
+  const n = el(`<div class="card">
+    <h3><span aria-hidden="true">♞</span> Ajedrez</h3>
+    <div class="btnrow">
+      <button class="btn sm" data-modo="pvp" type="button" aria-pressed="true">2 jugadores</button>
+      <button class="btn sm ghost" data-modo="facil" type="button" aria-pressed="false">vs IA fácil</button>
+      <button class="btn sm ghost" data-modo="dificil" type="button" aria-pressed="false">vs IA difícil</button>
+    </div>
+    <p id="aje-estado" class="aje-estado" role="status" aria-live="polite"></p>
+    <div id="aje-tablero" class="aje" role="group" aria-label="Tablero de ajedrez. Las blancas juegan desde abajo."></div>
+    <div id="aje-promo" class="aje-promo" hidden></div>
+    <div class="btnrow" style="margin-top:10px">
+      <button class="btn ghost sm" id="aje-undo" type="button">↶ Deshacer</button>
+      <button class="btn ghost sm" id="aje-new" type="button">Nueva partida</button>
+      <button class="btn ghost sm" id="aje-reset" type="button">Borrar estadísticas</button>
+    </div>
+    <div id="aje-stats" class="muted"></div>
+    <details><summary>Cómo se juega aquí</summary><div>
+      <p class="muted">Toca una pieza y después la casilla a la que quieres moverla: los puntos marcan sus jugadas posibles. Contra la IA juegas con blancas. «Deshacer» retrocede tu última jugada. Incluye enroque, captura al paso, coronación, jaque mate y todas las tablas.</p>
+    </div></details>
+  </div>`);
+
+  const tablero = n.querySelector('#aje-tablero');
+  const estadoEl = n.querySelector('#aje-estado');
+  const promoEl = n.querySelector('#aje-promo');
+  let modo = 'pvp', pos, legales, pila, sel, ultima, fin, pensando, promo;
+  let ronda = 0, worker = null, sinWorker = typeof Worker === 'undefined';
+  const turnoIA = () => modo !== 'pvp' && pos.turno === 'b';
+
+  function texto() {
+    const antes = ultima ? `${ultima.ia ? 'La IA juega' : 'Última jugada'}: ${ultima.texto}. ` : '';
+    if (fin === 'mate') return `${antes}Jaque mate. Ganan las ${BANDO[pos.turno === 'w' ? 'b' : 'w']}.`;
+    if (fin) return antes + TABLAS[fin];
+    const jaque = AJ.enJaque(pos) ? '¡Jaque! ' : '';
+    if (pensando) return `${antes}${jaque}La IA está pensando…`;
+    return antes + jaque + (modo === 'pvp' ? `Turno de las ${BANDO[pos.turno]}.` : 'Tu turno (blancas).');
+  }
+
+  function pinta() {
+    const foco = document.activeElement?.closest?.('#aje-tablero [data-i]')?.dataset.i;
+    const destinos = new Set(sel >= 0 ? legales.filter((m) => m.de === sel).map((m) => m.a) : []);
+    const reyJaque = !fin || fin === 'mate' ? (AJ.enJaque(pos) ? pos.b.indexOf(pos.turno === 'w' ? 'K' : 'k') : -1) : -1;
+    tablero.innerHTML = pos.b.map((p, i) => {
+      const cls = ['aje-c', ((i >> 3) + (i & 7)) % 2 ? 'osc' : 'cla'];
+      if (ultima && (i === ultima.de || i === ultima.a)) cls.push('ult');
+      if (i === sel) cls.push('sel');
+      if (i === reyJaque) cls.push('jaque');
+      if (destinos.has(i)) cls.push(p ? 'cap' : 'dest');
+      const etiqueta = `${AJ.nombre(i)}, ${p ? piezaTexto(p) : 'vacía'}${i === sel ? ', seleccionada' : ''}${destinos.has(i) ? ', mover aquí' : ''}`;
+      const coord = ((i & 7) === 0 ? `<span class="aje-co r">${8 - (i >> 3)}</span>` : '') + (i >> 3 === 7 ? `<span class="aje-co f">${'abcdefgh'[i & 7]}</span>` : '');
+      return `<button type="button" class="${cls.join(' ')}" data-i="${i}" aria-label="${etiqueta}">${p ? `<span class="pz ${colorDe(p)}" data-p="${p.toLowerCase()}" aria-hidden="true"></span>` : ''}${coord}</button>`;
+    }).join('');
+    estadoEl.textContent = texto();
+    n.querySelector('#aje-undo').disabled = !pila.length;
+    if (foco != null) tablero.querySelector(`[data-i="${foco}"]`)?.focus();
+  }
+
+  function mover(m, ia = false) {
+    pila.push({ pos, ultima });
+    const t = AJ.describir(pos, m);
+    pos = AJ.aplicar(pos, m);
+    ultima = { de: m.de, a: m.a, texto: t, ia };
+    sel = -1; promo = null; promoEl.hidden = true;
+    legales = AJ.jugadas(pos);
+    const est = AJ.estado(pos);
+    fin = est === 'jugando' || est === 'jaque' ? null : est;
+    pinta();
+    if (fin) return terminar();
+    if (turnoIA()) piensa();
+  }
+
+  function trabajador() {
+    if (sinWorker) return null;
+    if (!worker) {
+      try { worker = new Worker(new URL('./ajedrez-ia.js', import.meta.url), { type: 'module' }); }
+      catch { sinWorker = true; return null; }
+    }
+    return worker;
+  }
+
+  function piensa() {
+    const id = ++ronda, fen = AJ.aFEN(pos), nivel = modo, inicio = Date.now();
+    const ms = nivel === 'dificil' ? 1500 : 0;
+    pensando = true; pinta();
+    const listo = (m) => {
+      if (id !== ronda) return;   // partida nueva, deshacer o salir: se descarta
+      setTimeout(() => {
+        if (id !== ronda || !m) return;
+        pensando = false;
+        mover(legales.find((x) => x.de === m.de && x.a === m.a && x.promo === m.promo) || m, true);
+      }, Math.max(0, 450 - (Date.now() - inicio)));
+    };
+    const enEstaPantalla = () => setTimeout(() => listo(AJ.mejorJugada(AJ.desdeFEN(fen), { nivel, ms })), 30);
+    const w = trabajador();
+    if (!w) return enEstaPantalla();
+    w.onmessage = ({ data }) => { if (data.id === id) listo(data.m); };
+    // Navegadores sin workers de módulo: la IA piensa en la propia pantalla.
+    w.onerror = (ev) => { ev.preventDefault?.(); w.terminate(); worker = null; sinWorker = true; enEstaPantalla(); };
+    w.postMessage({ id, fen, nivel, ms });
+  }
+
+  async function stats(add) {
+    const s = { ...AJE_STATS, ...(await kv('ajedrez.stats', AJE_STATS)) };
+    if (add) { Object.keys(add).forEach((k) => { s[k] = (s[k] || 0) + add[k]; }); await setKv('ajedrez.stats', s); }
+    n.querySelector('#aje-stats').innerHTML =
+      `Partidas: <b>${s.partidas}</b> · Ganan blancas: <b>${s.blancas}</b> · Ganan negras: <b>${s.negras}</b> · Tablas: <b>${s.tablas}</b>`;
+    return s;
+  }
+
+  const terminar = () => stats(fin === 'mate' ? { partidas: 1, [pos.turno === 'w' ? 'negras' : 'blancas']: 1 } : { partidas: 1, tablas: 1 });
+
+  function elegirPromo(ms) {
+    promo = ms;
+    promoEl.hidden = false;
+    promoEl.innerHTML = '<span>Coronar como:</span>' + ['q', 'r', 'b', 'n'].map((t) =>
+      `<button class="btn sm" type="button" data-p="${t}"><span class="pz ${pos.turno}" data-p="${t}" aria-hidden="true"></span> ${esc(AJ.PIEZAS[t][0].toUpperCase() + AJ.PIEZAS[t].slice(1))}</button>`).join('') +
+      '<button class="btn sm ghost" type="button" data-p="">Cancelar</button>';
+    promoEl.querySelector('button').focus();
+  }
+
+  promoEl.addEventListener('click', (ev) => {
+    const b = ev.target.closest('button[data-p]');
+    if (!b || !promo) return;
+    const m = b.dataset.p && promo.find((x) => x.promo === b.dataset.p);
+    promo = null; promoEl.hidden = true;
+    if (m) mover(m);
+    else { sel = -1; pinta(); }
+  });
+
+  tablero.addEventListener('click', (ev) => {
+    const b = ev.target.closest('[data-i]');
+    if (!b || fin || pensando || promo || turnoIA()) return;
+    const i = +b.dataset.i, p = pos.b[i];
+    if (sel >= 0) {
+      const ms = legales.filter((m) => m.de === sel && m.a === i);
+      if (ms.length === 1) return mover(ms[0]);
+      if (ms.length > 1) return elegirPromo(ms);
+    }
+    sel = p && colorDe(p) === pos.turno && sel !== i ? i : -1;
+    pinta();
+  });
+
+  function nueva() {
+    ronda++;
+    pos = AJ.desdeFEN(AJ.INICIAL); legales = AJ.jugadas(pos);
+    pila = []; sel = -1; ultima = null; fin = null; pensando = false; promo = null; promoEl.hidden = true;
+    pinta();
+  }
+
+  n.querySelector('#aje-undo').addEventListener('click', () => {
+    if (!pila.length) return;
+    ronda++;   // si la IA estaba pensando, su jugada se descarta
+    // Contra la IA se deshace también su respuesta, para volver a tu turno.
+    let pasos = modo !== 'pvp' && pos.turno === 'w' && !pensando ? 2 : 1;
+    while (pasos-- > 0 && pila.length) ({ pos, ultima } = pila.pop());
+    legales = AJ.jugadas(pos); sel = -1; fin = null; pensando = false; promo = null; promoEl.hidden = true;
+    pinta();
+    if (turnoIA()) piensa();
+  });
+
+  n.querySelectorAll('[data-modo]').forEach((b) => b.addEventListener('click', () => {
+    modo = b.dataset.modo;
+    n.querySelectorAll('[data-modo]').forEach((x) => { x.classList.toggle('ghost', x !== b); x.setAttribute('aria-pressed', String(x === b)); });
+    nueva();
+  }));
+  n.querySelector('#aje-new').addEventListener('click', nueva);
+  n.querySelector('#aje-reset').addEventListener('click', async () => {
+    await setKv('ajedrez.stats', { ...AJE_STATS });
+    stats(); toast('Estadísticas borradas');
+  });
+
+  // Al cambiar de pestaña o de pantalla se detiene el rival (no gasta batería).
+  n.destruir = () => { ronda++; worker?.terminate(); worker = null; };
 
   nueva(); stats();
   return n;
@@ -454,6 +652,7 @@ export function juegosView(inicial) {
   const n = el(`<div>
     <div class="tabs tabs-grid" role="tablist" id="jg-tabs" aria-label="Juegos y modo calma">
       <button role="tab" data-t="ttt" aria-selected="true">Tres en raya</button>
+      <button role="tab" data-t="aje" aria-selected="false"><span aria-hidden="true">♞</span> Ajedrez</button>
       <button role="tab" data-t="mem" aria-selected="false">Memory</button>
       <button role="tab" data-t="ret" aria-selected="false">Reto</button>
       <button role="tab" data-t="cal" aria-selected="false">🧘 Modo calma</button>
@@ -465,7 +664,7 @@ export function juegosView(inicial) {
   </div>`);
 
   const body = n.querySelector('#jg-body');
-  const vistas = { ttt: tresEnRaya, mem: memory, ret: reto, cal: modoCalma };
+  const vistas = { ttt: tresEnRaya, aje: ajedrez, mem: memory, ret: reto, cal: modoCalma };
   const destruir = () => body.firstElementChild?.destruir?.();
   const pinta = (t) => {
     destruir();
@@ -474,7 +673,7 @@ export function juegosView(inicial) {
   };
   n.querySelectorAll('#jg-tabs button').forEach((b) => b.addEventListener('click', () => pinta(b.dataset.t)));
   alSalir(destruir);
-  // '#/sec/juegos/calma' abre directamente el modo calma.
-  pinta({ calma: 'cal', memory: 'mem', reto: 'ret' }[inicial] || 'ttt');
+  // '#/sec/juegos/calma' abre directamente el modo calma ('/ajedrez', el ajedrez).
+  pinta({ calma: 'cal', memory: 'mem', reto: 'ret', ajedrez: 'aje' }[inicial] || 'ttt');
   return n;
 }

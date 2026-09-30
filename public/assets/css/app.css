@@ -647,7 +647,12 @@ body.emg #app { padding-bottom: 170px; }
 /* Pestañas en rejilla (Juegos): 2×2 en móvil, una fila en pantallas anchas. */
 .tabs.tabs-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; overflow: visible; }
 .tabs.tabs-grid button { min-height: 48px; white-space: normal; line-height: 1.15; }
-@media (min-width: 600px) { .tabs.tabs-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+#jg-tabs button:last-child:nth-child(odd) { grid-column: 1 / -1; }
+@media (min-width: 600px) {
+  .tabs.tabs-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  #jg-tabs { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  #jg-tabs button:last-child:nth-child(odd) { grid-column: auto; }
+}
 .tabs.tabs-sos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; overflow: visible; }
 .tabs.tabs-sos button { min-height: 50px; padding: 6px 4px; white-space: normal; line-height: 1.15; font-size: .8rem; letter-spacing: .03em; }
 .tabs.tabs-sos button.no { color: #F0A89C; border-color: #6A2A20; }
@@ -799,6 +804,49 @@ details > div { padding: 0 12px 12px; }
 }
 .ttt-c:disabled { cursor: default; }
 .ttt-c.win { background: var(--olive); border-color: var(--olive3); }
+
+/* ------------------------------ Ajedrez ------------------------------ */
+.aje {
+  display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); max-width: 440px; margin: 0 auto;
+  border: 2px solid var(--line2); border-radius: 6px; overflow: hidden; touch-action: manipulation;
+}
+.aje-c {
+  position: relative; aspect-ratio: 1; min-width: 0; padding: 0; margin: 0; border: 0; border-radius: 0;
+  display: grid; place-items: center; cursor: pointer; line-height: 1;
+  font-size: clamp(1.35rem, 8.2vw, 2.45rem);
+}
+.aje-c.cla { background: #D2C49C; }
+.aje-c.osc { background: #857B52; }
+.aje-c.ult { box-shadow: inset 0 0 0 100px rgba(222, 176, 58, .38); }
+.aje-c.sel { box-shadow: inset 0 0 0 3px #1B1F14, inset 0 0 0 100px rgba(96, 168, 88, .5); }
+.aje-c.jaque { box-shadow: inset 0 0 0 100px rgba(206, 42, 30, .6); }
+.aje-c.dest::after { content: ''; width: 30%; height: 30%; border-radius: 50%; background: rgba(20, 24, 12, .5); }
+.aje-c.cap::after { content: ''; position: absolute; inset: 4%; border-radius: 50%; border: 4px solid rgba(20, 24, 12, .55); }
+.aje-c:focus-visible { outline: 3px solid #1B1F14; outline-offset: -5px; box-shadow: inset 0 0 0 5px var(--amber); }
+.aje-co { position: absolute; font: 700 .58rem/1 var(--ff); pointer-events: none; }
+.aje-c.cla .aje-co { color: #5E5634; }
+.aje-c.osc .aje-co { color: #EDE3C6; }
+.aje-co.r { left: 3px; top: 2px; }
+.aje-co.f { right: 3px; bottom: 2px; }
+/* Piezas: símbolos Unicode (con U+FE0E para que iOS no los pinte como emoji),
+   con contorno para verse sobre casillas claras y oscuras. */
+.pz { font-family: 'Segoe UI Symbol', 'Apple Symbols', 'DejaVu Sans', 'Noto Sans Symbols 2', 'Noto Sans Symbols', sans-serif; font-style: normal; pointer-events: none; }
+.pz[data-p='k']::before { content: '\265A\FE0E'; }
+.pz[data-p='q']::before { content: '\265B\FE0E'; }
+.pz[data-p='r']::before { content: '\265C\FE0E'; }
+.pz[data-p='b']::before { content: '\265D\FE0E'; }
+.pz[data-p='n']::before { content: '\265E\FE0E'; }
+.pz[data-p='p']::before { content: '\265F\FE0E'; }
+.pz.w { color: #FFFBEF; text-shadow: 1px 0 0 #15130E, -1px 0 0 #15130E, 0 1px 0 #15130E, 0 -1px 0 #15130E, 1px 1px 1px #15130E, -1px -1px 1px #15130E; }
+.pz.b { color: #15130E; text-shadow: 0 0 1px rgba(255, 251, 239, .8); }
+.aje-estado { text-align: center; min-height: 2.6em; margin: 8px 0 10px; }
+.aje-promo { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; justify-content: center; margin: 10px 0 0; }
+.aje-promo[hidden] { display: none; }
+.aje-promo .pz { font-size: 1.3rem; }
+html[data-theme='night'] .aje-c.cla { background: #7A6F55; }
+html[data-theme='night'] .aje-c.osc { background: #4A4432; }
+html[data-theme='night'] .aje-c.cla .aje-co { color: #2A2619; }
+html[data-theme='night'] .aje-c.osc .aje-co { color: #C9B894; }
 
 /* ------------------------------ Memory ------------------------------ */
 .mem { display: grid; grid-template-columns: repeat(var(--cols, 4), 1fr); gap: 6px; }

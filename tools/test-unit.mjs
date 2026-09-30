@@ -327,3 +327,52 @@ test('cabeceras: public/_headers y netlify.toml dicen lo mismo (la previsualizac
     assert.equal(deHeaders(k), deToml(k), `${k} distinta entre _headers y netlify.toml`);
   }
 });
+
+/* --------------------------------- Ajedrez --------------------------------- */
+const AJ = await imp('assets/js/ajedrez.js');
+const perft = (e, d) => (d === 0 ? 1 : AJ.jugadas(e).reduce((s, m) => s + perft(AJ.aplicar(e, m, true), d - 1), 0));
+const juega = (e, de, a) => AJ.aplicar(e, AJ.jugadas(e).find((m) => AJ.nombre(m.de) === de && AJ.nombre(m.a) === a));
+
+test('ajedrez: movimientos legales exactos (recuentos perft de referencia)', () => {
+  // Posiciones estándar de verificación: enroques, al paso, promociones, clavadas y jaques.
+  const casos = [
+    [AJ.INICIAL, 3, 8902],
+    ['r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1', 3, 97862],
+    ['8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1', 4, 43238],
+    ['r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1', 3, 9467],
+    ['rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8', 3, 62379],
+  ];
+  for (const [fen, d, n] of casos) assert.equal(perft(AJ.desdeFEN(fen), d), n, fen);
+  assert.equal(AJ.aFEN(AJ.desdeFEN(AJ.INICIAL)), AJ.INICIAL);
+});
+
+test('ajedrez: jaque mate, rey ahogado y tablas', () => {
+  let e = AJ.desdeFEN(AJ.INICIAL);
+  e = juega(juega(juega(juega(e, 'f2', 'f3'), 'e7', 'e5'), 'g2', 'g4'), 'd8', 'h4');
+  assert.equal(AJ.estado(e), 'mate');
+  assert.equal(AJ.estado(AJ.desdeFEN('7k/5Q2/6K1/8/8/8/8/8 b - - 0 1')), 'ahogado');
+  assert.equal(AJ.estado(AJ.desdeFEN('8/8/4k3/8/8/3K4/8/8 w - - 0 1')), 'material');
+  assert.equal(AJ.estado(AJ.desdeFEN('8/8/4k3/8/8/3K4/8/7R w - - 100 80')), 'cincuenta');
+  e = AJ.desdeFEN(AJ.INICIAL);
+  for (let i = 0; i < 2; i++) e = juega(juega(juega(juega(e, 'g1', 'f3'), 'g8', 'f6'), 'f3', 'g1'), 'f6', 'g8');
+  assert.equal(AJ.estado(e), 'repeticion');
+  assert.equal(AJ.estado(AJ.desdeFEN('4k3/8/8/8/8/8/8/4K2r w - - 0 1')), 'jaque');
+  assert.equal(AJ.describir(AJ.desdeFEN(AJ.INICIAL), { de: AJ.casilla('e2'), a: AJ.casilla('e4') }), 'peón e2 a e4');
+});
+
+test('ajedrez: el rival difícil da mate y gana material; el fácil juega legal', () => {
+  const nm = (m) => AJ.nombre(m.de) + AJ.nombre(m.a);
+  assert.equal(nm(AJ.mejorJugada(AJ.desdeFEN('6k1/5ppp/8/8/8/8/5PPP/3R2K1 w - - 0 1'), { ms: 3000 })), 'd1d8');
+  assert.equal(nm(AJ.mejorJugada(AJ.desdeFEN('4k3/8/8/3q4/8/8/8/3RK3 w - - 0 1'), { ms: 3000 })), 'd1d5');
+  const e = AJ.desdeFEN(AJ.INICIAL);
+  const t = Date.now();
+  const m = AJ.mejorJugada(e, { ms: 400 });
+  assert.ok(Date.now() - t < 2000, 'respeta el límite de tiempo');
+  assert.ok(AJ.jugadas(e).some((x) => x.de === m.de && x.a === m.a));
+  let azar = 0;
+  for (let i = 0; i < 20; i++) {
+    const f = AJ.mejorJugada(e, { nivel: 'facil', azar: () => (azar = (azar + 0.37) % 1) });
+    assert.ok(AJ.jugadas(e).some((x) => x.de === f.de && x.a === f.a));
+  }
+  assert.equal(AJ.mejorJugada(AJ.desdeFEN('7k/5Q2/6K1/8/8/8/8/8 b - - 0 1')), null);
+});
