@@ -1,0 +1,285 @@
+// COMUNICACIONES: artículos + base de datos de frecuencias verificadas.
+//
+// REGLA DEL PROYECTO: no se incluye ninguna frecuencia que no proceda de una
+// fuente citada. Lo que no se ha podido verificar aparece marcado como
+// "PENDIENTE DE VERIFICACIÓN" y el usuario puede añadirlo él mismo.
+
+export const FRECUENCIAS = [
+  // ---- PMR446 (uso libre, sin licencia) ----
+  ...Array.from({ length: 16 }, (_, i) => {
+    const f = (446.00625 + i * 0.0125).toFixed(5);
+    return {
+      id: `pmr-${i + 1}`,
+      grupo: 'PMR446',
+      nombre: `PMR446 canal ${i + 1}`,
+      rx: f,
+      tx: f,
+      unidad: 'MHz',
+      modo: 'FM analógico / digital dPMR-TDMA',
+      pot: '500 mW PRA',
+      licencia: 'No requiere licencia individual',
+      uso: 'Comunicación de corto alcance (típicamente 0,5–3 km; más en línea de vista desde altura). Antena no desmontable, uso móvil o portátil.',
+      zona: 'Toda España',
+      verificado: true,
+      src: 'cnaf-pmr',
+      notas:
+        i === 6
+          ? 'El canal 7 con subtono CTCSS 7 (07-07) se usa por consenso entre aficionados como canal de encuentro. NO es un canal oficial de emergencia.'
+          : '',
+    };
+  }),
+
+  // ---- Banda Ciudadana CB-27 ----
+  {
+    id: 'cb-banda',
+    grupo: 'CB-27',
+    nombre: 'Banda Ciudadana (40 canales)',
+    rx: '26.965 – 27.405',
+    tx: '26.965 – 27.405',
+    unidad: 'MHz',
+    modo: 'AM / FM / SSB',
+    pot: '4 W AM-FM · 12 W SSB (PEP)',
+    licencia: 'Uso común, sin licencia individual en España',
+    uso: 'Canalización de 40 canales separados 10 kHz. Alcance típico de varios kilómetros; con propagación puede ser mucho mayor.',
+    zona: 'Toda España',
+    verificado: true,
+    src: 'cb27',
+    notas: 'El canal 9 (27.065 MHz) está reservado internacionalmente como canal de emergencia y el 19 (27.185 MHz) se usa habitualmente como canal de carretera. Verifica el uso vigente antes de confiar en ellos.',
+  },
+
+  // ---- Radioafición: centros de actividad de emergencia IARU R1 ----
+  {
+    id: 'ham-3760',
+    grupo: 'Radioafición (requiere licencia)',
+    nombre: 'Centro de actividad de emergencia 80 m — IARU R1',
+    rx: '3.760', tx: '3.760', unidad: 'MHz',
+    modo: 'LSB',
+    pot: 'Según licencia',
+    licencia: 'Requiere licencia de radioaficionado',
+    uso: 'Frecuencia de referencia para tráfico de emergencia en la Región 1 (Europa, África, Oriente Medio).',
+    zona: 'IARU Región 1', verificado: true, src: 'remer-vdm', notas: '',
+  },
+  {
+    id: 'ham-7110',
+    grupo: 'Radioafición (requiere licencia)',
+    nombre: 'Centro de actividad de emergencia 40 m — IARU R1',
+    rx: '7.060', tx: '7.060', unidad: 'MHz',
+    modo: 'LSB',
+    pot: 'Según licencia',
+    licencia: 'Requiere licencia de radioaficionado',
+    uso: 'Frecuencia de referencia para tráfico de emergencia en la Región 1.',
+    zona: 'IARU Región 1', verificado: true, src: 'remer-vdm', notas: '',
+  },
+  {
+    id: 'ham-14300',
+    grupo: 'Radioafición (requiere licencia)',
+    nombre: 'Centro de actividad global de emergencia 20 m',
+    rx: '14.300', tx: '14.300', unidad: 'MHz',
+    modo: 'USB',
+    pot: 'Según licencia',
+    licencia: 'Requiere licencia de radioaficionado',
+    uso: 'Red global de emergencia; alcance intercontinental.',
+    zona: 'Global', verificado: true, src: 'remer-vdm', notas: '',
+  },
+  {
+    id: 'ham-21360',
+    grupo: 'Radioafición (requiere licencia)',
+    nombre: 'Centro de actividad global de emergencia 15 m',
+    rx: '21.360', tx: '21.360', unidad: 'MHz',
+    modo: 'USB',
+    pot: 'Según licencia',
+    licencia: 'Requiere licencia de radioaficionado',
+    uso: 'Red global de emergencia.',
+    zona: 'Global', verificado: true, src: 'remer-vdm', notas: '',
+  },
+  {
+    id: 'ham-145500',
+    grupo: 'Radioafición (requiere licencia)',
+    nombre: 'Centro de actividad móvil VHF (2 m)',
+    rx: '145.500', tx: '145.500', unidad: 'MHz',
+    modo: 'FM simplex',
+    pot: 'Según licencia',
+    licencia: 'Requiere licencia de radioaficionado',
+    uso: 'Frecuencia de llamada y actividad móvil en la banda de 2 metros.',
+    zona: 'IARU Región 1', verificado: true, src: 'remer-vdm', notas: '',
+  },
+  {
+    id: 'ham-433500',
+    grupo: 'Radioafición (requiere licencia)',
+    nombre: 'Centro de actividad simplex UHF (70 cm)',
+    rx: '433.500', tx: '433.500', unidad: 'MHz',
+    modo: 'FM simplex',
+    pot: 'Según licencia',
+    licencia: 'Requiere licencia de radioaficionado',
+    uso: 'Frecuencia de llamada simplex en 70 cm.',
+    zona: 'IARU Región 1', verificado: true, src: 'remer-vdm', notas: '',
+  },
+
+  // ---- Pendientes de verificación ----
+  {
+    id: 'fm-avila',
+    grupo: 'Radiodifusión FM',
+    nombre: 'Emisoras FM de Ávila',
+    rx: 'PENDIENTE DE VERIFICACIÓN',
+    tx: '—', unidad: 'MHz',
+    modo: 'FM (solo recepción)',
+    pot: '—',
+    licencia: 'Solo recepción',
+    uso: 'Escucha de información pública. Verifica y anota tú mismo las frecuencias reales de tu zona.',
+    zona: 'Provincia de Ávila',
+    verificado: false,
+    src: 'mineco-fm',
+    notas: 'No se incluyen frecuencias FM concretas porque no se han podido verificar contra el registro oficial de estaciones de radiodifusión. Consulta el registro público de la Secretaría de Estado de Telecomunicaciones o sintoniza tu receptor y anota las emisoras que recibas con buena señal usando el formulario de esta sección.',
+  },
+  {
+    id: 'am-onda-media',
+    grupo: 'Radiodifusión AM (onda media)',
+    nombre: 'Onda media',
+    rx: 'PENDIENTE DE VERIFICACIÓN',
+    tx: '—', unidad: 'kHz',
+    modo: 'AM (solo recepción)',
+    pot: '—',
+    licencia: 'Solo recepción',
+    uso: 'La onda media alcanza distancias mucho mayores que la FM, sobre todo de noche. Útil si los repetidores locales de FM caen.',
+    zona: 'España',
+    verificado: false,
+    src: 'mineco-fm',
+    notas: 'Anota tú las frecuencias que recibas con claridad desde tu ubicación, de día y de noche. La cobertura de onda media varía mucho.',
+  },
+];
+
+export const ART_COMUNICACIONES = [
+  {
+    id: 'com-plan',
+    sec: 'comunicaciones',
+    t: 'Plan de comunicación cuando falla la red',
+    pr: 'critico',
+    sum: 'SMS antes que llamada. Contacto fuera de la zona. Puntos y horarios de encuentro acordados de antemano.',
+    tags: ['comunicaciones', 'móvil', 'sms', 'red', 'plan', 'familia'],
+    body: [
+      { h: 'Por qué falla la telefonía' },
+      { ul: [
+        'Saturación: en una emergencia todo el mundo llama a la vez y la red se congestiona antes de caerse.',
+        'Falta de energía: las estaciones base tienen baterías limitadas (a menudo pocas horas). Un apagón prolongado tumba la cobertura aunque las antenas estén intactas.',
+        'Daño físico: incendio, inundación o viento derriban infraestructura.',
+      ] },
+      { h: 'Qué hacer, por orden' },
+      { ol: [
+        'Usa SMS o mensajería de texto en lugar de llamadas: ocupan poquísimo ancho de banda y se entregan cuando hay un hueco.',
+        'Llama solo si es imprescindible, y sé breve.',
+        'Ten un CONTACTO EXTERNO fuera de la zona afectada (otra provincia). Todo el mundo le informa a él y él coordina. Las llamadas de larga distancia suelen funcionar cuando las locales no.',
+        'Acuerda horarios: "hablamos a las 9:00 y a las 21:00". Así nadie agota batería reintentando.',
+        'El 112 tiene prioridad de red: puede funcionar cuando tu operador no da servicio, y tu móvil puede engancharse a la red de OTRO operador para emergencias, incluso sin tarjeta SIM.',
+      ] },
+      { h: 'Ahorro de batería' },
+      { ul: [
+        'Modo avión cuando no necesites comunicar: buscar red sin cobertura es lo que más consume.',
+        'Brillo al mínimo, sin vibración, sin apps en segundo plano.',
+        'Descarga los mapas y esta app antes: consultar offline no gasta radio.',
+        'Una power bank de 20.000 mAh carga un móvil unas 4 veces. Cárgala cuando haya luz.',
+        'Un cargador de coche y el vehículo con depósito lleno son una reserva de energía significativa.',
+      ] },
+      { h: 'ES-Alert' },
+      { ul: [
+        'ES-Alert es el sistema oficial de alerta a la población: envía un mensaje con sonido intenso a todos los móviles de una zona, sin necesidad de tener el número ni ninguna app.',
+        'Funciona por difusión celular: no depende de que la red tenga capacidad para llamadas.',
+        'Comprueba en los ajustes de tu móvil que las alertas de emergencia están ACTIVADAS (en Android suelen estar en Seguridad y emergencias → Alertas de emergencia inalámbricas; en iPhone, en Notificaciones, al final).',
+        'Si recibes una ES-Alert, es real y procede de las autoridades. Sigue sus instrucciones y no colapses el 112 llamando para preguntar.',
+      ] },
+      { check: 'comunicaciones' },
+    ],
+    src: ['es-alert', 'pc-es'],
+  },
+  {
+    id: 'com-radio',
+    sec: 'comunicaciones',
+    t: 'Radio: qué sistema usar y qué es legal',
+    pr: 'importante',
+    sum: 'Recepción: radio a pilas AM/FM. Transmisión sin licencia: PMR446 y CB-27. Con licencia: radioafición.',
+    tags: ['comunicaciones', 'radio', 'PMR', 'CB', 'radioafición', 'REMER', 'frecuencias'],
+    body: [
+      { h: 'Lo primero: un receptor' },
+      { p: 'Antes de pensar en transmitir, ten con qué escuchar. Una radio a pilas o de manivela con AM y FM es el equipo de emergencia con mejor relación coste/beneficio que existe. En un apagón general, es la única fuente de información fiable que seguirá funcionando.' },
+      { ul: [
+        'FM: mejor calidad, alcance local (decenas de km).',
+        'Onda media (AM): alcance mucho mayor, sobre todo de noche.',
+        'Onda corta (SW): alcance internacional, útil en crisis prolongadas.',
+        'Guarda pilas de repuesto en un envase aparte y comprueba la radio dos veces al año.',
+      ] },
+      { h: 'Transmitir: opciones legales en España' },
+      {
+        table: {
+          head: ['Sistema', 'Licencia', 'Potencia', 'Alcance típico'],
+          rows: [
+            ['PMR446 (UHF 446 MHz)', 'No', '500 mW PRA', '0,5–3 km urbano; más con línea de vista'],
+            ['CB-27 (HF 27 MHz)', 'No', '4 W AM/FM, 12 W SSB', 'Varios km; mucho más con propagación'],
+            ['Radioafición (VHF/UHF/HF)', 'Sí, examen y licencia', 'Según licencia', 'Local a intercontinental'],
+          ],
+        },
+      },
+      { warn: 'Transmitir en frecuencias reservadas a servicios de emergencia, cuerpos de seguridad, aeronáutica o marítima es ilegal y puede interferir con operaciones de rescate. Escuchar no está penalizado en general, pero difundir el contenido de comunicaciones no destinadas al público sí puede serlo.' },
+      { h: 'PMR446 en la práctica' },
+      { ul: [
+        '16 canales, entre 446.00625 y 446.19375 MHz, separados 12,5 kHz.',
+        'Antena fija no desmontable y 500 mW: el alcance depende sobre todo de la altura y de que no haya obstáculos.',
+        'Los subtonos CTCSS/DCS no dan privacidad: solo filtran lo que oyes. Cualquiera con el mismo canal te escucha.',
+        'Uso familiar realista: comunicar entre casa y un punto cercano, coordinar en montaña dentro del grupo, o entre vecinos del mismo edificio o barrio.',
+        'Acordad de antemano canal, subtono y horarios de escucha. Sin acuerdo previo, la radio no sirve de nada.',
+      ] },
+      { h: 'REMER' },
+      { p: 'La Red Nacional de Radio de Emergencia (REMER) es una red estatal de radioaficionados acreditados que colaboran voluntariamente con el Sistema Nacional de Protección Civil, regulada por la Orden INT/1149/2018. No es un servicio al que se pueda llamar: es una capacidad de apoyo. Si te interesa, la vía es obtener licencia de radioaficionado y solicitar la integración.' },
+      { note: 'Las frecuencias listadas en esta app proceden de las fuentes citadas y están marcadas como verificadas o pendientes de verificación. Añade las tuyas con el formulario y anota siempre de dónde las has sacado.' },
+      { tool: 'frecuencias' },
+    ],
+    src: ['cnaf-pmr', 'cb27', 'remer-boe', 'remer-vdm'],
+  },
+  {
+    id: 'com-telefonos',
+    sec: 'comunicaciones',
+    t: 'Teléfonos y canales oficiales',
+    pr: 'critico',
+    sum: '112 para toda emergencia. 062 Guardia Civil, 091 Policía Nacional, 024 conducta suicida, 016 violencia de género.',
+    tags: ['comunicaciones', 'teléfonos', '112', 'emergencias', 'contactos'],
+    body: [
+      { h: 'Nacionales' },
+      {
+        table: {
+          head: ['Servicio', 'Teléfono'],
+          rows: [
+            ['Emergencias (todas)', '112'],
+            ['Guardia Civil', '062'],
+            ['Policía Nacional', '091'],
+            ['Policía Local', '092'],
+            ['Emergencias sanitarias', '061'],
+            ['Atención a la conducta suicida', '024'],
+            ['Violencia de género', '016'],
+            ['Instituto Nacional de Toxicología', '91 562 04 20'],
+            ['Información toxicológica veterinaria / animales', '112'],
+          ],
+        },
+      },
+      { h: 'Provincia y ciudad de Ávila' },
+      {
+        table: {
+          head: ['Servicio', 'Dirección', 'Teléfono'],
+          rows: [
+            ['Policía Local de Ávila', 'C/ Molino del Carril, 1', '920 35 24 24'],
+            ['Bomberos / Servicio de Extinción de Incendios (Ávila)', 'C/ Jorge Ruiz de Santayana, s/n', '920 21 10 80'],
+            ['Protección Civil (Ayuntamiento de Ávila)', 'C/ Jorge Ruiz de Santayana, s/n', '920 35 40 35 · 630 36 53 04'],
+          ],
+        },
+      },
+      { note: 'Datos publicados por el Ayuntamiento de Ávila (consultado el 15/08/2026). Verifica antes de una emergencia: los teléfonos cambian.' },
+      { h: 'Cómo llamar al 112' },
+      { ol: [
+        'Di QUÉ ocurre en una frase.',
+        'Di DÓNDE con la máxima precisión: municipio, calle y número, o coordenadas y altitud.',
+        'Di CUÁNTAS personas están afectadas y en qué estado.',
+        'Responde a lo que te pregunten y no cuelgues hasta que te lo indiquen.',
+        'Deja el teléfono libre después de llamar: te devolverán la llamada.',
+      ] },
+      { warn: 'No llames al 112 para consultas, información general o para preguntar cuándo vuelve la luz. Cada llamada innecesaria retrasa una urgencia real.' },
+    ],
+    src: ['avila-emergencias', 'pc-es'],
+  },
+];

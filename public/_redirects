@@ -1,0 +1,4 @@
+# Fallback SPA. Lo leen tanto Netlify como Cloudflare Pages cuando este
+# directorio es la raíz publicada (incluido el despliegue por arrastrar y soltar).
+# Los archivos que existen se sirven siempre antes que esta regla.
+/*    /index.html   200

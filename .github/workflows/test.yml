@@ -1,0 +1,40 @@
+# Pruebas automáticas en cada push y pull request.
+# Ejecuta la suite completa (`npm test`): unitarias, end-to-end de la app
+# (incluida la prueba offline real y la actualización segura) y
+# sincronización. Además comprueba que el manifiesto de precache y la versión
+# del Service Worker están regenerados: si se añade un archivo y no se
+# regenera, esa parte de la app no funcionaría sin conexión.
+name: Pruebas
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  pruebas:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Dependencias
+        run: npm install --no-audit --no-fund
+
+      - name: Navegador para las pruebas (Chromium de Playwright)
+        run: npx playwright install --with-deps chromium
+
+      - name: Manifiesto de precache y versión al día
+        run: |
+          node tools/build-assets.mjs
+          git diff --exit-code -- public/precache-manifest.json public/sw.js \
+            || (echo "::error::Ejecuta 'npm run build:assets' y sube precache-manifest.json y sw.js" && exit 1)
+
+      - name: Suite completa
+        run: npm test
