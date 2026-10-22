@@ -9,6 +9,7 @@
   "./assets/js/checklist-claves.js",
   "./assets/js/compass.js",
   "./assets/js/compra-calc.js",
+  "./assets/js/compra-pdf.js",
   "./assets/js/compra.js",
   "./assets/js/familia.js",
   "./assets/js/juegos.js",

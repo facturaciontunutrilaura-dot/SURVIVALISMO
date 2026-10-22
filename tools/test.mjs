@@ -544,6 +544,10 @@ try {
     await page.fill('#co-peso-0', '80'); await page.press('#co-peso-0', 'Tab');
     const res2 = (await page.textContent('.co-resumen')).replace(/\s+/g, ' ');
     ok('Colapso: las personas se pueden cambiar y la lista se recalcula', /Ana/.test(res2) && !/3450 kcal/.test(res2) && await page.locator('.co-hogar').evaluate((d) => d.open), res2);
+    await page.evaluate(() => { navigator.canShare = () => false; });
+    const [descarga] = await Promise.all([page.waitForEvent('download'), page.click('#co-pdf')]);
+    const pdf = fs.readFileSync(await descarga.path()).toString('latin1');
+    ok('Colapso: «Guardar la lista en PDF» crea un PDF con la lista', /^compra-colapso-\d{4}-\d\d-\d\d\.pdf$/.test(descarga.suggestedFilename()) && pdf.startsWith('%PDF-') && /\(Agua embotellada\)/.test(pdf) && /\(ANA\)/.test(pdf) && /P\\341gina 1 de/.test(pdf), descarga.suggestedFilename());
     await page.waitForTimeout(300);   // el guardado va en segundo plano
     await page.reload();
     await page.waitForSelector('.co-item');

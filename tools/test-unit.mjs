@@ -400,3 +400,29 @@ test('compra de colapso: necesidades por persona y lista proporcional a los día
   assert.ok(tiene(r7, 'menstrual'), 'hay una mujer en edad fértil');
   assert.ok(!tiene(calcularCompra([HOGAR_INICIAL[0]], 7), 'menstrual'));
 });
+
+test('compra de colapso: PDF válido, con acentos y sin caracteres imposibles', async () => {
+  const { pdfCompra, limpiar } = await imp('assets/js/compra-pdf.js');
+  const { calcularCompra } = await imp('assets/js/compra-calc.js');
+  const { HOGAR_INICIAL, AVISOS_COMPRA } = await imp('data/content/compra.js');
+  assert.equal(limpiar('💧 Agua ≈ 5 l · ñ «sí»'), 'Agua ~ 5 l · ñ «sí»');
+  const r = calcularCompra(HOGAR_INICIAL, 7);
+  const grupos = [{ t: '1 · Agua', items: [{ id: 'agua', t: 'Agua embotellada', c: '67 l', nota: '≈ 14 garrafas' }] },
+    { t: '2 · Comida', items: r.alimentos.map((a) => ({ id: a.id, t: a.t, c: `${a.n} × ${a.u}` })) }];
+  // Medida aproximada (en el navegador se mide con la fuente real).
+  const medir = (t, negrita, tam) => t.length * tam * (negrita ? 0.56 : 0.5);
+  const bytes = pdfCompra(r, { titulo: 'Compra de colapso', duracion: '1 semana', personas: ['Ana (prueba)', 'Persona 2'], marcadas: { agua: 1 },
+    grupos, avisos: AVISOS_COMPRA, cierre: 'Fin', version: '9.9.9', fecha: '01/01/2030', medir });
+  const pdf = Buffer.from(bytes).toString('latin1');
+  assert.ok(pdf.startsWith('%PDF-1.4') && pdf.trimEnd().endsWith('%%EOF'));
+  // La tabla xref apunta exactamente al inicio de cada objeto.
+  const xref = Number(pdf.match(/startxref\n(\d+)/)[1]);
+  assert.ok(pdf.startsWith('xref', xref));
+  const offs = [...pdf.slice(xref).matchAll(/^(\d{10}) 00000 n $/gm)].map((m) => Number(m[1]));
+  offs.forEach((o, i) => assert.ok(pdf.startsWith(`${i + 1} 0 obj`, o), `objeto ${i + 1}`));
+  for (const m of pdf.matchAll(/<< \/Length (\d+) >>\nstream\n/g)) assert.equal(pdf.indexOf('\nendstream', m.index + m[0].length), m.index + m[0].length + Number(m[1]));
+  assert.ok(/\/Count [1-9]/.test(pdf) && /\/Encoding \/WinAnsiEncoding/.test(pdf));
+  assert.ok(pdf.includes('prote\\355na'), 'la í va codificada en WinAnsi');
+  assert.ok(pdf.includes('ANA \\(PRUEBA\\)'), 'paréntesis escapados');
+  assert.ok(!/[^\x00-\xff]/.test(pdf));
+});

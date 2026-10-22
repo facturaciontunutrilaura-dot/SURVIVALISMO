@@ -40,18 +40,29 @@ export async function compraView() {
   }
 
   /* ----------------------------- Activa: lista ---------------------------- */
+  /* Una sola descripción de la lista para la pantalla y para el PDF. */
+  function secciones(r) {
+    const comida = (frio) => r.alimentos.filter((a) => a.frio === frio).map((a) => ({ id: a.id, t: a.t, c: `${a.n} × ${a.u}` }));
+    const [aguaG, ...otros] = r.grupos;
+    return [
+      { ic: '💧', t: '1 · Agua', items: [{ id: 'agua', t: 'Agua embotellada', c: `${r.aguaL} l`, nota: `≈ ${r.garrafas} garrafas de 5 l (bebida, cocina e higiene mínima, con un 10 % de margen)` }, ...aguaG.items] },
+      { ic: '🥫', t: '2 · Comida que no hay que cocinar', items: comida(true) },
+      { ic: '🍚', t: '3 · Comida para cocinar (si hay gas o hornillo)', items: comida(false) },
+      ...otros.map((g, i) => ({ ic: g.ic, t: `${i + 4} · ${g.t}`, items: g.items })),
+    ];
+  }
+  const nombreDe = (p, i) => p.nombre?.trim() || `Persona ${i + 1}`;
+  const duracion = () => DURACIONES.find(([d]) => d === dias)?.[1] || `${dias} días`;
+  const cierre = (r) => `La comida aporta unas ${miles(r.kcalCompra)} kcal y ${miles(r.protCompra)} g de proteína: se redondea hacia arriba para tener margen.`;
+
   function lista() {
     const r = calcularCompra(hogar, dias);
     const fecha = new Date(activa).toLocaleString('es-ES', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' });
-    const item = (id, texto, cant, nota = '') => `<label class="co-item">
+    const item = ({ id, t, c, nota }) => `<label class="co-item">
         <input type="checkbox" data-k="${esc(id)}"${marcadas[id] ? ' checked' : ''}>
-        <span class="co-tx">${esc(texto)}${nota ? `<small>${esc(nota)}</small>` : ''}</span>
-        <b class="co-cant">${esc(cant)}</b>
+        <span class="co-tx">${esc(t)}${nota ? `<small>${esc(nota)}</small>` : ''}</span>
+        <b class="co-cant">${esc(c)}</b>
       </label>`;
-    const grupo = (ic, t, filas) => `<section class="co-grupo"><h3><span aria-hidden="true">${ic}</span> ${esc(t)}</h3>${filas.join('')}</section>`;
-    const comida = (frio) => r.alimentos.filter((a) => a.frio === frio).map((a) => item(a.id, a.t, `${a.n} × ${a.u}`));
-    const [aguaG, ...otros] = r.grupos;
-    const nombreDe = (p, i) => p.nombre?.trim() || `Persona ${i + 1}`;
 
     n.innerHTML = `
       <div class="blk-warn co-activa"><b>Modo colapso activado</b> (${esc(fecha)}). <button class="btn sm ghost" id="co-ocultar" type="button">Ocultar de nuevo</button></div>
@@ -62,17 +73,15 @@ export async function compraView() {
         </div>
         <div class="kv co-resumen">
           ${r.personas.map((p, i) => `<div>${esc(nombreDe(p, i))}</div><div>${miles(p.kcal)} kcal · ${p.prot} g proteína · ${String(p.agua).replace('.', ',')} l agua <span class="muted">al día</span></div>`).join('')}
-          <div><b>Hogar, ${esc(DURACIONES.find(([d]) => d === dias)?.[1] || `${dias} días`)}</b></div><div><b>${miles(r.kcalDia * dias)} kcal · ${miles(r.protDia * dias)} g proteína · ${r.aguaL} l agua</b></div>
+          <div><b>Hogar, ${esc(duracion())}</b></div><div><b>${miles(r.kcalDia * dias)} kcal · ${miles(r.protDia * dias)} g proteína · ${r.aguaL} l agua</b></div>
         </div>
+        <button class="btn wide" id="co-pdf" type="button"><span aria-hidden="true">📄</span> Guardar la lista en PDF</button>
         <p id="co-progreso" class="muted" aria-live="polite"></p>
         ${AVISOS_COMPRA.map((a) => `<p class="blk-note">${esc(a)}</p>`).join('')}
       </div>
       <div class="card co-lista">
-        ${grupo('💧', '1 · Agua', [item('agua', 'Agua embotellada', `${r.aguaL} l`, `≈ ${r.garrafas} garrafas de 5 l (bebida, cocina e higiene mínima, con un 10 % de margen)`), ...aguaG.items.map((it) => item(it.id, it.t, it.c))])}
-        ${grupo('🥫', '2 · Comida que no hay que cocinar', comida(true))}
-        ${grupo('🍚', '3 · Comida para cocinar (si hay gas o hornillo)', comida(false))}
-        ${otros.map((g, i) => grupo(g.ic, `${i + 4} · ${g.t}`, g.items.map((it) => item(it.id, it.t, it.c)))).join('')}
-        <p class="muted">La comida aporta unas ${miles(r.kcalCompra)} kcal y ${miles(r.protCompra)} g de proteína: se redondea hacia arriba para tener margen.</p>
+        ${secciones(r).map((g) => `<section class="co-grupo"><h3><span aria-hidden="true">${g.ic}</span> ${esc(g.t)}</h3>${g.items.map(item).join('')}</section>`).join('')}
+        <p class="muted">${esc(cierre(r))}</p>
         <div class="btnrow"><button class="btn sm ghost" id="co-desmarcar" type="button">Desmarcar todo</button></div>
       </div>
       <details class="card co-hogar"><summary>Personas en casa (${r.personas.length}) · cambiar</summary><div>
@@ -81,6 +90,36 @@ export async function compraView() {
         <div class="btnrow"><button class="btn sm ghost" id="co-mas" type="button">＋ Añadir persona</button></div>
       </div></details>`;
     progreso();
+  }
+
+  /* PDF con la estética de la app. En el móvil se abre el menú de compartir
+     (Guardar en Archivos, WhatsApp, imprimir…); si no se puede, se descarga. */
+  async function guardarPDF() {
+    const { pdfCompra } = await import('./compra-pdf.js');
+    const { VERSION } = await import('../../data/content/index.js');
+    const r = calcularCompra(hogar, dias);
+    const lienzo = document.createElement('canvas').getContext('2d');
+    // Arial tiene las mismas medidas que Helvetica, la fuente del PDF.
+    const medir = (t, negrita, tam) => { lienzo.font = `${negrita ? 'bold ' : ''}${tam}px Helvetica, Arial, "Liberation Sans", sans-serif`; return lienzo.measureText(t).width; };
+    const ahora = new Date();
+    const bytes = pdfCompra(r, {
+      titulo: 'Compra de colapso', duracion: duracion(), personas: r.personas.map(nombreDe), marcadas,
+      grupos: secciones(r), avisos: AVISOS_COMPRA, cierre: cierre(r), version: VERSION, medir,
+      fecha: ahora.toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+    });
+    const nombre = `compra-colapso-${ahora.toISOString().slice(0, 10)}.pdf`;
+    const archivo = new File([bytes], nombre, { type: 'application/pdf' });
+    window.__ultimoPDF = archivo;   // para las pruebas automáticas
+    const movil = matchMedia('(pointer: coarse)').matches;
+    if (movil && navigator.canShare?.({ files: [archivo] })) {
+      try { await navigator.share({ files: [archivo], title: 'Compra de colapso' }); return; }
+      catch (e) { if (e?.name === 'AbortError') return; }
+    }
+    const url = URL.createObjectURL(archivo);
+    const a = Object.assign(document.createElement('a'), { href: url, download: nombre });
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+    toast('PDF guardado en Descargas', { tipo: 'ok' });
   }
 
   function persona(p, i) {
@@ -139,6 +178,12 @@ export async function compraView() {
     const b = ev.target.closest('button');
     if (!b) return;
     if (b.dataset.dias) { dias = +b.dataset.dias; repintar(); return setKv('compra.dias', dias); }
+    if (b.id === 'co-pdf') {
+      b.disabled = true;
+      try { await guardarPDF(); } catch (e) { console.warn(e); toast('No se ha podido crear el PDF', { tipo: 'error' }); }
+      finally { b.disabled = false; }
+      return;
+    }
     if (b.id === 'co-desmarcar') { marcadas = {}; repintar(); return setKv('compra.marcadas', marcadas); }
     if (b.id === 'co-mas') {
       hogar = [...hogar, { ...PERSONA_NUEVA }];
