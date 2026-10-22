@@ -148,7 +148,7 @@ const rutaSeccion = (id) => (id === 'mapa' ? '#/mapa' : `#/sec/${id}`);
 
 function vHome() {
   const sec = (id) => secMap[id];
-  const tarjeta = (id) => { const s = sec(id); return s ? `<a class="tile" href="${rutaSeccion(id)}">
+  const tarjeta = (id) => { const s = sec(id); return s ? `<a class="tile${s.cls === 'colapso' ? ' colapso' : ''}" href="${rutaSeccion(id)}">
       <span class="ic" aria-hidden="true">${s.ic}</span>
       <span><span class="nm">${esc(s.t)}</span><span class="ds">${esc(s.desc)}</span></span>
     </a>` : ''; };
@@ -481,6 +481,12 @@ async function vSeccion(id, sub) {
     const calma = sub === 'calma';
     const w = el(`<div>${topbar(calma ? 'Modo calma' : s.t, calma ? 'Respiración y grounding' : s.desc)}<h1>${calma ? '🧘 Modo calma' : `${s.ic} ${esc(s.t)}`}</h1></div>`);
     w.appendChild(juegosView(sub));
+    return w;
+  }
+  if (id === 'compra') {
+    const { compraView } = await import('./compra.js');
+    const w = el(`<div>${topbar(s.t, 'De 72 horas a una semana')}<h1>${s.ic} COMPRA DE COLAPSO</h1></div>`);
+    w.appendChild(await compraView());
     return w;
   }
   if (id === 'audio') {
@@ -1016,6 +1022,7 @@ const TIPOS_BUSQUEDA = {
   riesgo: { t: 'Riesgo', ic: '📊', f: 'otros' },
   ruta: { t: 'Ruta', ic: '🛣️', f: 'otros' },
   juego: { t: 'Juegos', ic: '🎮', f: 'otros' },
+  compra: { t: 'Compra', ic: '🛒', f: 'otros' },
   audio: { t: 'Audio', ic: '🎵', f: 'otros' },
   familia: { t: 'Familia', ic: '👨‍👩‍👧', f: 'otros' },
 };

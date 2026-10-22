@@ -805,6 +805,45 @@ details > div { padding: 0 12px 12px; }
 .ttt-c:disabled { cursor: default; }
 .ttt-c.win { background: var(--olive); border-color: var(--olive3); }
 
+/* --------------------------- Compra de colapso --------------------------- */
+/* Tarjeta de portada: borde rojo, sin relleno, para no competir con SOS. */
+.tile.colapso, .grid .tile.colapso { border-color: var(--red); border-left: 3px solid var(--red); }
+.tile.colapso .nm { color: #F0A89C; }
+html[data-theme='night'] .tile.colapso .nm { color: #D9A396; }
+.btn-colapso {
+  display: flex; align-items: center; justify-content: center; gap: 14px;
+  width: 100%; min-height: 84px; margin: 14px 0; padding: 12px 18px;
+  background: #B3261E; color: #fff; border: 2px solid #E8715F; border-radius: 10px;
+  font: inherit; cursor: pointer; box-shadow: 0 4px 14px rgba(0, 0, 0, .45);
+}
+.btn-colapso > span:first-child { font-size: 1.9rem; line-height: 1; }
+.btn-colapso b { display: block; font-family: var(--ff); font-size: 1.5rem; letter-spacing: .12em; }
+.btn-colapso small { display: block; font-size: .85rem; }
+.btn-colapso:active { transform: translateY(1px); background: #9A1F18; }
+.btn-colapso:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+html[data-theme='night'] .btn-colapso { background: #7A1D16; border-color: #A4473A; color: #F3D3CC; }
+.co-activa { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.co-activa .btn { margin-left: auto; }
+.co-grupo h3 { margin: 18px 0 8px; }
+.co-grupo:first-child h3 { margin-top: 0; }
+.co-item {
+  display: grid; grid-template-columns: 28px 1fr auto; align-items: center; gap: 10px;
+  min-height: 48px; margin: 0 0 6px; padding: 6px 10px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--r);
+  font: inherit; font-size: .92rem; letter-spacing: normal; text-transform: none; color: var(--txt); cursor: pointer;
+}
+.co-item input { width: 24px; height: 24px; margin: 0; accent-color: var(--olive3); }
+.co-tx small { display: block; color: var(--dim); font-size: .8rem; }
+.co-cant { text-align: right; white-space: nowrap; }
+.co-item:has(input:checked) { background: var(--bg2); }
+.co-item:has(input:checked) .co-tx { text-decoration: line-through; color: var(--dim); }
+@media (max-width: 380px) { .co-item { grid-template-columns: 28px 1fr; } .co-cant { grid-column: 2; text-align: left; } }
+.co-persona { border: 1px solid var(--line); border-radius: var(--r); margin: 0 0 12px; padding: 4px 12px 12px; }
+.co-persona legend { padding: 0 6px; font-family: var(--ff); color: var(--olive3); }
+.co-persona .fieldrow { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
+.co-persona [data-quitar] { margin-top: 10px; }
+.co-persona .co-ancho { grid-column: 1 / -1; }
+
 /* ------------------------------ Ajedrez ------------------------------ */
 .aje {
   display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); max-width: 440px; margin: 0 auto;

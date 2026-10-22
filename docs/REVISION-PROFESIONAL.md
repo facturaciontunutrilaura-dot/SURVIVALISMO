@@ -62,6 +62,7 @@ de la revisión profesional, con su fuente.
 | Prioridad | Contenido | Dónde | Qué comprobar |
 |---|---|---|---|
 | B | Calculadora de reserva alimentaria (kcal según actividad: 2.000 / 2.700 / 3.800) | `assets/js/calc.js` · `calc-comida` | Necesidades energéticas por edad, sexo y actividad; hidratación; grupos con necesidades especiales |
+| **A** | **Compra de colapso** (kcal por Mifflin-St Jeor × actividad 1,4 / 1,6 / 1,75; proteína 1,2–1,4 g/kg; agua 35 ml/kg + 1,5 l; reparto de energía por alimento) | `data/content/compra.js` y `assets/js/compra-calc.js` | Factores de actividad, proteína y agua; reparto y productos; alergias, embarazo, lactancia y otras situaciones especiales |
 | B | Calculadora de peso de mochila y energía («porcentaje de tu peso») | `calc.js` · `calc-mochila` | Límites de carga recomendados |
 | B | Despensa de emergencia: qué almacenar | `art-recursos.js` · `alim-reserva` | Equilibrio, dietas especiales (celiaquía, diabetes, lactantes), rotación |
 | B | Conservar y cocinar sin electricidad | `art-recursos.js` · `alim-sin-luz` | Seguridad alimentaria: conservación, cadena de frío, recalentado |

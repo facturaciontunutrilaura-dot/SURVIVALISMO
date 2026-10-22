@@ -512,6 +512,52 @@ try {
   await page.click('#ca-stop');
   ok('Modo calma incluye grounding', (await page.locator('#ca-gr details').count()) >= 4);
 
+  /* ------------------- 9 bis b. Compra de colapso (botón rojo) ------------------- */
+  console.log('\n▸ Compra de colapso');
+  {
+    await page.goto(BASE + '#/');
+    await page.waitForSelector('.tile.colapso');
+    ok('Colapso: acceso en la portada, en «Mi plan y herramientas»', (await page.getAttribute('.tile.colapso', 'href')) === '#/sec/compra');
+    await page.click('.tile.colapso');
+    await page.waitForSelector('#co-activar');
+    ok('Colapso: la lista está oculta hasta pulsar el botón rojo', (await page.locator('.co-item').count()) === 0 && /COLAPSO/.test(await page.textContent('#co-activar')));
+    await page.evaluate(() => { window.__conf = window.confirm; window.confirm = () => false; });
+    await page.click('#co-activar');
+    ok('Colapso: si no se confirma, sigue oculta', (await page.locator('.co-item').count()) === 0);
+    await page.evaluate(() => { window.confirm = window.__conf; });
+    await page.click('#co-activar');
+    await page.waitForSelector('.co-item');
+    const lista = await page.evaluate(() => ({
+      items: document.querySelectorAll('.co-item').length,
+      agua: document.querySelector('.co-item [data-k="agua"]').closest('.co-item').textContent.replace(/\s+/g, ' '),
+      resumen: document.querySelector('.co-resumen').textContent.replace(/\s+/g, ' '),
+      grupos: [...document.querySelectorAll('.co-grupo h3')].map((h) => h.textContent.trim()),
+    }));
+    ok('Colapso: al confirmar aparece la lista, con el agua primero', lista.items > 30 && /^💧 1 · Agua/.test(lista.grupos[0]) && /67 l/.test(lista.agua), JSON.stringify(lista).slice(0, 300));
+    ok('Colapso: calcula por persona (kcal, proteína y agua)', /3450 kcal · 140 g proteína · 5 l agua/.test(lista.resumen) && /2100 kcal · 72 g proteína · 3,6 l agua/.test(lista.resumen), lista.resumen);
+    await page.click('[data-dias="3"]');
+    ok('Colapso: «72 horas» recalcula las cantidades', /29 l/.test(await page.locator('.co-item:has([data-k="agua"])').textContent()) && (await page.getAttribute('[data-dias="3"]', 'aria-pressed')) === 'true');
+    await page.check('.co-item [data-k="platos"]');
+    ok('Colapso: se marca lo comprado', /Comprado: 1 de/.test(await page.textContent('#co-progreso')));
+    await page.click('.co-hogar summary');
+    await page.fill('#co-nombre-0', 'Ana'); await page.press('#co-nombre-0', 'Tab');
+    await page.fill('#co-peso-0', '80'); await page.press('#co-peso-0', 'Tab');
+    const res2 = (await page.textContent('.co-resumen')).replace(/\s+/g, ' ');
+    ok('Colapso: las personas se pueden cambiar y la lista se recalcula', /Ana/.test(res2) && !/3450 kcal/.test(res2) && await page.locator('.co-hogar').evaluate((d) => d.open), res2);
+    await page.waitForTimeout(300);   // el guardado va en segundo plano
+    await page.reload();
+    await page.waitForSelector('.co-item');
+    ok('Colapso: tras recargar sigue activa y conserva días, marcas y personas', (await page.isChecked('.co-item [data-k="platos"]')) && (await page.getAttribute('[data-dias="3"]', 'aria-pressed')) === 'true' && /Ana/.test(await page.textContent('.co-resumen')));
+    ok('Colapso: las personas del hogar cuentan como datos propios (aviso de copia)', await page.evaluate(async () => { const st = await import('./assets/js/store.js'); return st.esDatoPropio('kv', 'compra.hogar') && !st.esDatoPropio('kv', 'compra.marcadas'); }));
+    await page.click('#co-ocultar');
+    await page.waitForSelector('#co-activar');
+    ok('Colapso: «Ocultar de nuevo» vuelve al botón rojo', (await page.locator('.co-item').count()) === 0);
+    const busq = await page.evaluate(async () => { const { INDICE } = await import('./data/content/index.js'); const { crearBuscador } = await import('./assets/js/search.js'); return crearBuscador(INDICE).buscar('compra colapso').resultados[0]?.it.ruta; });
+    ok('Colapso: el buscador lo encuentra', busq === '#/sec/compra', String(busq));
+    // Se deja como al principio para el resto de pruebas.
+    await page.evaluate(async () => { const st = await import('./assets/js/store.js'); for (const k of ['compra.hogar', 'compra.marcadas', 'compra.dias', 'compra.activa']) await st.del?.('kv', k); });
+  }
+
   /* ---------------------- 9 ter. NUEVO: Riesgos 2036 ---------------------- */
   console.log('\n▸ Riesgos 2026–2036');
   await page.goto(BASE + '#/sec/riesgos');
@@ -2113,6 +2159,11 @@ try {
       await pt.goto(BASE + '#/buscar'); await pt.waitForSelector('#q');
       await pt.fill('#q', 'sangra mucho'); await pt.waitForTimeout(300);
       malos.push(...(await contraste(pt)).map((m) => '/buscar ' + m));
+      pt.on('dialog', (d) => d.accept());
+      await pt.goto(BASE + '#/sec/compra'); await pt.waitForSelector('#co-activar');
+      malos.push(...(await contraste(pt)).map((m) => '/sec/compra ' + m));
+      await pt.click('#co-activar'); await pt.waitForSelector('.co-item'); await pt.check('.co-item [data-k="agua"]');
+      malos.push(...(await contraste(pt)).map((m) => '/sec/compra (lista) ' + m));
       ok(`Tema ${tema}/${cont}: todo el texto cumple contraste AA`, malos.length === 0, malos.slice(0, 5).join(' | '));
       await ct.close();
     }

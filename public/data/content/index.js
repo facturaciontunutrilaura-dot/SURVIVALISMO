@@ -38,6 +38,7 @@ export const SECCIONES = [
   { id: 'mascotas', t: 'MASCOTAS', ic: '🐕', desc: 'Preparación y evacuación con animales' },
   { id: 'plan-familiar', t: 'PLAN FAMILIAR', ic: '👨‍👩‍👧', desc: 'Contactos, puntos de encuentro y reunificación' },
   { id: 'calculadoras', t: 'CALCULADORAS', ic: '🧮', desc: 'Agua, comida, marcha, rumbo, unidades' },
+  { id: 'compra', t: 'COLAPSO: COMPRA', ic: '🛒', cls: 'colapso', desc: 'Lista de compra urgente, oculta hasta que la actives' },
   { id: 'cursos', t: 'FORMACIÓN', ic: '🎓', desc: '10 cursos con teoría, ejercicios y test' },
   { id: 'biblioteca', t: 'BIBLIOTECA', ic: '📚', desc: 'Tablas, meteorología, plantas y referencias' },
   { id: 'manual', t: 'MANUAL', ic: '📖', desc: 'Índice completo de todo el contenido' },
@@ -50,7 +51,7 @@ export const SECCIONES = [
    Familia (Contactos y acuerdos). Toda sección, salvo esas dos, debe
    aparecer exactamente una vez (lo comprueba tools/test-unit.mjs). */
 export const PORTADA = {
-  plan: ['familia', 'mapa', 'orientacion', 'equipo', 'calculadoras', 'comunicaciones'],
+  plan: ['compra', 'familia', 'mapa', 'orientacion', 'equipo', 'calculadoras', 'comunicaciones'],
   manual: ['primeros-auxilios', 'agua', 'fuego', 'refugio', 'alimentacion', 'psicologia',
     'vehiculo', 'mascotas', 'bushcraft', 'espana', 'avila', 'biblioteca'],
   mas: ['riesgos', 'juegos', 'audio', 'cursos', 'manual', 'fuentes', 'config'],
@@ -197,8 +198,8 @@ export const INDICE = [
   // --- Juegos y modo calma ---
   {
     tipo: 'juego', id: 'juegos', ruta: '#/sec/juegos', t: 'Juegos offline', sec: 'juegos',
-    pr: 'recomendado', sum: 'Tres en raya, memory de supervivencia y reto de preguntas. Funcionan sin conexión.',
-    texto: ['juegos offline tres en raya memory reto quiz preguntas niños aburrimiento estrés grupo',
+    pr: 'recomendado', sum: 'Tres en raya, ajedrez, memory de supervivencia y reto de preguntas. Funcionan sin conexión.',
+    texto: ['juegos offline tres en raya ajedrez memory reto quiz preguntas niños aburrimiento estrés grupo',
       ...QUIZ.map((q) => q.q), ...Object.values(QUIZ_CATEGORIAS).map((c) => c.t)].join(' '),
   },
   {
@@ -216,6 +217,11 @@ export const INDICE = [
     tipo: 'familia', id: 'centro-familiar', ruta: '#/sec/familia', t: 'Centro de coordinación familiar', sec: 'familia',
     pr: 'critico', sum: 'Tus ubicaciones y las de tu familia: estado, rutas, plan 72 h y reunificación.',
     texto: ['familia centro coordinación ubicaciones estado reunificación plan 72 horas rutas mapa familiar padres abuelos hijos llegar a mi familia comparar'].join(' '),
+  },
+  {
+    tipo: 'compra', id: 'compra-colapso', ruta: '#/sec/compra', t: 'Compra de colapso', sec: 'compra',
+    pr: 'critico', sum: 'Lista de compra urgente para quedarse en casa de 72 horas a una semana, calculada para las personas de tu hogar.',
+    texto: 'compra colapso lista de la compra supermercado comprar víveres provisiones despensa agua comida comprar antes de que se agote 72 horas una semana kcal proteína hogar',
   },
 ];
 

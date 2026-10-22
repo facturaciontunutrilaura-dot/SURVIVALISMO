@@ -376,3 +376,27 @@ test('ajedrez: el rival difícil da mate y gana material; el fácil juega legal'
   }
   assert.equal(AJ.mejorJugada(AJ.desdeFEN('7k/5Q2/6K1/8/8/8/8/8 b - - 0 1')), null);
 });
+
+/* ---------------------------- Compra de colapso ---------------------------- */
+test('compra de colapso: necesidades por persona y lista proporcional a los días', async () => {
+  const { necesidades, calcularCompra } = await imp('assets/js/compra-calc.js');
+  const { HOGAR_INICIAL, ALIMENTOS } = await imp('data/content/compra.js');
+  assert.ok(Math.abs(ALIMENTOS.reduce((s, a) => s + a.parte, 0) - 1) < 1e-9, 'el reparto de energía suma 100 %');
+  // Hombre, 25 años, 100 kg, actividad alta; mujer, 27 años, 60 kg, moderada.
+  const [h, m] = HOGAR_INICIAL.map(necesidades);
+  assert.deepEqual([h.kcal, h.prot, h.agua], [3450, 140, 5]);
+  assert.deepEqual([m.kcal, m.prot, m.agua], [2100, 72, 3.6]);
+  assert.equal(necesidades({ ...HOGAR_INICIAL[1], kcal: '1900' }).kcal, 1900, 'kcal indicadas a mano');
+  assert.equal(necesidades({ sexo: 'h', peso: '', edad: '' }).kcal > 0, true, 'campos vacíos no rompen el cálculo');
+  const r3 = calcularCompra(HOGAR_INICIAL, 3), r7 = calcularCompra(HOGAR_INICIAL, 7);
+  for (const r of [r3, r7]) {
+    assert.ok(r.cubreKcal && r.cubreProt, `cubre energía y proteína (${r.dias} días)`);
+    assert.ok(r.alimentos.every((a) => Number.isInteger(a.n) && a.n >= 1));
+    assert.ok(r.aguaL >= r.aguaDia * r.dias && r.garrafas * 5 >= r.aguaL);
+  }
+  assert.equal(r7.aguaL, 67);
+  assert.ok(r7.alimentos.find((a) => a.id === 'platos').n > r3.alimentos.find((a) => a.id === 'platos').n);
+  const tiene = (r, id) => r.grupos.some((g) => g.items.some((it) => it.id === id));
+  assert.ok(tiene(r7, 'menstrual'), 'hay una mujer en edad fértil');
+  assert.ok(!tiene(calcularCompra([HOGAR_INICIAL[0]], 7), 'menstrual'));
+});
