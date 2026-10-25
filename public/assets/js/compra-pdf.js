@@ -5,8 +5,8 @@
    documento A4 con la estética de la app (fondo verde de campaña, texto
    arena, acentos óxido) y casillas para marcar a mano.
    Usa las fuentes estándar de PDF (Helvetica), que cualquier lector tiene,
-   con codificación WinAnsi (todas las letras del español). El ancho del
-   texto lo mide quien llama (`medir`), para partir las líneas.
+   con codificación WinAnsi (todas las letras del español), y sus métricas
+   para partir las líneas.
    ========================================================================= */
 
 const A4 = { w: 595.28, h: 841.89 };
@@ -19,6 +19,16 @@ const C = {
   bg: hex('#1B1F14'), bg2: hex('#232819'), panel: hex('#2F3724'), line: hex('#59583E'),
   txt: hex('#E6DCCB'), dim: hex('#C0A988'), olive: hex('#565E35'), olive3: hex('#A1A265'),
   sand: hex('#BAA37A'), red: hex('#C06044'), rojo: hex('#B3261E'),
+};
+
+/* Anchos de Helvetica y Helvetica-Bold (milésimas del cuerpo) para los
+   códigos WinAnsi 32–255: son las métricas estándar de las fuentes del PDF.
+   Medir con ellas (y no con las fuentes del móvil, que en Android no son
+   Helvetica) deja las cantidades alineadas a la derecha y los saltos de
+   línea exactos en cualquier dispositivo. */
+const ANCHOS = {
+  n: [278,278,355,556,556,889,667,191,333,333,389,584,278,333,278,278,556,556,556,556,556,556,556,556,556,556,278,278,584,584,584,556,1015,667,667,722,722,667,611,778,722,278,500,667,556,833,722,778,667,778,722,667,611,722,667,944,667,667,611,278,278,278,469,556,333,556,556,500,556,556,278,556,556,222,222,500,222,833,556,556,556,556,333,500,278,556,500,722,500,500,500,334,260,334,584,278,556,278,222,556,333,1000,556,556,333,1000,667,333,1000,278,611,278,278,222,222,333,333,350,556,1000,333,1000,500,333,944,278,500,667,278,333,556,556,556,556,260,556,333,737,370,556,584,333,737,552,400,549,333,333,333,576,537,333,333,333,365,556,834,834,834,611,667,667,667,667,667,667,1000,722,667,667,667,667,278,278,278,278,722,722,778,778,778,778,778,584,778,722,722,722,722,667,667,611,556,556,556,556,556,556,889,500,556,556,556,556,278,278,278,278,556,556,556,556,556,556,556,549,611,556,556,556,556,500,556,500],
+  b: [278,333,474,556,556,889,722,238,333,333,389,584,278,333,278,278,556,556,556,556,556,556,556,556,556,556,333,333,584,584,584,611,975,722,722,722,722,667,611,778,722,278,556,722,611,833,722,778,667,778,722,667,611,722,667,944,667,667,611,333,278,333,584,556,333,556,611,556,611,556,333,611,611,278,278,556,278,889,611,611,611,611,389,556,333,611,556,778,556,556,500,389,280,389,584,278,556,278,278,556,500,1000,556,556,333,1000,667,333,1000,278,611,278,278,278,278,500,500,350,556,1000,333,1000,556,333,944,278,500,667,278,333,556,556,556,556,280,556,333,737,370,556,584,333,737,552,400,549,333,333,333,576,556,333,333,333,365,556,834,834,834,611,722,722,722,722,722,722,1000,722,667,667,667,667,278,278,278,278,722,722,778,778,778,778,778,584,778,722,722,722,722,667,667,611,556,556,556,556,556,556,889,556,556,556,556,556,278,278,278,278,611,611,611,611,611,611,611,549,611,611,611,611,611,556,611,556],
 };
 
 /* ---------------------------- Texto WinAnsi ---------------------------- */
@@ -50,6 +60,14 @@ function lit(s) {
   return out + ')';
 }
 
+/** Ancho en puntos de un texto (ya limpio) en Helvetica. */
+export function medirHelvetica(t, negrita, tam) {
+  const tab = negrita ? ANCHOS.b : ANCHOS.n;
+  let w = 0;
+  for (const ch of t) { const c = W1252[ch] ?? ch.codePointAt(0); w += (c >= 32 && c <= 255 ? tab[c - 32] : 556); }
+  return (w * tam) / 1000;
+}
+
 /** Parte un texto en líneas que caben en `ancho` puntos. */
 function partir(texto, ancho, medir, negrita, tam) {
   const palabras = limpiar(texto).split(' ');
@@ -67,11 +85,11 @@ function partir(texto, ancho, medir, negrita, tam) {
 /* ------------------------------ Documento ------------------------------ */
 /**
  * @param r       resultado de calcularCompra()
- * @param op      { titulo, duracion, personas: [nombre], marcadas, fecha, version, medir }
+ * @param op      { titulo, duracion, personas: [nombre], marcadas, fecha, version, medir? }
  * @returns Uint8Array con el PDF
  */
 export function pdfCompra(r, op) {
-  const medir = op.medir;
+  const medir = op.medir || medirHelvetica;
   const paginas = [];
   let ops, y;
 

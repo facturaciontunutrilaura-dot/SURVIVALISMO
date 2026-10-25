@@ -55,40 +55,53 @@ export async function compraView() {
   const duracion = () => DURACIONES.find(([d]) => d === dias)?.[1] || `${dias} días`;
   const cierre = (r) => `La comida aporta unas ${miles(r.kcalCompra)} kcal y ${miles(r.protCompra)} g de proteína: se redondea hacia arriba para tener margen.`;
 
-  function lista() {
-    const r = calcularCompra(hogar, dias);
-    const fecha = new Date(activa).toLocaleString('es-ES', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' });
-    const item = ({ id, t, c, nota }) => `<label class="co-item">
+  const item = ({ id, t, c, nota }) => `<label class="co-item">
         <input type="checkbox" data-k="${esc(id)}"${marcadas[id] ? ' checked' : ''}>
         <span class="co-tx">${esc(t)}${nota ? `<small>${esc(nota)}</small>` : ''}</span>
         <b class="co-cant">${esc(c)}</b>
       </label>`;
 
+  /* La estructura (botones, formulario de personas) se pinta una vez. Al
+     cambiar un dato solo se recalculan el resumen y la lista: así no se
+     destruye el botón que se está pulsando ni el campo que tiene el foco. */
+  function lista() {
+    const fecha = new Date(activa).toLocaleString('es-ES', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' });
     n.innerHTML = `
       <div class="blk-warn co-activa"><b>Modo colapso activado</b> (${esc(fecha)}). <button class="btn sm ghost" id="co-ocultar" type="button">Ocultar de nuevo</button></div>
       <div class="card">
         <h2 tabindex="-1">Lista de compra</h2>
         <div class="btnrow" role="group" aria-label="Duración">
-          ${DURACIONES.map(([d, t]) => `<button class="btn sm${d === dias ? '' : ' ghost'}" type="button" data-dias="${d}" aria-pressed="${d === dias}">${t}</button>`).join('')}
+          ${DURACIONES.map(([d, t]) => `<button class="btn sm" type="button" data-dias="${d}">${t}</button>`).join('')}
         </div>
-        <div class="kv co-resumen">
-          ${r.personas.map((p, i) => `<div>${esc(nombreDe(p, i))}</div><div>${miles(p.kcal)} kcal · ${p.prot} g proteína · ${String(p.agua).replace('.', ',')} l agua <span class="muted">al día</span></div>`).join('')}
-          <div><b>Hogar, ${esc(duracion())}</b></div><div><b>${miles(r.kcalDia * dias)} kcal · ${miles(r.protDia * dias)} g proteína · ${r.aguaL} l agua</b></div>
-        </div>
+        <div class="kv co-resumen"></div>
         <button class="btn wide" id="co-pdf" type="button"><span aria-hidden="true">📄</span> Guardar la lista en PDF</button>
         <p id="co-progreso" class="muted" aria-live="polite"></p>
         ${AVISOS_COMPRA.map((a) => `<p class="blk-note">${esc(a)}</p>`).join('')}
       </div>
       <div class="card co-lista">
-        ${secciones(r).map((g) => `<section class="co-grupo"><h3><span aria-hidden="true">${g.ic}</span> ${esc(g.t)}</h3>${g.items.map(item).join('')}</section>`).join('')}
-        <p class="muted">${esc(cierre(r))}</p>
+        <div id="co-items"></div>
         <div class="btnrow"><button class="btn sm ghost" id="co-desmarcar" type="button">Desmarcar todo</button></div>
       </div>
-      <details class="card co-hogar"><summary>Personas en casa (${r.personas.length}) · cambiar</summary><div>
+      <details class="card co-hogar"><summary>Personas en casa (<span id="co-npers"></span>) · cambiar</summary><div>
         <p class="muted">Se guarda solo en este dispositivo. La energía se estima con la fórmula de Mifflin-St Jeor y el nivel de actividad; si conoces las kcal de alguien (por ejemplo, pautadas por su nutricionista), escríbelas y se usarán esas.</p>
-        <div id="co-personas">${hogar.map((p, i) => persona(p, i)).join('')}</div>
+        <div id="co-personas"></div>
         <div class="btnrow"><button class="btn sm ghost" id="co-mas" type="button">＋ Añadir persona</button></div>
       </div></details>`;
+    personas();
+    calcular();
+  }
+
+  function personas() { n.querySelector('#co-personas').innerHTML = hogar.map((p, i) => persona(p, i)).join(''); }
+
+  function calcular() {
+    const r = calcularCompra(hogar, dias);
+    n.querySelectorAll('[data-dias]').forEach((b) => { const si = +b.dataset.dias === dias; b.classList.toggle('ghost', !si); b.setAttribute('aria-pressed', String(si)); });
+    n.querySelector('.co-resumen').innerHTML = `
+      ${r.personas.map((p, i) => `<div>${esc(nombreDe(p, i))}</div><div>${miles(p.kcal)} kcal · ${p.prot} g proteína · ${String(p.agua).replace('.', ',')} l agua <span class="muted">al día</span></div>`).join('')}
+      <div><b>Hogar, ${esc(duracion())}</b></div><div><b>${miles(r.kcalDia * dias)} kcal · ${miles(r.protDia * dias)} g proteína · ${r.aguaL} l agua</b></div>`;
+    n.querySelector('#co-items').innerHTML = secciones(r).map((g) => `<section class="co-grupo"><h3><span aria-hidden="true">${g.ic}</span> ${esc(g.t)}</h3>${g.items.map(item).join('')}</section>`).join('') +
+      `<p class="muted">${esc(cierre(r))}</p>`;
+    n.querySelector('#co-npers').textContent = r.personas.length;
     progreso();
   }
 
@@ -98,13 +111,10 @@ export async function compraView() {
     const { pdfCompra } = await import('./compra-pdf.js');
     const { VERSION } = await import('../../data/content/index.js');
     const r = calcularCompra(hogar, dias);
-    const lienzo = document.createElement('canvas').getContext('2d');
-    // Arial tiene las mismas medidas que Helvetica, la fuente del PDF.
-    const medir = (t, negrita, tam) => { lienzo.font = `${negrita ? 'bold ' : ''}${tam}px Helvetica, Arial, "Liberation Sans", sans-serif`; return lienzo.measureText(t).width; };
     const ahora = new Date();
     const bytes = pdfCompra(r, {
       titulo: 'Compra de colapso', duracion: duracion(), personas: r.personas.map(nombreDe), marcadas,
-      grupos: secciones(r), avisos: AVISOS_COMPRA, cierre: cierre(r), version: VERSION, medir,
+      grupos: secciones(r), avisos: AVISOS_COMPRA, cierre: cierre(r), version: VERSION,
       fecha: ahora.toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
     });
     const nombre = `compra-colapso-${ahora.toISOString().slice(0, 10)}.pdf`;
@@ -151,15 +161,6 @@ export async function compraView() {
     if (out) out.textContent = `Comprado: ${hechas} de ${cajas.length}.`;
   }
 
-  /* Repinta conservando el panel de personas abierto y el foco. */
-  function repintar() {
-    const abierto = n.querySelector('.co-hogar')?.open;
-    const foco = document.activeElement?.id;
-    lista();
-    if (abierto) n.querySelector('.co-hogar').open = true;
-    if (foco) n.querySelector('#' + CSS.escape(foco))?.focus();
-  }
-
   n.addEventListener('change', async (ev) => {
     const t = ev.target;
     if (t.matches('.co-item input')) {
@@ -168,8 +169,15 @@ export async function compraView() {
       return setKv('compra.marcadas', marcadas);
     }
     if (t.dataset.c != null) {
-      hogar[+t.dataset.i] = { ...hogar[+t.dataset.i], [t.dataset.c]: t.value };
-      repintar();
+      const i = +t.dataset.i;
+      hogar[i] = { ...hogar[i], [t.dataset.c]: t.value };
+      if (t.dataset.c === 'nombre') {
+        const fs = t.closest('fieldset');
+        fs.querySelector('legend').textContent = nombreDe(hogar[i], i);
+        const q = fs.querySelector('[data-quitar]');
+        if (q) q.textContent = `Quitar a ${hogar[i].nombre?.trim() || `persona ${i + 1}`}`;
+      }
+      calcular();
       return setKv('compra.hogar', hogar);
     }
   });
@@ -177,22 +185,23 @@ export async function compraView() {
   n.addEventListener('click', async (ev) => {
     const b = ev.target.closest('button');
     if (!b) return;
-    if (b.dataset.dias) { dias = +b.dataset.dias; repintar(); return setKv('compra.dias', dias); }
+    if (b.dataset.dias) { dias = +b.dataset.dias; calcular(); return setKv('compra.dias', dias); }
     if (b.id === 'co-pdf') {
       b.disabled = true;
       try { await guardarPDF(); } catch (e) { console.warn(e); toast('No se ha podido crear el PDF', { tipo: 'error' }); }
       finally { b.disabled = false; }
       return;
     }
-    if (b.id === 'co-desmarcar') { marcadas = {}; repintar(); return setKv('compra.marcadas', marcadas); }
+    if (b.id === 'co-desmarcar') { marcadas = {}; calcular(); return setKv('compra.marcadas', marcadas); }
     if (b.id === 'co-mas') {
       hogar = [...hogar, { ...PERSONA_NUEVA }];
-      repintar(); setKv('compra.hogar', hogar);
+      personas(); calcular(); setKv('compra.hogar', hogar);
       return n.querySelector(`#co-nombre-${hogar.length - 1}`)?.focus();
     }
     if (b.dataset.quitar != null) {
       hogar = hogar.filter((_, i) => i !== +b.dataset.quitar);
-      repintar(); setKv('compra.hogar', hogar);
+      personas(); calcular(); setKv('compra.hogar', hogar);
+      n.querySelector('#co-mas').focus();
       return toast('Persona quitada');
     }
     if (b.id === 'co-ocultar') {

@@ -14,7 +14,12 @@ const setKv = (id, v) => store.put('kv', { id, v }).catch(() => {});
 const CORR = Object.fromEntries(CORREDORES.map((c) => [c.id, c]));
 const VELOCIDAD = 80;          // km/h de media en condiciones normales
 const FACTOR_CRISIS = 2.5;     // atascos, controles y desvíos
-const horas = (h) => (h < 1 ? `${Math.round(h * 60)} min` : `${Math.floor(h)} h${Math.round((h % 1) * 60) ? ` ${Math.round((h % 1) * 60)} min` : ''}`);
+/* Se redondean los minutos totales antes de separar horas y minutos: así
+   nunca sale «2 h 60 min». */
+export function horas(h) {
+  const t = Math.round(h * 60), hh = Math.floor(t / 60), mm = t % 60;
+  return hh ? `${hh} h${mm ? ` ${mm} min` : ''}` : `${mm} min`;
+}
 
 /** Datos calculados de un corredor: distancia, tiempos y combustible. */
 export function datosCorredor(geo, id, autonomia) {
@@ -24,11 +29,17 @@ export function datosCorredor(geo, id, autonomia) {
     normal: km != null ? horas(km / VELOCIDAD) : '—',
     crisis: km != null ? horas((km / VELOCIDAD) * FACTOR_CRISIS) : '—',
     repostar: km != null && km > autonomia * 0.85,   // margen del 15 %
+    conocida: km != null,
     nucleares: geo?.nucleares || {},
   };
 }
 
 export async function evacuacionView() {
+  // La limpieza se registra antes de cualquier espera: si se sale de la
+  // pantalla mientras carga, el mapa ya no se monta. Un zoom animado sobre un
+  // mapa retirado también fallaría, por eso se detiene antes de quitarlo.
+  let L = null, map = null, capa = null, vivo = true;
+  alSalir(() => { vivo = false; if (map) { map.stop?.(); map.remove(); } });
   const n = el(`<div>
     <p class="muted">Desde Ávila hacia el resto de España o fuera del país, según lo que esté pasando.</p>
     <div class="blk-warn">${esc(AVISO_EVACUACION)}</div>
@@ -80,7 +91,7 @@ export async function evacuacionView() {
         <div>Destino</div><div>${esc(c.destino)}</div>
         <div>Por</div><div>${esc(c.via)}</div>
         <div>Distancia</div><div><b>≈ ${d.km ?? '—'} km</b> · ${esc(d.normal)} en condiciones normales · <b>${esc(d.crisis)}</b> en una crisis</div>
-        <div>Combustible</div><div>${d.repostar ? `⛽ <b>Hay que repostar</b> (tu autonomía: ${autonomia} km)` : `✅ Se llega con un depósito (${autonomia} km)`}</div>
+        <div>Combustible</div><div>${!d.conocida ? 'Distancia no disponible: calcula el combustible con un mapa en papel' : d.repostar ? `⛽ <b>Hay que repostar</b> (tu autonomía: ${autonomia} km)` : `✅ Se llega con un depósito (${autonomia} km)`}</div>
         ${c.frontera ? `<div>Frontera</div><div>${esc(c.frontera)}</div>` : ''}
         ${c.puertos?.length ? `<div>Puertos de montaña</div><div>${esc(c.puertos.join(', '))}</div>` : ''}
         ${cerca.length ? `<div>Centrales nucleares</div><div>☢️ ${cerca.map((x) => `${esc(x.t)} a ≈ ${d.nucleares[x.id]} km`).join('; ')}</div>` : ''}
@@ -119,10 +130,7 @@ export async function evacuacionView() {
   }
 
   /* -------------------------------- Mapa -------------------------------- */
-  let L = null, map = null, capa = null, vivo = true;
   const capas = {};
-  // Al salir se para todo: un zoom animado sobre un mapa ya retirado falla.
-  alSalir(() => { vivo = false; if (map) { map.stop?.(); map.remove(); } });
   async function montarMapa() {
     try { L = await M.loadLeaflet(); } catch {
       if (!vivo) return;

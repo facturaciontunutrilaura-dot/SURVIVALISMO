@@ -46,8 +46,19 @@ export function aFEN(e) {
   return `${s} ${e.turno} ${e.enroques || '-'} ${e.ep >= 0 ? nombre(e.ep) : '-'} ${e.medio} ${e.total}`;
 }
 
-/* Clave de la posición para la triple repetición (sin contadores). */
-const clave = (e) => `${e.b.join(',')}|${e.turno}|${e.enroques}|${e.ep}`;
+/* Clave de la posición para la triple repetición (sin contadores). La
+   casilla de captura al paso solo cuenta si de verdad hay un peón que pueda
+   capturar: si no, la posición es la misma (reglas FIDE, art. 9.2). */
+const clave = (e) => {
+  let ep = -1;
+  if (e.ep >= 0) {
+    const peon = e.turno === 'w' ? 'P' : 'p', fila = e.ep + (e.turno === 'w' ? 8 : -8), c = e.ep & 7;
+    if ((c > 0 && e.b[fila - 1] === peon) || (c < 7 && e.b[fila + 1] === peon)) ep = e.ep;
+  }
+  return `${e.b.join(',')}|${e.turno}|${e.enroques}|${ep}`;
+};
+/** ¿Esta jugada repite la posición por tercera vez? (para el rival) */
+const repite = (e, m) => { const n = aplicar(e, m); return n.historial.filter((h) => h === clave(n)).length >= 2; };
 
 /* ------------------------------ Ataques ------------------------------ */
 const SALTOS_N = [[-2, -1], [-2, 1], [-1, -2], [-1, 2], [1, -2], [1, 2], [2, -1], [2, 1]];
@@ -309,12 +320,14 @@ export function mejorJugada(e, { nivel = 'dificil', ms = 1500, azar = Math.rando
     return alfa;
   }
 
+  const empates = new Set(e.historial.length ? legales.filter((m) => repite(e, m)) : []);
   let elegida = ordenar(e, legales)[0];
   for (let prof = 1; prof <= 6; prof++) {
     let mejor = null, alfa = -Infinity;
     const orden = [elegida, ...ordenar(e, legales).filter((m) => m !== elegida)];
     for (const m of orden) {
-      const v = -negamax(aplicar(e, m, true), prof - 1, -Infinity, -alfa, 1);
+      // Una jugada que repite por tercera vez la posición son tablas (0).
+      const v = empates.has(m) ? 0 : -negamax(aplicar(e, m, true), prof - 1, -Infinity, -alfa, 1);
       if (agotado) break;
       if (v > alfa) { alfa = v; mejor = m; }
     }

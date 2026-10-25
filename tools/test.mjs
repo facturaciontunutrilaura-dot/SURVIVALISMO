@@ -462,6 +462,9 @@ try {
     await page.waitForTimeout(150);
     ok('Ajedrez: guarda la partida en las estadísticas', /Partidas: 1 .*Ganan negras: 1/.test(await page.textContent('#aje-stats')));
     await page.click('#aje-undo');
+    await juega('d8', 'h4'); await page.waitForTimeout(150);
+    ok('Ajedrez: deshacer el final y repetirlo no cuenta la partida dos veces', /Partidas: 1 .*Ganan negras: 1/.test(await page.textContent('#aje-stats')), await page.textContent('#aje-stats'));
+    await page.click('#aje-undo');
     ok('Ajedrez: «Deshacer» retrocede la jugada', (await sq(C.d8)) === 'd8, dama negra' && /Turno de las negras/.test(await est()));
     // Coronación: h4 g5 hxg5 h6 gxh6 Bg7 hxg7 a6 gxh8.
     await page.click('#aje-new');
@@ -540,6 +543,11 @@ try {
     await page.check('.co-item [data-k="platos"]');
     ok('Colapso: se marca lo comprado', /Comprado: 1 de/.test(await page.textContent('#co-progreso')));
     await page.click('.co-hogar summary');
+    await page.fill('#co-peso-1', '61');
+    await page.click('#co-mas');   // el cambio de peso no debe «comerse» el clic
+    ok('Colapso: escribir un dato y pulsar un botón a la vez funciona a la primera', (await page.locator('.co-persona').count()) === 3 && /61/.test(await page.inputValue('#co-peso-1')));
+    await page.click('[data-quitar="2"]');
+    await page.fill('#co-peso-1', '60'); await page.press('#co-peso-1', 'Tab');
     await page.fill('#co-nombre-0', 'Ana'); await page.press('#co-nombre-0', 'Tab');
     await page.fill('#co-peso-0', '80'); await page.press('#co-peso-0', 'Tab');
     const res2 = (await page.textContent('.co-resumen')).replace(/\s+/g, ' ');
@@ -601,6 +609,7 @@ try {
     await page.waitForTimeout(300);
     await page.reload(); await page.waitForSelector('.ev-corr');
     ok('Evacuación: recuerda la autonomía del coche', (await page.inputValue('#ev-auto')) === '200');
+    ok('Evacuación: los tiempos nunca salen como «60 min»', await page.evaluate(async () => { const { horas } = await import('./assets/js/evacuacion.js'); return [horas(2.995), horas(0.995), horas(1.5), horas(0.25)].join('|'); }) === '3 h|1 h|1 h 30 min|15 min');
     await page.evaluate(async () => { const st = await import('./assets/js/store.js'); for (const k of ['evac.autonomia', 'evac.escenario']) await st.del('kv', k); });
   }
 
@@ -1389,6 +1398,24 @@ try {
   await page.waitForSelector('h1');
   ok('SIN RED: sección Ávila', (await page.locator('.list .row').count()) >= 4);
 
+  // Los apartados nuevos, también sin red.
+  await page.goto(BASE + '#/sec/evacuacion', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#ev-map .leaflet-overlay-pane path', { timeout: 15000 });
+  ok('SIN RED: plan de evacuación con corredores y mapa', (await page.locator('#ev-corredores .ev-corr').count()) >= 4 && (await page.locator('#ev-map .leaflet-overlay-pane path').count()) >= 12);
+  await page.goto(BASE + '#/sec/compra', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#co-activar');
+  await page.click('#co-activar'); await page.waitForSelector('.co-item');
+  await page.evaluate(() => { navigator.canShare = () => false; });
+  const [pdfOff] = await Promise.all([page.waitForEvent('download'), page.click('#co-pdf')]);
+  ok('SIN RED: compra de colapso y su PDF', (await page.locator('.co-item').count()) > 30 && /^%PDF-/.test(fs.readFileSync(await pdfOff.path(), 'latin1').slice(0, 8)));
+  await page.click('#co-ocultar'); await page.waitForSelector('#co-activar');
+  await page.goto(BASE + '#/sec/juegos/ajedrez', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('.aje-c');
+  await page.click('[data-modo="facil"]');
+  await page.click('#aje-tablero [data-i="52"]'); await page.click('#aje-tablero [data-i="36"]');
+  await page.waitForFunction(() => /La IA juega/.test(document.querySelector('#aje-estado').textContent), null, { timeout: 10000 });
+  ok('SIN RED: el rival de ajedrez juega (su Web Worker está guardado)', true);
+
   await ctx.setOffline(false);
 
   /* ------------------- 12 a. ¿Está lista tu app? (fase 4) ------------------- */
@@ -1661,6 +1688,9 @@ try {
   await page.goto(BASE + '#/emergencia/apagon', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('.qcard', { timeout: 10000 });
   ok('SERVIDOR APAGADO: escenarios accesibles', (await page.locator('.qcard li').count()) >= 4);
+  await page.goto(BASE + '#/sec/evacuacion', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#ev-corredores .ev-corr', { timeout: 10000 });
+  ok('SERVIDOR APAGADO: el plan de evacuación sigue disponible', (await page.locator('#ev-corredores .ev-corr').count()) >= 4);
 
   // b) Servidor devolviendo 500 en todo (caso peor: el fetch "tiene éxito")
   const { createServer } = await import('node:http');

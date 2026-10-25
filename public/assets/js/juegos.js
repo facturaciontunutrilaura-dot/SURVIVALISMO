@@ -246,13 +246,17 @@ export function ajedrez() {
         mover(legales.find((x) => x.de === m.de && x.a === m.a && x.promo === m.promo) || m, true);
       }, Math.max(0, 450 - (Date.now() - inicio)));
     };
-    const enEstaPantalla = () => setTimeout(() => listo(AJ.mejorJugada(AJ.desdeFEN(fen), { nivel, ms })), 30);
+    const historial = pos.historial;   // para que el rival vea las repeticiones
+    const enEstaPantalla = () => setTimeout(() => {
+      if (id !== ronda) return;   // ya no hace falta: no bloquear la pantalla
+      listo(AJ.mejorJugada({ ...AJ.desdeFEN(fen), historial }, { nivel, ms }));
+    }, 30);
     const w = trabajador();
     if (!w) return enEstaPantalla();
     w.onmessage = ({ data }) => { if (data.id === id) listo(data.m); };
     // Navegadores sin workers de módulo: la IA piensa en la propia pantalla.
     w.onerror = (ev) => { ev.preventDefault?.(); w.terminate(); worker = null; sinWorker = true; enEstaPantalla(); };
-    w.postMessage({ id, fen, nivel, ms });
+    w.postMessage({ id, fen, nivel, ms, historial });
   }
 
   async function stats(add) {
@@ -263,7 +267,10 @@ export function ajedrez() {
     return s;
   }
 
-  const terminar = () => stats(fin === 'mate' ? { partidas: 1, [pos.turno === 'w' ? 'negras' : 'blancas']: 1 } : { partidas: 1, tablas: 1 });
+  // Se recuerda lo anotado: si se deshace el final, se descuenta y la partida
+  // no se cuenta dos veces al terminarla de nuevo.
+  let anotado = null;
+  const terminar = () => { anotado = fin === 'mate' ? { partidas: 1, [pos.turno === 'w' ? 'negras' : 'blancas']: 1 } : { partidas: 1, tablas: 1 }; return stats(anotado); };
 
   function elegirPromo(ms) {
     promo = ms;
@@ -300,11 +307,13 @@ export function ajedrez() {
     ronda++;
     pos = AJ.desdeFEN(AJ.INICIAL); legales = AJ.jugadas(pos);
     pila = []; sel = -1; ultima = null; fin = null; pensando = false; promo = null; promoEl.hidden = true;
+    anotado = null;
     pinta();
   }
 
   n.querySelector('#aje-undo').addEventListener('click', () => {
     if (!pila.length) return;
+    if (fin && anotado) { stats(Object.fromEntries(Object.entries(anotado).map(([k, v]) => [k, -v]))); anotado = null; }
     ronda++;   // si la IA estaba pensando, su jugada se descarta
     // Contra la IA se deshace también su respuesta, para volver a tu turno.
     let pasos = modo !== 'pvp' && pos.turno === 'w' && !pensando ? 2 : 1;

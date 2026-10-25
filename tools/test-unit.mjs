@@ -460,3 +460,18 @@ test('evacuación: escenarios y corredores coherentes, trazados generados desde 
   assert.ok(km('int-gredos') < km('pt-vilar') && km('pt-vilar') < km('fr-irun') && km('fr-irun') < km('fr-jonquera'));
   assert.ok(km('pt-vilar') >= 180 && km('pt-vilar') <= 300, `Ávila–Fuentes de Oñoro ≈ ${km('pt-vilar')} km`);
 });
+
+test('revisión: repetición sin captura al paso posible, edad vacía y medidas de Helvetica', async () => {
+  // 1.e4 deja la casilla e3 de captura al paso, pero ningún peón negro puede
+  // usarla: la posición tras 1.e4 debe contar igual las tres veces.
+  let e = AJ.desdeFEN(AJ.INICIAL);
+  e = juega(e, 'e2', 'e4');
+  for (let i = 0; i < 2; i++) e = juega(juega(juega(juega(e, 'g8', 'f6'), 'g1', 'f3'), 'f6', 'g8'), 'f3', 'g1');
+  assert.equal(AJ.estado(e), 'repeticion');
+  const { calcularCompra } = await imp('assets/js/compra-calc.js');
+  const r = calcularCompra([{ sexo: 'm', edad: '', peso: 60, actividad: 'moderada' }], 3);
+  assert.ok(r.grupos.some((g) => g.items.some((it) => it.id === 'menstrual')), 'edad vacía = 30 años, como en el cálculo de energía');
+  const { medirHelvetica } = await imp('assets/js/compra-pdf.js');
+  assert.equal(medirHelvetica('Hola', false, 10), 20.56);    // H 722 + o 556 + l 222 + a 556
+  assert.equal(medirHelvetica('ñ', true, 1000), 611);
+});

@@ -34,7 +34,8 @@ export function calcularCompra(hogar, dias) {
   const kcalCompra = alimentos.reduce((s, a) => s + a.n * a.kcal, 0);
   const protCompra = alimentos.reduce((s, a) => s + a.n * a.prot, 0);
   const aguaL = Math.ceil(aguaDia * dias * AGUA.margen);
-  const muj = personas.filter((p) => p.sexo === 'm' && num(p.edad) >= 12 && num(p.edad) <= 55).length;
+  const edad = (p) => num(p.edad) || 30;   // la misma edad por defecto que necesidades()
+  const muj = personas.filter((p) => p.sexo === 'm' && edad(p) >= 12 && edad(p) <= 55).length;
   const grupos = GRUPOS.map((g) => ({
     ...g,
     items: g.items.map((it) => ({ ...it, c: it.cant(n, dias, muj) })).filter((it) => it.c != null),
