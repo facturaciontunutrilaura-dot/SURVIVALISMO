@@ -38,6 +38,7 @@ export const SECCIONES = [
   { id: 'mascotas', t: 'MASCOTAS', ic: '🐕', desc: 'Preparación y evacuación con animales' },
   { id: 'plan-familiar', t: 'PLAN FAMILIAR', ic: '👨‍👩‍👧', desc: 'Contactos, puntos de encuentro y reunificación' },
   { id: 'calculadoras', t: 'CALCULADORAS', ic: '🧮', desc: 'Agua, comida, marcha, rumbo, unidades' },
+  { id: 'evacuacion', t: 'PLAN DE EVACUACIÓN', ic: '🧭', cls: 'evacuacion', desc: 'Rutas para salir de Ávila: España, Portugal, Francia y por mar' },
   { id: 'compra', t: 'COLAPSO: COMPRA', ic: '🛒', cls: 'colapso', desc: 'Lista de compra urgente, oculta hasta que la actives' },
   { id: 'cursos', t: 'FORMACIÓN', ic: '🎓', desc: '10 cursos con teoría, ejercicios y test' },
   { id: 'biblioteca', t: 'BIBLIOTECA', ic: '📚', desc: 'Tablas, meteorología, plantas y referencias' },
@@ -51,7 +52,7 @@ export const SECCIONES = [
    Familia (Contactos y acuerdos). Toda sección, salvo esas dos, debe
    aparecer exactamente una vez (lo comprueba tools/test-unit.mjs). */
 export const PORTADA = {
-  plan: ['compra', 'familia', 'mapa', 'orientacion', 'equipo', 'calculadoras', 'comunicaciones'],
+  plan: ['evacuacion', 'compra', 'familia', 'mapa', 'orientacion', 'equipo', 'calculadoras', 'comunicaciones'],
   manual: ['primeros-auxilios', 'agua', 'fuego', 'refugio', 'alimentacion', 'psicologia',
     'vehiculo', 'mascotas', 'bushcraft', 'espana', 'avila', 'biblioteca'],
   mas: ['riesgos', 'juegos', 'audio', 'cursos', 'manual', 'fuentes', 'config'],
@@ -217,6 +218,11 @@ export const INDICE = [
     tipo: 'familia', id: 'centro-familiar', ruta: '#/sec/familia', t: 'Centro de coordinación familiar', sec: 'familia',
     pr: 'critico', sum: 'Tus ubicaciones y las de tu familia: estado, rutas, plan 72 h y reunificación.',
     texto: ['familia centro coordinación ubicaciones estado reunificación plan 72 horas rutas mapa familiar padres abuelos hijos llegar a mi familia comparar'].join(' '),
+  },
+  {
+    tipo: 'evacuacion', id: 'plan-evacuacion', ruta: '#/sec/evacuacion', t: 'Plan de evacuación', sec: 'evacuacion',
+    pr: 'critico', sum: 'Qué hacer y por dónde salir de Ávila según el escenario: colapso, guerra, nuclear, apagón… De 72 horas a meses, con corredores a Portugal, Francia, Andorra y por mar.',
+    texto: 'plan de evacuación evacuar huir salir del país frontera portugal francia andorra marruecos ceuta reino unido ferri corredor ruta carretera colapso guerra conflicto armado nuclear almaraz apagón refugio interior gredos tiétar escapar emigrar exilio',
   },
   {
     tipo: 'compra', id: 'compra-colapso', ruta: '#/sec/compra', t: 'Compra de colapso', sec: 'compra',

@@ -562,6 +562,48 @@ try {
     await page.evaluate(async () => { const st = await import('./assets/js/store.js'); for (const k of ['compra.hogar', 'compra.marcadas', 'compra.dias', 'compra.activa']) await st.del?.('kv', k); });
   }
 
+  /* ----------------------- 9 bis c. Plan de evacuación ----------------------- */
+  console.log('\n▸ Plan de evacuación');
+  {
+    await page.goto(BASE + '#/');
+    await page.waitForSelector('.tile.evacuacion');
+    ok('Evacuación: es lo primero de «Mi plan y herramientas»', await page.evaluate(() => document.querySelector('#h-plan + .grid .tile')?.classList.contains('evacuacion')));
+    await page.click('.tile.evacuacion');
+    await page.waitForSelector('.ev-corr');
+    await page.waitForSelector('#ev-map .leaflet-overlay-pane path');
+    const ini = await page.evaluate(() => ({
+      p1: [...document.querySelectorAll('.ev-esc-1 [data-esc]')].map((b) => b.dataset.esc),
+      activo: document.querySelector('[data-esc][aria-pressed="true"]')?.dataset.esc,
+      rec: document.querySelectorAll('#ev-corredores .ev-corr').length,
+      lineas: document.querySelectorAll('#ev-map .leaflet-overlay-pane path').length,
+      fases: [...document.querySelectorAll('.ev-fases > div:nth-child(odd)')].map((d) => d.textContent),
+    }));
+    ok('Evacuación: colapso y guerra destacados; colapso por defecto', ini.p1.join() === 'colapso,guerra' && ini.activo === 'colapso', JSON.stringify(ini));
+    ok('Evacuación: fases de 72 horas a más de 3 meses', ini.fases.join('|') === 'Primeras 72 h|Hasta 2 semanas|Hasta 3 meses|Más de 3 meses', ini.fases.join('|'));
+    ok('Evacuación: corredores recomendados y trazados en el mapa del IGN', ini.rec === 5 && ini.lineas >= 12, JSON.stringify(ini));
+    await page.click('[data-esc="guerra"]');
+    const g = await page.evaluate(() => ({
+      texto: document.querySelector('#ev-detalle').textContent,
+      primero: document.querySelector('#ev-corredores .ev-corr')?.dataset.corr,
+      objetivos: document.querySelector('#ev-leyenda').textContent,
+    }));
+    ok('Evacuación: guerra cambia el orden, avisa de la movilización y marca objetivos a evitar', g.primero === 'pt-quintanilha' && /edad militar/.test(g.texto) && /Objetivo estratégico/.test(g.objetivos), g.primero);
+    await page.click('[data-esc="quimico"]');
+    ok('Evacuación: en un accidente químico no se viaja', /no se viaja/.test(await page.textContent('#ev-corredores')));
+    await page.click('[data-esc="colapso"]');
+    await page.fill('#ev-auto', '200'); await page.press('#ev-auto', 'Tab');
+    const repostar = await page.textContent('#ev-corredores [data-corr="pt-vilar"]');
+    ok('Evacuación: con poca autonomía avisa de que hay que repostar', /Hay que repostar/.test(repostar) && /200 km/.test(repostar));
+    await page.click('#ev-corredores [data-ver="pt-vilar"]');
+    await page.waitForSelector('#ev-map .leaflet-popup', { timeout: 3000 }).catch(() => {});
+    ok('Evacuación: «Ver en el mapa» muestra el corredor', /Fuentes de Oñoro/.test(await page.textContent('#ev-map')));
+    ok('Evacuación: salir del país explica la documentación', /Pasaporte en vigor/.test(await page.textContent('#ev-todos ~ details')));
+    await page.waitForTimeout(300);
+    await page.reload(); await page.waitForSelector('.ev-corr');
+    ok('Evacuación: recuerda la autonomía del coche', (await page.inputValue('#ev-auto')) === '200');
+    await page.evaluate(async () => { const st = await import('./assets/js/store.js'); for (const k of ['evac.autonomia', 'evac.escenario']) await st.del('kv', k); });
+  }
+
   /* ---------------------- 9 ter. NUEVO: Riesgos 2036 ---------------------- */
   console.log('\n▸ Riesgos 2026–2036');
   await page.goto(BASE + '#/sec/riesgos');
@@ -2072,6 +2114,7 @@ try {
       ['/sec/orientacion', '#cp-start', async () => { await pp.click('#cp-start'); await pp.click('#cp-manual'); }],
       ['/sec/juegos/calma', '#ca-start', async () => { await pp.click('#ca-start'); await pp.waitForTimeout(1200); }],
       ['/sec/juegos', '.ttt-c', async () => { await pp.click('#jg-tabs [data-t="mem"]'); }],
+      ['/sec/evacuacion', '.ev-corr', async () => { await pp.click('[data-esc="guerra"]'); }],
       ['/sec/juegos/ajedrez', '.aje-c', async () => { await pp.click('[data-modo="dificil"]'); await pp.click('[data-i="52"]'); await pp.click('[data-i="36"]'); await pp.waitForTimeout(200); }],
       ['/buscar', '#q', async () => { await pp.fill('#q', 'hipotermia'); }],
       ['/familia/mapa', '#map.leaflet-container'],
@@ -2156,7 +2199,7 @@ try {
       });
       ok(`Tema ${tema}/${cont}: navegación, 112 y avisos siguen en pantalla`, pos.nav && pos.bar && pos.toast, JSON.stringify(pos));
       const malos = [];
-      for (const r of ['/', '/emergencia', '/emergencia/incendio-forestal', '/check/nivel2', '/sec/familia', '/sec/plan-familiar', '/sec/calculadoras', '/sec/config', '/sec/primeros-auxilios', '/sec/juegos/ajedrez']) {
+      for (const r of ['/', '/emergencia', '/emergencia/incendio-forestal', '/check/nivel2', '/sec/familia', '/sec/plan-familiar', '/sec/calculadoras', '/sec/config', '/sec/primeros-auxilios', '/sec/juegos/ajedrez', '/sec/evacuacion']) {
         await pt.goto(BASE + '#' + r); await pt.waitForTimeout(250);
         malos.push(...(await contraste(pt)).map((m) => r + ' ' + m));
       }

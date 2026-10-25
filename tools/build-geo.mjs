@@ -102,3 +102,54 @@ write('avila-centroides.geojson', centroides);
 
 console.log('\nFuente: es-atlas (MIT) — derivado del Equipamiento Geográfico de');
 console.log('Referencia Nacional del Instituto Geográfico Nacional (IGN).');
+
+// --- Corredores de evacuación desde Ávila ---------------------------------
+// Une las localidades de paso de cada corredor (data/content/evacuacion.js)
+// por el centroide de su término municipal y calcula distancias. El trazado
+// es esquemático: la carretera concreta la indica cada corredor.
+{
+  const { ORIGEN, CORREDORES, CENTRALES, ESTRATEGICOS } = await import(path.resolve('public/data/content/evacuacion.js'));
+  const porIne = new Map(all.features.map((ft) => [String(ft.id), ft]));
+  const punto = (ine) => {
+    const ft = porIne.get(ine);
+    if (!ft) throw new Error(`evacuación: municipio ${ine} no encontrado`);
+    return { nombre: ft.properties.name ?? ft.properties.nombre, c: centroid(ft.geometry).map((v) => Math.round(v * 1e4) / 1e4) };
+  };
+  const R = 6371, rad = Math.PI / 180;
+  const km = ([lon1, lat1], [lon2, lat2]) => {
+    const a = Math.sin(((lat2 - lat1) * rad) / 2) ** 2 + Math.cos(lat1 * rad) * Math.cos(lat2 * rad) * Math.sin(((lon2 - lon1) * rad) / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(a));
+  };
+  // Distancia mínima de un punto a la línea (muestreando cada ~2 km).
+  const minDist = (linea, p) => {
+    let m = Infinity;
+    for (let i = 1; i < linea.length; i++) {
+      const [a, b] = [linea[i - 1], linea[i]], n = Math.max(1, Math.ceil(km(a, b) / 2));
+      for (let k = 0; k <= n; k++) m = Math.min(m, km([a[0] + ((b[0] - a[0]) * k) / n, a[1] + ((b[1] - a[1]) * k) / n], p));
+    }
+    return m;
+  };
+  const FACTOR_CARRETERA = 1.15;   // la carretera es más larga que la línea entre localidades
+  const centrales = CENTRALES.map((c) => ({ ...c, ...punto(c.ine) }));
+  const features = [];
+  const origen = punto(ORIGEN.ine);
+  features.push({ type: 'Feature', properties: { tipo: 'origen', nombre: ORIGEN.t }, geometry: { type: 'Point', coordinates: origen.c } });
+  for (const co of CORREDORES) {
+    if (co.pasos[0] !== ORIGEN.ine) throw new Error(`evacuación: ${co.id} no sale de Ávila`);
+    const pts = co.pasos.map(punto);
+    const linea = pts.map((p) => p.c);
+    let largo = 0;
+    for (let i = 1; i < linea.length; i++) largo += km(linea[i - 1], linea[i]);
+    const nucleares = Object.fromEntries(centrales.map((c) => [c.id, Math.round(minDist(linea, c.c))]));
+    features.push({
+      type: 'Feature',
+      properties: { tipo: 'corredor', id: co.id, clase: co.clase, km: Math.round((largo * FACTOR_CARRETERA) / 10) * 10, nucleares, pasos: pts.map((p) => p.nombre) },
+      geometry: { type: 'LineString', coordinates: linea },
+    });
+    const fin = pts[pts.length - 1];
+    features.push({ type: 'Feature', properties: { tipo: 'destino', id: co.id, nombre: fin.nombre }, geometry: { type: 'Point', coordinates: fin.c } });
+  }
+  for (const c of centrales) features.push({ type: 'Feature', properties: { tipo: 'nuclear', id: c.id, nombre: c.t, km: Math.round(km(origen.c, c.c)) }, geometry: { type: 'Point', coordinates: c.c } });
+  for (const e of ESTRATEGICOS) features.push({ type: 'Feature', properties: { tipo: 'estrategico', nombre: e.t }, geometry: { type: 'Point', coordinates: punto(e.ine).c } });
+  write('evac-rutas.geojson', { type: 'FeatureCollection', features });
+}

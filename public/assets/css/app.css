@@ -805,6 +805,35 @@ details > div { padding: 0 12px 12px; }
 .ttt-c:disabled { cursor: default; }
 .ttt-c.win { background: var(--olive); border-color: var(--olive3); }
 
+/* --------------------------- Plan de evacuación --------------------------- */
+.tile.evacuacion, .grid .tile.evacuacion { border-color: var(--amber); border-left: 3px solid var(--amber); }
+.tile.evacuacion .nm { color: #E8C9A0; }
+.ev-esc { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.ev-esc-1 { display: grid; grid-template-columns: 1fr 1fr; }
+.ev-chip {
+  min-height: 44px; padding: 6px 12px; border: 1px solid var(--line2); border-radius: 999px;
+  background: var(--bg2); color: var(--txt); font: inherit; font-size: .88rem; cursor: pointer;
+}
+.ev-chip.p1 { min-height: 60px; border-radius: var(--r); font-family: var(--ff); font-size: 1rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; border-color: var(--red); }
+.ev-chip[aria-pressed='true'] { background: var(--olive); border-color: var(--olive3); color: #f2f1e6; }
+.ev-chip.p1[aria-pressed='true'] { background: #52201a; border-color: #E8715F; color: #ffd9d2; }
+.ev-resp { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.ev-r { padding: 4px 10px; border: 1px solid var(--line2); border-radius: 999px; background: var(--bg2); font-size: .88rem; }
+.ev-flecha { color: var(--dim); }
+.ev-map { position: relative; z-index: 0; isolation: isolate; height: 420px; border: 1px solid var(--line2); border-radius: var(--r); overflow: hidden; background: var(--bg2); }
+@media (max-width: 480px) { .ev-map { height: 360px; } }
+.ev-leyenda { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 8px; font-size: .82rem; }
+.ev-leyenda i { display: inline-block; width: 18px; height: 5px; margin-right: 6px; vertical-align: middle; border-radius: 2px; }
+.ev-leyenda .ev-l-nuc { height: 12px; width: 12px; border-radius: 50%; border: 2px dashed #E6C02E; background: transparent; }
+.ev-leyenda .ev-l-obj { height: 12px; width: 12px; border-radius: 50%; border: 2px solid #E8715F; background: rgba(232, 113, 95, .35); }
+.ev-corr { border: 1px solid var(--line); border-left: 5px solid var(--ev-color); border-radius: var(--r); background: var(--panel); padding: 10px 12px; margin: 0 0 12px; }
+.ev-corr.evitar { border-left-color: #8a8a7a; }
+.ev-corr h3 { margin: 0 0 2px; display: flex; align-items: baseline; gap: 8px; }
+.ev-n { display: inline-grid; place-items: center; min-width: 26px; height: 26px; border-radius: 50%; background: var(--ev-color); color: #1B1F14; font-size: .85rem; }
+.ev-clase { margin: 0 0 8px; color: var(--dim); font-size: .85rem; }
+.ev-pc { margin: 8px 0 2px; }
+.ev-corr ul { margin-top: 2px; }
+
 /* --------------------------- Compra de colapso --------------------------- */
 /* Tarjeta de portada: borde rojo, sin relleno, para no competir con SOS. */
 .tile.colapso, .grid .tile.colapso { border-color: var(--red); border-left: 3px solid var(--red); }

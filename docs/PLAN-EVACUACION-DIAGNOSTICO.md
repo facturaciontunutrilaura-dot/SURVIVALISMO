@@ -1,6 +1,19 @@
 # PLAN DE EVACUACIÓN — DIAGNÓSTICO
 
-Fecha: 25/10/2026 · Estado: **diagnóstico, sin implementar** (pendiente de aprobación)
+Fecha: 25/10/2026 · Estado: **implementado con el alcance corregido** (ver abajo)
+
+> **Cambio de alcance (25/10/2026, a petición de la propietaria):** dentro de
+> la ciudad ya sabe moverse. El plan se centra en **salir de Ávila**: hacia
+> el interior de España, a Portugal, a Francia, a Andorra o por mar.
+> - Ya no hacen falta los puntos urbanos ni CartoCiudad, así que no se
+>   cambia la CSP.
+> - Los corredores pasan por localidades cuya posición sale de la geometría
+>   municipal del IGN (es-atlas), generada en el build
+>   (`data/geo/evac-rutas.geojson`).
+> - Los datos están en `data/content/evacuacion.js` y la pantalla en
+>   `assets/js/evacuacion.js`.
+>
+> Los apartados 3 a 6 quedan como referencia del análisis inicial.
 
 Petición: un plan de evacuación para el domicilio de la propietaria en Ávila
 capital, que distinga cada emergencia, catástrofe o colapso y cubra

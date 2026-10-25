@@ -426,3 +426,37 @@ test('compra de colapso: PDF válido, con acentos y sin caracteres imposibles', 
   assert.ok(pdf.includes('ANA \\(PRUEBA\\)'), 'paréntesis escapados');
   assert.ok(!/[^\x00-\xff]/.test(pdf));
 });
+
+/* ---------------------------- Plan de evacuación ---------------------------- */
+test('evacuación: escenarios y corredores coherentes, trazados generados desde Ávila', async () => {
+  const { ESCENARIOS, CORREDORES, CLASES, CENTRALES, RESPUESTAS } = await imp('data/content/evacuacion.js');
+  const ids = new Set(CORREDORES.map((c) => c.id));
+  assert.equal(ids.size, CORREDORES.length, 'ids únicos');
+  assert.deepEqual(ESCENARIOS.filter((e) => e.prioridad === 1).map((e) => e.id), ['colapso', 'guerra']);
+  for (const e of ESCENARIOS) {
+    for (const id of [...e.corredores, ...e.evitar]) assert.ok(ids.has(id), `${e.id}: corredor ${id}`);
+    assert.ok(!e.corredores.some((id) => e.evitar.includes(id)), `${e.id}: recomienda y evita a la vez`);
+    assert.equal(e.fases.length, 4, `${e.id}: fases de 72 h a meses`);
+    assert.ok(e.respuesta.every((r) => RESPUESTAS[r]));
+  }
+  for (const c of CORREDORES) assert.ok(CLASES[c.clase] && c.pasos[0] === '05019' && c.via && c.destino, c.id);
+  // Salidas a todos los destinos pedidos.
+  for (const k of ['interior', 'portugal', 'francia', 'andorra', 'mar']) assert.ok(CORREDORES.some((c) => c.clase === k), k);
+
+  const geo = JSON.parse(fs.readFileSync(path.join(PUB, 'data/geo/evac-rutas.geojson'), 'utf8'));
+  const lineas = Object.fromEntries(geo.features.filter((f) => f.properties.tipo === 'corredor').map((f) => [f.properties.id, f]));
+  assert.deepEqual(Object.keys(lineas).sort(), [...ids].sort(), 'un trazado por corredor (ejecuta npm run build:geo)');
+  for (const [id, f] of Object.entries(lineas)) {
+    const c = CORREDORES.find((x) => x.id === id);
+    const [lon, lat] = f.geometry.coordinates[0];
+    assert.ok(Math.abs(lat - 40.66) < 0.1 && Math.abs(lon + 4.67) < 0.1, `${id} sale de Ávila`);
+    assert.equal(f.geometry.coordinates.length, c.pasos.length);
+    assert.ok(f.properties.pasos.every(Boolean), `${id}: localidades con nombre`);
+    // Si pasa a menos de 60 km de una central nuclear, el texto lo avisa.
+    const cerca = CENTRALES.filter((x) => f.properties.nucleares[x.id] <= 60);
+    if (cerca.length) assert.ok(c.contras.some((t) => /nuclear/i.test(t)), `${id} pasa cerca de ${cerca.map((x) => x.id)} y no lo avisa`);
+  }
+  const km = (id) => lineas[id].properties.km;
+  assert.ok(km('int-gredos') < km('pt-vilar') && km('pt-vilar') < km('fr-irun') && km('fr-irun') < km('fr-jonquera'));
+  assert.ok(km('pt-vilar') >= 180 && km('pt-vilar') <= 300, `Ávila–Fuentes de Oñoro ≈ ${km('pt-vilar')} km`);
+});
