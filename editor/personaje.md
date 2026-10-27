@@ -3,7 +3,7 @@
 Este personaje es el mismo en todos los vídeos de la cuenta. Cada imagen nueva se genera
 usando su imagen de referencia, para que no cambie de cara ni de ropa.
 
-- **Nombre:** Álex (provisional)
+- **Nombre:** Álex (aprobado)
 - **Imagen de referencia (Canva):** media id `MAHZN-Eg0aM`
 - **Voz en off:** `es_ES-sharvard-medium`, hablante masculino, tono `media` (más grave y rudo; narra en primera persona)
 
