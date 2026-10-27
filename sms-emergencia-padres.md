@@ -10,7 +10,18 @@ PLAN EMERGENCIA FAMILIAR - GUARDAD ESTE SMS
 
 2) INFORMAROS: radio a pilas (RNE, Catalunya Radio), alertas ES-Alert del movil, 112. No os fieis de rumores ni WhatsApp.
 
-3) COMUNICACION: mandad SMS cortos (funcionan mejor que llamadas o internet). Movil en ahorro de bateria. Nosotros 2 NOS QUEDAMOS EN CASA; si evacuamos os avisaremos por aqui.
+3) COMUNICACION: usad SMS (funcionan mejor que llamadas o internet). Movil en ahorro de bateria. Nosotros 2 NOS QUEDAMOS EN CASA; si evacuamos os avisaremos por aqui.
+En una emergencia NO os mandare mensajes largos: solo un CODIGO + la HORA. Ej: "D 14h" = a las 14h os digo que vayais a Avila por la ruta principal.
+A = Estamos bien, en casa
+B = Quedaos en casa, haced acopio (punto 4)
+C = Evacuamos, luego os digo donde
+D = Id a Avila, ruta principal (punto 7)
+E = Id a Avila por Soria, sin pasar por Madrid (punto 7)
+F = Necesitamos ayuda
+OK = Recibido
+Vosotros podeis usar los mismos codigos. Contestad SIEMPRE con OK al recibir uno.
+Enviad cada SMS UNA sola vez y esperad: la red lo reintenta sola. Sin tildes ni emojis.
+Si no hay respuesta, escribid a [CONTACTO AVILA], que hara de enlace.
 
 4) COMPRAD YA (2 personas, 2 semanas):
 - Agua: 90 L (3 L/persona/dia)
