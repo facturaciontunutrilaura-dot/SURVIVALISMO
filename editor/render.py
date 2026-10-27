@@ -27,12 +27,28 @@ YELLOW = (255, 212, 59)
 
 
 # ---------- voz en off ----------
-def synth(text, voice, speed, path):
+# Tono "rudo": más grave, cuerpo en graves, algo de aspereza y compresión. (factor de tono, graves dB, saturación)
+TONOS = {'suave': (.95, 3, 1.5), 'media': (.915, 4.5, 2.4), 'fuerte': (.88, 6, 3.6)}
+
+
+def tone_filter(tono):
+    r, low, drive = TONOS[tono]
+    return (f'asetrate={SR}*{r},aresample=44100,atempo={1 / r:.4f},highpass=f=70,'
+            f'equalizer=f=140:t=q:w=1:g={low},equalizer=f=2600:t=q:w=1.2:g=2.5,equalizer=f=7000:t=q:w=1:g=-3,'
+            f'volume={drive},asoftclip=type=tanh,acompressor=threshold=-20dB:ratio=4:attack=5:release=120:makeup=2,'
+            f'alimiter=limit=0.9,aresample={SR}')
+
+
+def synth(text, voice, speed, path, tono='media', speaker=0):
     from piper import PiperVoice
     from piper.config import SynthesisConfig
     v = PiperVoice.load(os.path.join(VOICES, voice + '.onnx'))
-    with wave.open(path, 'wb') as w:
-        v.synthesize_wav(text.replace('*', ''), w, syn_config=SynthesisConfig(length_scale=1 / speed))
+    raw = path.replace('.wav', '-raw.wav') if tono in TONOS else path
+    with wave.open(raw, 'wb') as w:
+        v.synthesize_wav(text.replace('*', ''), w, syn_config=SynthesisConfig(
+            speaker_id=speaker, length_scale=1.07 / speed, noise_scale=.5, noise_w_scale=.6))
+    if tono in TONOS:
+        subprocess.run(['ffmpeg', '-v', 'error', '-y', '-i', raw, '-af', tone_filter(tono), '-ac', '1', path], check=True)
     with wave.open(path) as w:
         sr = w.getframerate()
         a = np.frombuffer(w.readframes(w.getnframes()), dtype=np.int16).astype(np.float32) / 32768
@@ -257,12 +273,13 @@ def title_layer(text):
 # ---------- render ----------
 def render(folder):
     g = json.load(open(os.path.join(folder, 'guion.json'), encoding='utf-8'))
-    voice, speed = g.get('voz', 'es_ES-davefx-medium'), g.get('velocidad', 1.0)
+    voice, speed = g.get('voz', 'es_ES-sharvard-medium'), g.get('velocidad', 1.0)
+    tono, speaker = g.get('tono', 'media'), g.get('hablante', 0)
     os.makedirs(os.path.join(folder, 'tmp'), exist_ok=True)
     scenes, audio, t0 = [], [], .35
     audio.append(np.zeros(int(SR * t0), np.float32))
     for i, s in enumerate(g['escenas']):
-        a = synth(s['texto'], voice, speed, os.path.join(folder, 'tmp', f'voz{i:02d}.wav'))
+        a = synth(s['texto'], voice, speed, os.path.join(folder, 'tmp', f'voz{i:02d}.wav'), tono, speaker)
         pause = s.get('pausa', .55)
         dur = len(a) / SR + pause
         words = s['texto'].split()

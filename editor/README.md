@@ -20,7 +20,8 @@ La primera vez hay que ejecutar `editor/instalar.sh`, que instala las voces y la
 ```json
 {
   "titulo": "El día que se fue la luz",
-  "voz": "es_ES-davefx-medium",
+  "voz": "es_ES-sharvard-medium",
+  "tono": "media",
   "velocidad": 1.0,
   "musica": "tension",
   "escenas": [
@@ -28,6 +29,7 @@ La primera vez hay que ejecutar `editor/instalar.sh`, que instala las voces y la
   ]
 }
 ```
+- **tono:** dureza de la voz: `suave`, `media`, `fuerte` o `natural` (sin procesar).
 - **musica:** `tension`, `calma` o `ninguna`.
 - **movimiento:** `acercar`, `alejar`, `izquierda`, `derecha`, `subir` o `bajar`.
 - **efecto:** `lluvia`, `humo`, `brasas`, `parpadeo`, `sirena`, `temblor`, `polvo`, `nieve` o `ninguno`.
