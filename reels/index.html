@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Estudio de Reels</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Gochi+Hand&family=Patrick+Hand&display=swap" rel="stylesheet">
+<style>
+  :root { --bg:#f4efe4; --panel:#fffdf7; --ink:#1d1d1d; --muted:#6b6b6b; --line:#ddd5c4; --accent:#c8372d; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.4 system-ui, sans-serif; }
+  header { padding:12px 16px; border-bottom:1px solid var(--line); display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+  header h1 { font:26px 'Gochi Hand', cursive; margin:0 12px 0 0; }
+  main { display:grid; grid-template-columns:minmax(0,1fr) 420px; gap:16px; padding:16px; }
+  @media (max-width:900px){ main { grid-template-columns:1fr; } }
+  .stage { display:flex; flex-direction:column; align-items:center; gap:10px; }
+  canvas { width:min(100%, 380px); aspect-ratio:9/16; background:#fff; border:1px solid var(--line); border-radius:12px; box-shadow:0 4px 16px #0002; }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:12px; max-height:calc(100vh - 110px); overflow:auto; }
+  .scene { border:1px solid var(--line); border-radius:10px; padding:10px; margin-bottom:10px; background:#fff; }
+  .scene.active { border-color:var(--accent); box-shadow:0 0 0 2px #c8372d33; }
+  .scene .row { display:flex; gap:6px; align-items:center; margin-bottom:6px; flex-wrap:wrap; }
+  label { font-size:12px; color:var(--muted); }
+  input, select, textarea, button { font:inherit; }
+  textarea { width:100%; min-height:56px; resize:vertical; padding:6px; border:1px solid var(--line); border-radius:6px; }
+  input[type=text] { flex:1; min-width:0; padding:6px; border:1px solid var(--line); border-radius:6px; }
+  input[type=number] { width:64px; padding:4px; border:1px solid var(--line); border-radius:6px; }
+  select { padding:5px; border:1px solid var(--line); border-radius:6px; background:#fff; }
+  button { padding:7px 12px; border:1px solid var(--ink); border-radius:8px; background:#fff; cursor:pointer; }
+  button.primary { background:var(--ink); color:#fff; }
+  button.rec { background:var(--accent); border-color:var(--accent); color:#fff; }
+  button.small { padding:3px 8px; font-size:13px; }
+  .hint { font-size:12px; color:var(--muted); }
+  #status { font-size:13px; color:var(--muted); min-height:1.2em; }
+</style>
+</head>
+<body>
+<header>
+  <h1>✏️ Estudio de Reels</h1>
+  <label>Escenario <select id="preset"></select></label>
+  <button id="play" class="primary">▶ Reproducir</button>
+  <button id="stop">■ Parar</button>
+  <button id="record" class="rec">⬤ Exportar vídeo</button>
+  <span id="status"></span>
+</header>
+<main>
+  <div class="stage">
+    <canvas id="cv" width="1080" height="1920"></canvas>
+    <div class="hint">Formato 1080×1920 (Reels / TikTok / Shorts). Pon *asteriscos* alrededor de una palabra para resaltarla en rojo.</div>
+  </div>
+  <div class="panel">
+    <div class="row" style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
+      <input type="text" id="title" placeholder="Título del escenario">
+      <label>Realismo <input type="number" id="realism" min="1" max="10"></label>
+    </div>
+    <div id="scenes"></div>
+    <button id="add" class="small">+ Añadir escena</button>
+    <button id="json" class="small">Copiar guion (JSON)</button>
+  </div>
+</main>
+
+<script>
+// ---------- Dibujos a mano alzada (caja de 200×200) ----------
+const L = (x1,y1,x2,y2) => [[x1,y1],[x2,y2]];
+const P = pts => pts;
+const R = (x,y,w,h) => [[x,y],[x+w,y],[x+w,y+h],[x,y+h],[x,y]];
+const A = (cx,cy,rx,ry,a0=0,a1=360) => { const p=[]; for(let a=a0;a<=a1;a+=10){const r=a*Math.PI/180;p.push([cx+rx*Math.cos(r),cy+ry*Math.sin(r)]);} return p; };
+const C = (cx,cy,r) => A(cx,cy,r,r);
+const shift = (strokes,dx,dy,s=1) => strokes.map(st=>st.map(([x,y])=>[x*s+dx,y*s+dy]));
+const person = (dx=0,dy=0,s=1) => shift([C(100,40,18), L(100,58,100,120), L(100,75,70,100), L(100,75,130,100), L(100,120,78,170), L(100,120,122,170)],dx,dy,s);
+
+const DRAW = {
+  ninguno: [],
+  persona: person(),
+  familia: [...person(-45,10,0.9), ...person(35,10,0.9), ...person(55,85,0.55)],
+  casa: [P([[35,100],[100,40],[165,100]]), R(50,100,100,75), R(88,135,24,40), R(62,112,20,18), R(118,112,20,18)],
+  bombilla: [A(100,80,35,35,140,400), P([[73,103],[85,125],[115,125],[127,103]]), L(85,135,115,135), L(88,145,112,145), L(100,40,100,25), L(60,55,48,45), L(140,55,152,45)],
+  apagon: [A(100,80,35,35,140,400), P([[73,103],[85,125],[115,125],[127,103]]), L(85,135,115,135), L(88,145,112,145), L(50,40,150,150), L(150,40,50,150)],
+  linterna: [R(30,90,75,30), P([[105,88],[130,75],[130,135],[105,122],[105,88]]), L(140,80,180,60), L(140,105,185,105), L(140,130,180,150), L(50,100,60,100)],
+  agua: [P([[85,35],[115,35],[115,52],[132,72],[132,172],[68,172],[68,72],[85,52],[85,35]]), P([[68,110],[85,102],[100,112],[115,102],[132,110]]), L(80,45,120,45)],
+  radio: [R(35,85,130,80), C(80,125,24), C(80,125,6), L(120,105,150,105), L(120,125,150,125), L(120,145,150,145), L(145,85,170,30), C(171,27,4)],
+  mochila: [P([[65,70],[60,165],[140,165],[135,70],[65,70]]), A(100,70,35,25,180,360), R(75,115,50,35), L(75,130,125,130), A(100,55,15,15,180,360)],
+  fuego: [P([[100,30],[80,70],[60,100],[62,140],[80,170],[120,170],[138,140],[140,100],[125,75],[118,95],[105,60],[100,30]]), P([[100,100],[88,125],[92,155],[108,155],[113,128],[100,100]])],
+  inundacion: [P([[55,80],[100,40],[145,80]]), R(65,80,70,60), P([[20,120],[45,110],[70,120],[95,110],[120,120],[145,110],[170,120],[185,115]]), P([[15,145],[40,135],[65,145],[90,135],[115,145],[140,135],[165,145],[185,140]]), P([[20,170],[45,160],[70,170],[95,160],[120,170],[145,160],[170,170]])],
+  movil: [R(70,35,60,120), L(70,140,130,140), C(100,148,4), L(140,60,145,55), L(150,80,160,70), L(85,60,115,110), L(115,60,85,110)],
+  dinero: [R(35,65,130,75), C(100,102,20), L(100,90,100,114), L(45,75,60,75), L(140,130,155,130), R(45,75,130,75)],
+  conserva: [A(100,60,40,12), L(60,60,60,155), L(140,60,140,155), A(100,155,40,12,0,180), L(60,95,140,95), L(60,125,140,125)],
+  botiquin: [R(45,65,110,90), R(80,50,40,15), L(100,85,100,135), L(75,110,125,110)],
+  pastillas: [A(70,100,22,22,90,270), L(70,78,120,78), A(120,100,22,22,-90,90), L(70,122,120,122), L(95,78,95,122), C(150,155,14), L(140,155,160,155)],
+  bateria: [R(40,75,110,55), R(150,90,12,25), R(52,87,20,31), R(80,87,20,31), L(110,90,125,115)],
+  reloj72: [C(100,100,60), L(100,100,100,60), L(100,100,130,110), L(100,40,100,48), L(160,100,152,100), L(100,160,100,152), L(40,100,48,100)],
+  lista: [R(50,30,100,145), P([[62,60],[70,70],[85,50]]), L(95,62,135,62), P([[62,95],[70,105],[85,85]]), L(95,97,135,97), R(62,122,20,18), L(95,132,135,132)],
+  mapa: [P([[30,50],[75,35],[125,50],[170,35],[170,155],[125,170],[75,155],[30,170],[30,50]]), L(75,35,75,155), L(125,50,125,170), P([[45,140],[60,120],[85,115],[100,95],[120,90]]), L(132,72,148,88), L(148,72,132,88)],
+  peligro: [P([[100,30],[175,165],[25,165],[100,30]]), L(100,75,100,125), C(100,145,4)],
+  termometro: [L(90,40,90,130), L(110,40,110,130), A(100,40,10,10,180,360), C(100,145,18), L(100,140,100,75), L(115,60,125,60), L(115,80,125,80), L(115,100,125,100), C(160,50,14), L(160,25,160,30), L(185,50,180,50)],
+  virus: [C(100,100,35), ...[0,45,90,135,180,225,270,315].flatMap(a=>{const r=a*Math.PI/180,c=Math.cos(r),s=Math.sin(r);return [L(100+35*c,100+35*s,100+55*c,100+55*s), C(100+60*c,100+60*s,5)];}), C(90,92,6), C(112,110,5)],
+  mascarilla: [R(60,80,80,50), L(60,95,140,95), L(60,112,140,112), A(60,105,18,18,90,270), A(140,105,18,18,-90,90)],
+  casco: [A(100,110,60,55,180,360), L(30,110,170,110), L(40,110,40,120), L(160,110,160,120), L(45,95,155,95)],
+  radiacion: [C(100,100,12), C(100,100,65), ...[-90,30,150].flatMap(a=>{const r1=(a-30)*Math.PI/180,r2=(a+30)*Math.PI/180;return [P([[100+20*Math.cos(r1),100+20*Math.sin(r1)],[100+55*Math.cos(r1),100+55*Math.sin(r1)],[100+55*Math.cos(r2),100+55*Math.sin(r2)],[100+20*Math.cos(r2),100+20*Math.sin(r2)]])];})],
+  sol: [C(100,100,35), ...[0,30,60,90,120,150,180,210,240,270,300,330].map(a=>{const r=a*Math.PI/180;return L(100+45*Math.cos(r),100+45*Math.sin(r),100+65*Math.cos(r),100+65*Math.sin(r));}), A(140,60,30,20,200,340)],
+  asteroide: [P([[120,60],[150,70],[165,100],[150,130],[118,140],[95,120],[92,85],[120,60]]), C(130,95,8), C(145,120,5), L(95,85,30,30), L(95,105,25,75), L(100,125,40,120)],
+  zombi: [C(100,40,18), P([[90,45],[94,42],[98,46],[102,42],[106,46],[110,43]]), L(100,58,100,120), L(100,75,150,80), L(100,90,150,95), L(100,120,80,170), L(100,120,125,165)],
+  robot: [R(70,30,60,45), C(88,52,6), C(112,52,6), L(100,30,100,15), C(100,12,4), R(60,80,80,70), L(60,95,35,125), L(140,95,165,125), L(80,150,80,180), L(120,150,120,180), R(85,100,30,20)],
+  coche: [P([[25,130],[40,100],[70,95],[90,70],[140,70],[160,95],[180,105],[180,130],[25,130]]), C(60,135,15), C(150,135,15), L(95,75,95,95)],
+  refugio: [P([[20,170],[60,110],[100,80],[140,110],[180,170]]), P([[80,170],[80,135],[120,135],[120,170]]), P([[20,170],[180,170]])],
+  documentos: [R(55,35,90,125), R(65,45,90,125), L(80,75,140,75), L(80,95,140,95), L(80,115,120,115), C(125,145,12)],
+  ojo: [P([[30,100],[65,70],[100,62],[135,70],[170,100],[135,130],[100,138],[65,130],[30,100]]), C(100,100,22), C(100,100,7)],
+};
+
+// ---------- Escenarios (de más realista a más ciencia ficción) ----------
+const PRESETS = [
+ { title:'Apagón general', realism:10, scenes:[
+  {draw:['apagon'], text:'Escenario 1: *apagón general*. Ya pasó en España el 28 de abril de 2025.', dur:5},
+  {draw:['movil','ojo'], text:'Sin luz no hay datos, ni datáfonos, ni semáforos. Y muchas veces *sin cobertura*.', dur:5},
+  {draw:['linterna','radio'], text:'Ten a mano *linterna* y una *radio a pilas*: será tu única fuente oficial.', dur:5},
+  {draw:['agua','conserva'], text:'*Agua* (2 litros por persona y día) y comida que no necesite cocinarse.', dur:5},
+  {draw:['dinero','bateria'], text:'Algo de *efectivo* y una batería externa cargada. No abras la nevera sin necesidad.', dur:5},
+ ]},
+ { title:'Ola de calor e incendio', realism:9, scenes:[
+  {draw:['termometro','fuego'], text:'Escenario 2: *ola de calor* con incendio forestal cerca de casa.', dur:5},
+  {draw:['agua','casa'], text:'Bebe aunque no tengas sed. Persianas bajadas en las horas de más calor.', dur:5},
+  {draw:['mochila','documentos'], text:'Si te piden *evacuar*, sal ya: mochila, documentos y medicación.', dur:5},
+  {draw:['coche','mapa'], text:'Sigue la ruta que indiquen las autoridades. *Nunca* hacia el humo.', dur:5},
+ ]},
+ { title:'DANA e inundación', realism:9, scenes:[
+  {draw:['inundacion'], text:'Escenario 3: *DANA*. El agua sube en minutos, como en Valencia en 2024.', dur:5},
+  {draw:['coche','peligro'], text:'*No cojas el coche* ni bajes al garaje: es donde más gente muere.', dur:5},
+  {draw:['casa','familia'], text:'Sube a plantas altas con tu familia y espera allí.', dur:5},
+  {draw:['radio','movil'], text:'Atiende las alertas en el móvil (ES-Alert) y llama al *112* solo si es urgente.', dur:5},
+ ]},
+ { title:'Ciberataque a infraestructuras', realism:8, scenes:[
+  {draw:['movil','dinero'], text:'Escenario 4: *ciberataque*. Bancos, telecomunicaciones y pagos caídos varios días.', dur:5},
+  {draw:['dinero','documentos'], text:'Efectivo en billetes pequeños y copias en *papel* de documentos clave.', dur:5},
+  {draw:['familia','mapa'], text:'Acordad un *punto de encuentro* familiar por si no hay cómo comunicarse.', dur:5},
+ ]},
+ { title:'Pandemia', realism:8, scenes:[
+  {draw:['virus'], text:'Escenario 5: *nueva pandemia* y confinamiento.', dur:5},
+  {draw:['conserva','pastillas'], text:'Reserva para *dos semanas* y tu medicación habitual con margen.', dur:5},
+  {draw:['mascarilla','botiquin'], text:'Mascarillas, termómetro y un botiquín básico revisado.', dur:5},
+ ]},
+ { title:'Conflicto armado en Europa', realism:6, scenes:[
+  {draw:['casco','mapa'], text:'Escenario 6: *conflicto armado* en Europa. La UE pide a la población estar preparada.', dur:5},
+  {draw:['reloj72','mochila'], text:'Recomendación oficial: *kit para 72 horas* de autosuficiencia.', dur:5},
+  {draw:['radio','ojo'], text:'Infórmate solo por *fuentes oficiales*. Los bulos también son un arma.', dur:5},
+  {draw:['lista','familia'], text:'Haz un *plan familiar*: quién recoge a quién, dónde y con qué.', dur:5},
+ ]},
+ { title:'Accidente nuclear', realism:5, scenes:[
+  {draw:['radiacion'], text:'Escenario 7: *nube radiactiva* tras un accidente nuclear.', dur:5},
+  {draw:['casa','peligro'], text:'*Confínate* dentro: ventanas cerradas y ventilación apagada.', dur:5},
+  {draw:['pastillas','radio'], text:'Yoduro potásico *solo si lo indican* las autoridades. Nunca por tu cuenta.', dur:5},
+ ]},
+ { title:'Tormenta solar extrema', realism:4, scenes:[
+  {draw:['sol'], text:'Escenario 8: *tormenta solar extrema*, como el evento Carrington de 1859.', dur:5},
+  {draw:['apagon','movil'], text:'Redes eléctricas y satélites dañados. GPS y móvil, *inútiles* durante semanas.', dur:5},
+  {draw:['mapa','radio'], text:'Mapas en *papel*, brújula y radio. Lo analógico vuelve a mandar.', dur:5},
+ ]},
+ { title:'Impacto de asteroide', realism:2, scenes:[
+  {draw:['asteroide'], text:'Escenario 9: *asteroide* en rumbo de impacto.', dur:5},
+  {draw:['ojo','reloj72'], text:'Lo bueno: se detectaría con *meses o años* de antelación.', dur:5},
+  {draw:['coche','refugio'], text:'Evacuación ordenada de la zona y refugio lejos de la costa.', dur:5},
+ ]},
+ { title:'Apocalipsis zombi (o IA rebelde)', realism:1, scenes:[
+  {draw:['zombi','robot'], text:'Escenario 10: *zombis* o una IA rebelde. Ciencia ficción pura.', dur:5},
+  {draw:['mochila'], text:'¿Lo curioso? *La mochila es la misma* que para un apagón.', dur:5},
+  {draw:['agua','linterna'], text:'Agua, luz, radio, comida, botiquín y un plan. Para todo.', dur:5},
+  {draw:['familia'], text:'Prepararse no es miedo: es *cuidar de los tuyos*. Sígueme para más.', dur:5},
+ ]},
+];
+
+// ---------- Estado ----------
+const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+const W = cv.width, H = cv.height;
+let sc = structuredClone(PRESETS[0]);
+let playing = false, t0 = 0, rafId = 0, onEnd = null;
+
+// ruido determinista para que el trazo tiemble igual en cada fotograma
+function rnd(seed){ let s = seed*9301+49297; return () => (s = (s*9301+49297)%233280)/233280 - 0.5; }
+
+function wobbly(stroke, seed){
+  const r = rnd(seed), out = [];
+  for (let i=0;i<stroke.length-1;i++){
+    const [x1,y1]=stroke[i],[x2,y2]=stroke[i+1], n=Math.max(1,Math.ceil(Math.hypot(x2-x1,y2-y1)/14));
+    for (let k=0;k<n;k++){ const f=k/n; out.push([x1+(x2-x1)*f+r()*2.2, y1+(y2-y1)*f+r()*2.2]); }
+  }
+  const last=stroke[stroke.length-1]; out.push([last[0]+r()*2, last[1]+r()*2]);
+  return out;
+}
+const len = s => s.reduce((a,p,i)=>i?a+Math.hypot(p[0]-s[i-1][0],p[1]-s[i-1][1]):0,0);
+
+function drawSketch(name, x, y, size, progress, seed){
+  const strokes = (DRAW[name]||[]).map((s,i)=>wobbly(s, seed*100+i));
+  const total = strokes.reduce((a,s)=>a+len(s),0);
+  let budget = total*progress;
+  const k = size/200;
+  ctx.save(); ctx.translate(x,y); ctx.scale(k,k);
+  ctx.lineCap='round'; ctx.lineJoin='round'; ctx.strokeStyle='#1d1d1d'; ctx.lineWidth=14/k;
+  for (const s of strokes){
+    if (budget<=0) break;
+    ctx.beginPath(); ctx.moveTo(...s[0]);
+    for (let i=1;i<s.length;i++){
+      const d=Math.hypot(s[i][0]-s[i-1][0],s[i][1]-s[i-1][1]);
+      if (d<=budget){ ctx.lineTo(...s[i]); budget-=d; }
+      else { const f=budget/d; ctx.lineTo(s[i-1][0]+(s[i][0]-s[i-1][0])*f, s[i-1][1]+(s[i][1]-s[i-1][1])*f); budget=0; break; }
+    }
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function paper(){
+  ctx.fillStyle='#fbf8f1'; ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle='#e7e0cf'; ctx.lineWidth=2;
+  for (let y=140;y<H;y+=70){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+}
+
+function header(){
+  ctx.fillStyle='#1d1d1d'; ctx.font='64px "Gochi Hand"'; ctx.textAlign='center';
+  ctx.fillText(sc.title, W/2, 150);
+  // barra realismo → ciencia ficción
+  const x0=170, x1=W-170, y=230;
+  ctx.strokeStyle='#1d1d1d'; ctx.lineWidth=5; ctx.beginPath(); ctx.moveTo(x0,y); ctx.lineTo(x1,y); ctx.stroke();
+  ctx.font='36px "Patrick Hand"'; ctx.textAlign='left'; ctx.fillText('REALISTA', x0-10, y+55);
+  ctx.textAlign='right'; ctx.fillText('CIENCIA FICCIÓN', x1+10, y+55);
+  const mx = x1 - (x1-x0)*(sc.realism-1)/9;
+  ctx.fillStyle='#c8372d'; ctx.beginPath(); ctx.arc(mx,y,18,0,Math.PI*2); ctx.fill();
+}
+
+function caption(text, progress){
+  const words = text.split(/\s+/).filter(Boolean);
+  const shown = Math.ceil(words.length*Math.min(1,progress));
+  ctx.font='76px "Patrick Hand"'; ctx.textAlign='left';
+  const maxW = W-160, lh=92, lines=[[]]; let lw=0;
+  const space = ctx.measureText(' ').width;
+  for (const w of words){
+    const clean=w.replace(/\*/g,''), ww=ctx.measureText(clean).width;
+    if (lw+ww>maxW && lines.at(-1).length){ lines.push([]); lw=0; }
+    lines.at(-1).push(w); lw+=ww+space;
+  }
+  let i=0, y=H-560+(5-lines.length)*lh/2, hl=false;
+  for (const line of lines){
+    const lineW = line.reduce((a,w)=>a+ctx.measureText(w.replace(/\*/g,'')).width+space,0)-space;
+    let x=(W-lineW)/2;
+    for (const w of line){
+      const start=w.startsWith('*'), end=w.replace(/[.,:;!?)]+$/,'').endsWith('*');
+      if (start) hl=true;
+      const clean=w.replace(/\*/g,'');
+      if (i<shown){ ctx.fillStyle = hl ? '#c8372d' : '#1d1d1d'; ctx.fillText(clean,x,y); }
+      if (end) hl=false;
+      x+=ctx.measureText(clean).width+space; i++;
+    }
+    y+=lh;
+  }
+}
+
+function render(t){
+  const ends=[]; let acc=0; for (const s of sc.scenes){ acc+=s.dur; ends.push(acc); }
+  let idx = ends.findIndex(e=>t<e); if (idx<0) idx=sc.scenes.length-1;
+  const s = sc.scenes[idx]; if (!s) { paper(); header(); return; }
+  const local = t-(ends[idx]-s.dur), p = local/s.dur;
+  paper(); header();
+  const draws = s.draw.filter(d=>d && d!=='ninguno');
+  const pd = Math.min(1, p/0.45);
+  if (draws.length===1) drawSketch(draws[0], W/2-380, 360, 760, pd, idx+1);
+  else draws.slice(0,2).forEach((d,j)=>drawSketch(d, 60+j*500, 480, 460, Math.min(1, Math.max(0,(p-j*0.12)/0.4)), idx*10+j+1));
+  caption(s.text, Math.min(1, p/0.6));
+  // número de escena
+  ctx.fillStyle='#6b6b6b'; ctx.font='34px "Patrick Hand"'; ctx.textAlign='center';
+  ctx.fillText(`${idx+1} / ${sc.scenes.length}`, W/2, H-90);
+  document.querySelectorAll('.scene').forEach((el,i)=>el.classList.toggle('active', i===idx));
+}
+
+function totalDur(){ return sc.scenes.reduce((a,s)=>a+s.dur,0); }
+function loop(now){
+  const t=(now-t0)/1000;
+  if (t>=totalDur()){ render(totalDur()-0.001); playing=false; const f=onEnd; onEnd=null; f&&f(); return; }
+  render(t); rafId=requestAnimationFrame(loop);
+}
+function play(cb){ cancelAnimationFrame(rafId); playing=true; onEnd=cb||null; t0=performance.now(); rafId=requestAnimationFrame(loop); }
+function stop(){ cancelAnimationFrame(rafId); playing=false; onEnd=null; }
+
+// ---------- Editor ----------
+const $scenes=document.getElementById('scenes');
+const opts = Object.keys(DRAW).map(k=>`<option>${k}</option>`).join('');
+function buildEditor(){
+  document.getElementById('title').value=sc.title;
+  document.getElementById('realism').value=sc.realism;
+  $scenes.innerHTML='';
+  sc.scenes.forEach((s,i)=>{
+    const el=document.createElement('div'); el.className='scene';
+    el.innerHTML=`<div class="row"><b>Escena ${i+1}</b>
+      <select data-k="d0">${opts}</select><select data-k="d1">${opts}</select>
+      <label>seg <input type="number" min="1" max="30" step="0.5" data-k="dur"></label>
+      <button class="small" data-a="up">↑</button><button class="small" data-a="del">✕</button></div>
+      <textarea data-k="text"></textarea>`;
+    el.querySelector('[data-k=d0]').value=s.draw[0]||'ninguno';
+    el.querySelector('[data-k=d1]').value=s.draw[1]||'ninguno';
+    el.querySelector('[data-k=dur]').value=s.dur;
+    el.querySelector('[data-k=text]').value=s.text;
+    el.addEventListener('input',()=>{
+      s.draw=[el.querySelector('[data-k=d0]').value, el.querySelector('[data-k=d1]').value];
+      s.dur=Math.max(1,+el.querySelector('[data-k=dur]').value||5);
+      s.text=el.querySelector('[data-k=text]').value;
+      preview(i);
+    });
+    el.querySelector('[data-a=del]').onclick=()=>{ sc.scenes.splice(i,1); buildEditor(); preview(0); };
+    el.querySelector('[data-a=up]').onclick=()=>{ if(i){ [sc.scenes[i-1],sc.scenes[i]]=[sc.scenes[i],sc.scenes[i-1]]; buildEditor(); preview(i-1);} };
+    el.addEventListener('click',e=>{ if(e.target.tagName==='DIV'||e.target.tagName==='B') preview(i); });
+    $scenes.appendChild(el);
+  });
+}
+function preview(i){ if(playing) return; let t=0; for(let k=0;k<i;k++) t+=sc.scenes[k].dur; render(t+(sc.scenes[i]?.dur||1)*0.99); }
+
+const $preset=document.getElementById('preset');
+$preset.innerHTML=PRESETS.map((p,i)=>`<option value="${i}">${i+1}. ${p.title} (${p.realism}/10)</option>`).join('');
+$preset.onchange=()=>{ stop(); sc=structuredClone(PRESETS[+$preset.value]); buildEditor(); preview(0); };
+document.getElementById('title').oninput=e=>{ sc.title=e.target.value; preview(0); };
+document.getElementById('realism').oninput=e=>{ sc.realism=Math.min(10,Math.max(1,+e.target.value||1)); preview(0); };
+document.getElementById('add').onclick=()=>{ sc.scenes.push({draw:['mochila','ninguno'], text:'Nueva escena', dur:5}); buildEditor(); preview(sc.scenes.length-1); };
+document.getElementById('json').onclick=()=>{ navigator.clipboard?.writeText(JSON.stringify(sc,null,2)); status('Guion copiado al portapapeles'); };
+document.getElementById('play').onclick=()=>play();
+document.getElementById('stop').onclick=()=>{ stop(); preview(0); };
+
+const $status=document.getElementById('status');
+function status(m){ $status.textContent=m; }
+
+document.getElementById('record').onclick=()=>{
+  if (!window.MediaRecorder) return status('Este navegador no puede grabar vídeo. Usa Chrome o Edge.');
+  const types=['video/mp4;codecs=avc1','video/mp4','video/webm;codecs=vp9','video/webm'];
+  const mime=types.find(t=>MediaRecorder.isTypeSupported(t))||'';
+  const rec=new MediaRecorder(cv.captureStream(30), {mimeType:mime, videoBitsPerSecond:8e6});
+  const chunks=[]; rec.ondataavailable=e=>e.data.size&&chunks.push(e.data);
+  rec.onstop=()=>{
+    const blob=new Blob(chunks,{type:mime||'video/webm'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+    a.download=`${sc.title.replace(/[^\wáéíóúñ ]/gi,'').trim().replace(/\s+/g,'-')}.${mime.includes('mp4')?'mp4':'webm'}`;
+    a.click(); status('Vídeo descargado ✔');
+  };
+  rec.start(); status(`Grabando… (${totalDur()} s, no cambies de pestaña)`);
+  play(()=>setTimeout(()=>rec.stop(), 300));
+};
+
+document.fonts.load('64px "Gochi Hand"').then(()=>document.fonts.load('76px "Patrick Hand"')).finally(()=>{ buildEditor(); preview(0); });
+</script>
+</body>
+</html>
