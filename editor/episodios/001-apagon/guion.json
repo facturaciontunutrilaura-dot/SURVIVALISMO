@@ -1,7 +1,7 @@
 {
   "titulo": "El día que se fue la luz",
-  "voz": "es_ES-sharvard-medium",
-  "tono": "media",
+  "voz": "em_alex",
+  "tono": "natural",
   "velocidad": 1.0,
   "musica": "tension",
   "escenas": [

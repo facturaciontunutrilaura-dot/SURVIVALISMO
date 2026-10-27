@@ -2,3 +2,4 @@ voces/
 episodios/*/tmp/
 episodios/*/*.mp4
 __pycache__/
+episodios/*/muestras-voz/

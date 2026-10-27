@@ -5,7 +5,7 @@ usando su imagen de referencia, para que no cambie de cara ni de ropa.
 
 - **Nombre:** Álex (aprobado)
 - **Imagen de referencia (Canva):** media id `MAHZN-Eg0aM`
-- **Voz en off:** `es_ES-sharvard-medium`, hablante masculino, tono `media` (más grave y rudo; narra en primera persona)
+- **Voz en off:** `em_alex` (Kokoro), tono `natural`, narra en primera persona. Se descartó la voz Piper grave por sonar a robot.
 
 ## Descripción fija (se añade a cada imagen)
 

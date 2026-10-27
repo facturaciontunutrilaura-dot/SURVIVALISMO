@@ -31,15 +31,39 @@ YELLOW = (255, 212, 59)
 TONOS = {'suave': (.95, 3, 1.5), 'media': (.915, 4.5, 2.4), 'fuerte': (.88, 6, 3.6)}
 
 
-def tone_filter(tono):
+def tone_filter(tono, sr=SR):
     r, low, drive = TONOS[tono]
-    return (f'asetrate={SR}*{r},aresample=44100,atempo={1 / r:.4f},highpass=f=70,'
+    return (f'asetrate={sr}*{r},aresample=44100,atempo={1 / r:.4f},highpass=f=70,'
             f'equalizer=f=140:t=q:w=1:g={low},equalizer=f=2600:t=q:w=1.2:g=2.5,equalizer=f=7000:t=q:w=1:g=-3,'
             f'volume={drive},asoftclip=type=tanh,acompressor=threshold=-20dB:ratio=4:attack=5:release=120:makeup=2,'
             f'alimiter=limit=0.9,aresample={SR}')
 
 
+KOKORO = os.path.join(VOICES, 'kokoro')
+_kokoro = None
+
+
+def synth_kokoro(text, voice, speed):
+    """Voz neuronal Kokoro (em_alex, em_santa, ef_dora): mucho más natural que Piper."""
+    global _kokoro
+    if _kokoro is None:
+        from kokoro_onnx import Kokoro
+        _kokoro = Kokoro(os.path.join(KOKORO, 'model.onnx'), os.path.join(KOKORO, 'voices.npz'))
+    a, sr = _kokoro.create(text.replace('*', ''), voice=voice, speed=speed, lang='es')
+    return a.astype(np.float32), sr
+
+
 def synth(text, voice, speed, path, tono='media', speaker=0):
+    if voice.startswith(('em_', 'ef_')):
+        a, sr = synth_kokoro(text, voice, speed)
+        if tono in TONOS:
+            import soundfile as sf
+            raw = path.replace('.wav', '-raw.wav')
+            sf.write(raw, a, sr)
+            subprocess.run(['ffmpeg', '-v', 'error', '-y', '-i', raw, '-af', tone_filter(tono, sr), '-ac', '1', path], check=True)
+            a, sr = sf.read(path, dtype='float32')
+        a = a / max(1e-6, np.abs(a).max()) * .89
+        return np.interp(np.arange(int(len(a) * SR / sr)) * sr / SR, np.arange(len(a)), a).astype(np.float32)
     from piper import PiperVoice
     from piper.config import SynthesisConfig
     v = PiperVoice.load(os.path.join(VOICES, voice + '.onnx'))
@@ -273,8 +297,8 @@ def title_layer(text):
 # ---------- render ----------
 def render(folder):
     g = json.load(open(os.path.join(folder, 'guion.json'), encoding='utf-8'))
-    voice, speed = g.get('voz', 'es_ES-sharvard-medium'), g.get('velocidad', 1.0)
-    tono, speaker = g.get('tono', 'media'), g.get('hablante', 0)
+    voice, speed = g.get('voz', 'em_alex'), g.get('velocidad', 1.0)
+    tono, speaker = g.get('tono', 'natural'), g.get('hablante', 0)
     os.makedirs(os.path.join(folder, 'tmp'), exist_ok=True)
     scenes, audio, t0 = [], [], .35
     audio.append(np.zeros(int(SR * t0), np.float32))

@@ -25,8 +25,8 @@ La primera vez hay que ejecutar `editor/instalar.sh`, que instala las voces y la
 ```json
 {
   "titulo": "El día que se fue la luz",
-  "voz": "es_ES-sharvard-medium",
-  "tono": "media",
+  "voz": "em_alex",
+  "tono": "natural",
   "velocidad": 1.0,
   "musica": "tension",
   "escenas": [
@@ -34,7 +34,9 @@ La primera vez hay que ejecutar `editor/instalar.sh`, que instala las voces y la
   ]
 }
 ```
-- **tono:** dureza de la voz: `suave`, `media`, `fuerte` o `natural` (sin procesar).
+- **voz:** `em_alex` (por defecto, hombre, natural), `em_santa` (hombre) o `ef_dora` (mujer), todas con el motor Kokoro.
+  Las voces Piper antiguas (`es_ES-sharvard-medium`, `es_ES-davefx-medium`) siguen funcionando, pero suenan robóticas.
+- **tono:** `natural` (por defecto, sin procesar) o `suave`, `media`, `fuerte` (más grave; hace la voz menos humana).
 - **musica:** `tension`, `calma` o `ninguna`.
 - **movimiento:** `acercar`, `alejar`, `izquierda`, `derecha`, `subir` o `bajar`.
 - **efecto:** `lluvia`, `humo`, `brasas`, `parpadeo`, `sirena`, `temblor`, `polvo`, `nieve` o `ninguno`.
