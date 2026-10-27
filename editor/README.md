@@ -11,8 +11,13 @@ Convierte un guion en un vídeo vertical (1080×1920) listo para Instagram, TikT
 Escríbele a Claude el escenario. Claude se encarga de todo lo demás:
 1. Escribe el guion en `episodios/NNN-nombre/guion.json`, con la narración en primera persona del protagonista.
 2. Genera las ilustraciones en Canva usando la imagen de referencia de `personaje.md`, para que el personaje sea siempre el mismo.
-3. Las guarda en `episodios/NNN-nombre/imagenes/`.
+3. Las guarda en `episodios/NNN-nombre/imagenes/` como JPG 1080×1920. Canva solo deja descargar miniaturas
+   de las imágenes sueltas, así que se colocan como fondo en las páginas de un diseño de 1080×1920 y se exporta
+   ese diseño a PNG (hace falta tener `media.canva.com` y `export-download.canva.com` en el acceso a red del entorno).
 4. Monta el vídeo con `python3 editor/render.py editor/episodios/NNN-nombre`.
+
+Cada imagen gasta créditos de Canva: si se acaban a mitad de un episodio, las escenas que faltan quedan apuntadas en
+`pendiente.md` dentro de la carpeta del episodio.
 
 La primera vez hay que ejecutar `editor/instalar.sh`, que instala las voces y las dependencias.
 

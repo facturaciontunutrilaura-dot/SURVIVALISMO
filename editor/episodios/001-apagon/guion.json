@@ -1,0 +1,16 @@
+{
+  "titulo": "El día que se fue la luz",
+  "voz": "es_ES-sharvard-medium",
+  "tono": "media",
+  "velocidad": 1.0,
+  "musica": "tension",
+  "escenas": [
+    {"imagen": "imagenes/01.jpg", "texto": "Me llamo Álex. Un lunes a mediodía, *se fue la luz*. En toda España.", "movimiento": "acercar", "efecto": "parpadeo"},
+    {"imagen": "imagenes/02.jpg", "texto": "Sin semáforos. Sin cobertura. Sin pagar con tarjeta. En minutos, *todo se paró*.", "movimiento": "izquierda", "efecto": "polvo"},
+    {"imagen": "imagenes/03.jpg", "texto": "Lo primero que cogí fue la *radio a pilas*. Era la única forma de saber qué pasaba.", "movimiento": "acercar", "efecto": "ninguno"},
+    {"imagen": "imagenes/04.jpg", "texto": "Al caer la noche, *linternas y frontales*. Mejor que velas: menos riesgo de incendio.", "movimiento": "subir", "efecto": "polvo"},
+    {"imagen": "imagenes/05.jpg", "texto": "La nevera, cerrada. Aguanta unas *cuatro horas* fría. Un congelador lleno, hasta *dos días*.", "movimiento": "derecha", "efecto": "ninguno"},
+    {"imagen": "imagenes/06.jpg", "texto": "Agua, comida que no haga falta cocinar y *algo de efectivo*. Sin luz, los cajeros no funcionan.", "movimiento": "alejar", "efecto": "polvo"},
+    {"imagen": "imagenes/07.jpg", "texto": "No fue el fin del mundo. Pero quien estaba preparado lo vivió *con calma*. Sígueme y te enseño cómo.", "movimiento": "alejar", "efecto": "brasas"}
+  ]
+}
