@@ -34,3 +34,24 @@ ALTERNATIVA sin pasar por Madrid: Zaragoza - A-68 Mallen - N-122 Tarazona/Agreda
 Si una via esta cortada, coged la otra. Respetad controles y desvios de la Guardia Civil.
 
 8) Si no hay forma de contactar: nos vemos en [PUNTO ENCUENTRO TERRASSA] o en Avila. Os quiero.
+
+---
+
+## Version corta: codigos para el dia de la emergencia
+
+El plan largo se envia AHORA (en calma), se imprime y se guarda en la nevera y en la cartera.
+El dia de la emergencia solo se mandan estos codigos.
+
+CODIGOS EMERGENCIA (guardad este SMS):
+A = Estamos bien, en casa
+B = Quedaos en casa, plan de acopio
+C = Evacuamos, os digo donde
+D = Id a Avila, ruta principal
+E = Id a Avila por Soria (sin Madrid)
+F = Necesitamos ayuda
+OK = Recibido
+Siempre: codigo + hora. Ej: "D 14h"
+
+### SMS de un solo mensaje (144 caracteres)
+
+EMERGENCIA: quedaos en casa, radio y 112. Si hay que ir a Avila: A-2 Zaragoza-Soria-N-110 Segovia-Avila. Nosotros seguimos en casa. Contestad OK
