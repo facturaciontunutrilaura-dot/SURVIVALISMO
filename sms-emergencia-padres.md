@@ -66,3 +66,27 @@ Siempre: codigo + hora. Ej: "D 14h"
 ### SMS de un solo mensaje (144 caracteres)
 
 EMERGENCIA: quedaos en casa, radio y 112. Si hay que ir a Avila: A-2 Zaragoza-Soria-N-110 Segovia-Avila. Nosotros seguimos en casa. Contestad OK
+
+---
+
+## Mis mensajes de emergencia (plantillas para guardar en el movil)
+
+Guardar como borradores o notas para copiar y pegar. Cambiar HH por la hora. Todos caben en 1 SMS.
+
+### Codigo puro (lo mas rapido)
+- `A HH` - Estamos bien, en casa
+- `B HH` - Quedaos en casa y haced acopio
+- `C HH` - Evacuamos, luego digo donde
+- `D HH` - Id a Avila, ruta principal
+- `E HH` - Id a Avila por Soria
+- `F HH` - Necesitamos ayuda
+- `OK` - Recibido
+
+### Codigo + detalle (si hay un poco mas de tiempo)
+- `A HH. Estamos bien los 2 en casa. Contestad OK`
+- `B HH. Quedaos en casa, haced acopio (punto 4). Nosotros bien. Contestad OK`
+- `C HH. Evacuamos a [LUGAR]. Estamos bien. Siguiente SMS a las HH`
+- `D HH. Id a Avila ruta principal. Salid de dia. Avisad al salir. Contestad OK`
+- `E HH. Id a Avila por Soria, Madrid mal. Avisad al salir. Contestad OK`
+- `F HH. Necesitamos ayuda en [LUGAR]. Avisad al 112`
+- `A HH. Sin noticias vuestras. Contestad OK o escribid a [CONTACTO AVILA]`
