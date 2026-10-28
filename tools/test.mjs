@@ -570,6 +570,41 @@ try {
     await page.evaluate(async () => { const st = await import('./assets/js/store.js'); for (const k of ['compra.hogar', 'compra.marcadas', 'compra.dias', 'compra.activa']) await st.del?.('kv', k); });
   }
 
+  /* ----------------------- 9 bis d. Entrenamiento en casa ----------------------- */
+  console.log('\n▸ Entrenamiento en casa');
+  {
+    await page.goto(BASE + '#/sec/entrenamiento');
+    await page.waitForSelector('.en-op');
+    ok('Entrenamiento: cinco niveles y planes de 2 a 5 días', (await page.locator('.en-op').count()) === 5 && (await page.locator('[data-dias]').count()) === 4);
+    ok('Entrenamiento: «Antes de empezar» abierto la primera vez', await page.locator('#en-antes').evaluate((d) => d.open));
+    await page.click('#en-leido');
+    await page.click('[data-nivel="2"]'); await page.click('[data-dias="2"]');
+    ok('Entrenamiento: el plan cambia con los días', (await page.locator('.en-sesion').count()) === 2);
+    await page.click('[data-dias="5"]');
+    ok('Entrenamiento: plan de 5 días', (await page.locator('.en-sesion').count()) === 5);
+    await page.click('[data-material="1"]');
+    ok('Entrenamiento: con poco material aparecen variantes con mochila o garrafas', /mochila|garrafa/i.test(await page.locator('.en-sesion').evaluateAll((els) => els.map((e) => e.textContent).join(' '))));
+    await page.click('[data-empezar="0"]');
+    await page.waitForSelector('.en-serie');
+    const total = await page.locator('.en-serie').count();
+    await page.locator('.en-serie').first().click();
+    ok('Entrenamiento: marcar una serie inicia el descanso', await page.isVisible('#en-reloj') && /Descanso: \d+ s/.test(await page.textContent('#en-reloj')));
+    await page.click('#en-saltar');
+    for (const b of (await page.locator('.en-serie').all()).slice(1)) await b.click();
+    await page.click('#en-saltar');
+    await page.click('#en-guardar');
+    ok('Entrenamiento: pide el esfuerzo antes de guardar', await page.isVisible('#en-guardar'));
+    await page.click('[data-rpe="5"]'); await page.click('#en-guardar');
+    await page.waitForSelector('.en-sesion.hecha');
+    ok('Entrenamiento: la sesión queda hecha y la siguiente marcada', (await page.locator('.en-sesion.hecha').count()) === 1 && /1 de 5/.test(await page.textContent('#en-semana')) && (await page.locator('.en-sesion.siguiente').count()) === 1);
+    ok('Entrenamiento: el historial guarda series y esfuerzo', new RegExp(`${total}/${total} series · esfuerzo 5/10`).test(await page.textContent('.en-hist')));
+    await page.waitForTimeout(300);
+    await page.reload(); await page.waitForSelector('.en-op');
+    ok('Entrenamiento: tras recargar se conservan el plan y el progreso', (await page.getAttribute('[data-nivel="2"]', 'aria-pressed')) === 'true' && (await page.locator('.en-sesion').count()) === 5 && (await page.locator('.en-sesion.hecha').count()) === 1 && !(await page.locator('#en-antes').evaluate((d) => d.open)));
+    ok('Entrenamiento: el historial cuenta como dato propio (copia de seguridad)', await page.evaluate(async () => (await import('./assets/js/store.js')).esDatoPropio('kv', 'entreno.historial')));
+    await page.evaluate(async () => { const st = await import('./assets/js/store.js'); for (const k of ['entreno.config', 'entreno.historial', 'entreno.aviso']) await st.del('kv', k); });
+  }
+
   /* ----------------------- 9 bis c. Plan de evacuación ----------------------- */
   console.log('\n▸ Plan de evacuación');
   {
@@ -2144,6 +2179,7 @@ try {
       ['/sec/orientacion', '#cp-start', async () => { await pp.click('#cp-start'); await pp.click('#cp-manual'); }],
       ['/sec/juegos/calma', '#ca-start', async () => { await pp.click('#ca-start'); await pp.waitForTimeout(1200); }],
       ['/sec/juegos', '.ttt-c', async () => { await pp.click('#jg-tabs [data-t="mem"]'); }],
+      ['/sec/entrenamiento', '.en-op', async () => { await pp.click('[data-empezar="0"]'); await pp.locator('.en-serie').first().click(); await pp.waitForTimeout(300); }],
       ['/sec/evacuacion', '.ev-corr', async () => { await pp.click('[data-esc="guerra"]'); }],
       ['/sec/juegos/ajedrez', '.aje-c', async () => { await pp.click('[data-modo="dificil"]'); await pp.click('[data-i="52"]'); await pp.click('[data-i="36"]'); await pp.waitForTimeout(200); }],
       ['/buscar', '#q', async () => { await pp.fill('#q', 'hipotermia'); }],
@@ -2229,7 +2265,7 @@ try {
       });
       ok(`Tema ${tema}/${cont}: navegación, 112 y avisos siguen en pantalla`, pos.nav && pos.bar && pos.toast, JSON.stringify(pos));
       const malos = [];
-      for (const r of ['/', '/emergencia', '/emergencia/incendio-forestal', '/check/nivel2', '/sec/familia', '/sec/plan-familiar', '/sec/calculadoras', '/sec/config', '/sec/primeros-auxilios', '/sec/juegos/ajedrez', '/sec/evacuacion']) {
+      for (const r of ['/', '/emergencia', '/emergencia/incendio-forestal', '/check/nivel2', '/sec/familia', '/sec/plan-familiar', '/sec/calculadoras', '/sec/config', '/sec/primeros-auxilios', '/sec/juegos/ajedrez', '/sec/evacuacion', '/sec/entrenamiento']) {
         await pt.goto(BASE + '#' + r); await pt.waitForTimeout(250);
         malos.push(...(await contraste(pt)).map((m) => r + ' ' + m));
       }

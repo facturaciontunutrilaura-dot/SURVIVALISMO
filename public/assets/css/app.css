@@ -805,6 +805,35 @@ details > div { padding: 0 12px 12px; }
 .ttt-c:disabled { cursor: default; }
 .ttt-c.win { background: var(--olive); border-color: var(--olive3); }
 
+/* --------------------------- Entrenamiento --------------------------- */
+.en-opc { display: grid; grid-template-columns: 1fr; gap: 6px; }
+@media (min-width: 600px) { .en-opc { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+.en-op {
+  display: flex; flex-direction: column; gap: 2px; text-align: left; min-height: 48px; padding: 8px 12px;
+  background: var(--bg2); color: var(--txt); border: 1px solid var(--line2); border-radius: var(--r); font: inherit; cursor: pointer;
+}
+.en-op small { color: var(--dim); font-size: .8rem; }
+.en-op[aria-pressed='true'] { background: var(--olive); border-color: var(--olive3); color: #f2f1e6; }
+.en-op[aria-pressed='true'] small { color: #e6e3cf; }
+.en-barra { height: 12px; border-radius: 6px; background: var(--bg2); border: 1px solid var(--line); overflow: hidden; }
+.en-barra i { display: block; height: 100%; background: var(--olive3); }
+.en-sesion { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; margin: 8px 0; border: 1px solid var(--line); border-left: 4px solid var(--line2); border-radius: var(--r); background: var(--panel); }
+.en-sesion small { display: block; color: var(--dim); font-size: .82rem; margin-top: 2px; }
+.en-sesion.siguiente { border-left-color: var(--amber); }
+.en-sesion.hecha { border-left-color: var(--olive3); background: var(--bg2); }
+.en-ok { color: var(--olive3); font-size: .85rem; }
+.en-sig { color: #E8C9A0; font-size: .85rem; }
+.en-series { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+.en-serie { min-width: 52px; min-height: 52px; border-radius: 50%; border: 2px solid var(--line2); background: var(--bg2); color: var(--txt); font: 700 1.05rem var(--ff); cursor: pointer; }
+.en-serie[aria-pressed='true'] { background: var(--olive3); border-color: var(--olive3); color: #1B1F14; }
+.en-reloj {
+  position: sticky; bottom: calc(80px + env(safe-area-inset-bottom)); z-index: 30; display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; margin: 10px 0; padding: 12px 14px; border-radius: var(--r); background: #3a2a12; border: 2px solid var(--amber); color: #F0DFCB; font-size: 1.1rem;
+}
+.en-reloj[hidden] { display: none; }
+.en-hist { padding-left: 1.1em; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
 /* --------------------------- Plan de evacuación --------------------------- */
 .tile.evacuacion, .grid .tile.evacuacion { border-color: var(--amber); border-left: 3px solid var(--amber); }
 .tile.evacuacion .nm { color: #E8C9A0; }

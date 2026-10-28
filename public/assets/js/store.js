@@ -113,7 +113,7 @@ function tx(store, mode = 'readonly') {
 /* Datos PROPIOS del usuario (lo que perdería si el navegador borrase el
    almacenamiento). No cuentan ajustes, estadísticas de juegos ni teselas.
    Se usa para el aviso de copia de seguridad y para pedir protección. */
-const KV_PROPIO = /^(familia\.|plan\.|ubicacion$|riesgos\.|compra\.hogar$)/;
+const KV_PROPIO = /^(familia\.|plan\.|ubicacion$|riesgos\.|compra\.hogar$|entreno\.historial$)/;
 export function esDatoPropio(store, id) {
   return ['contactos', 'puntos', 'checks', 'frecs', 'radiolog', 'geo'].includes(store) || (store === 'kv' && KV_PROPIO.test(String(id)));
 }

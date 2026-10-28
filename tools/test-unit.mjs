@@ -475,3 +475,34 @@ test('revisión: repetición sin captura al paso posible, edad vacía y medidas 
   assert.equal(medirHelvetica('Hola', false, 10), 20.56);    // H 722 + o 556 + l 222 + a 556
   assert.equal(medirHelvetica('ñ', true, 1000), 611);
 });
+
+/* ------------------------------ Entrenamiento ------------------------------ */
+test('entrenamiento: niveles, planes de 2 a 5 días, semanas y progreso', async () => {
+  const { prescripcion, plan, semanaISO, resumen } = await imp('assets/js/entrenamiento-calc.js');
+  const { PATRONES, SESIONES, PLANES, NIVELES } = await imp('data/content/entrenamiento.js');
+  assert.equal(NIVELES.length, 5);
+  for (const [id, p] of Object.entries(PATRONES)) assert.equal(p.escalera.length, 5, id);
+  for (const s of Object.values(SESIONES)) for (const [pt] of s.ejercicios) assert.ok(PATRONES[pt], pt);
+  assert.deepEqual(Object.keys(PLANES), ['2', '3', '4', '5']);
+  for (const d of [2, 3, 4, 5]) assert.equal(plan(d, 3).length, d);
+  // El nivel sube el ejercicio y la dosis.
+  assert.equal(prescripcion(1, 'empuje').t, 'Flexiones en la pared');
+  assert.equal(prescripcion(5, 'empuje').t, 'Flexiones con pies elevados');
+  assert.equal(prescripcion(1, 'empuje', -1).t, 'Flexiones en la pared', 'sin peldaño negativo');
+  assert.equal(prescripcion(5, 'core').objetivo, '50 s');
+  assert.ok(prescripcion(5, 'piernas').series > prescripcion(1, 'piernas').series);
+  assert.match(prescripcion(3, 'tiron', 0, true).t, /mochila/, 'variante con material');
+  // Semanas ISO: el lunes empieza semana.
+  assert.equal(semanaISO(new Date(2026, 9, 25)), '2026-W43');   // domingo
+  assert.equal(semanaISO(new Date(2026, 9, 26)), '2026-W44');   // lunes
+  assert.equal(semanaISO(new Date(2027, 0, 1)), '2026-W53');
+  const hoy = new Date(2026, 9, 28, 12);   // miércoles
+  const ses = (dias, idx, extra = {}) => ({ fecha: new Date(hoy.getTime() - dias * 864e5).toISOString(), idx, dias: 3, nivel: 2, hechas: 9, total: 9, rpe: 5, ...extra });
+  const h = [ses(0, 0), ses(1, 1), ses(7, 0), ses(8, 1), ses(9, 2), ses(14, 0), ses(15, 1), ses(16, 2)];
+  const r = resumen(h, { nivel: 2, dias: 3 }, hoy);
+  assert.equal(r.hechas, 2); assert.equal(r.objetivo, 3); assert.equal(r.siguiente, 2);
+  assert.equal(r.racha, 2, 'dos semanas anteriores cumplidas; la actual aún en curso');
+  assert.equal(r.sugerencia, 'subir', 'tres sesiones completas y fáciles');
+  assert.equal(resumen([ses(0, 0, { rpe: 10, hechas: 3 }), ses(1, 1, { rpe: 10, hechas: 3 })], { nivel: 2, dias: 3 }, hoy).sugerencia, 'bajar');
+  assert.equal(resumen([], { nivel: 1, dias: 2 }, hoy).siguiente, 0);
+});

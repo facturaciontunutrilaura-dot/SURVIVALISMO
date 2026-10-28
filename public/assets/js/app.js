@@ -489,6 +489,12 @@ async function vSeccion(id, sub) {
     w.appendChild(await evacuacionView());
     return w;
   }
+  if (id === 'entrenamiento') {
+    const { entrenamientoView } = await import('./entrenamiento.js');
+    const w = el(`<div>${topbar(s.t, 'En casa, sin material')}<h1>${s.ic} ENTRENAMIENTO EN CASA</h1></div>`);
+    w.appendChild(await entrenamientoView());
+    return w;
+  }
   if (id === 'compra') {
     const { compraView } = await import('./compra.js');
     const w = el(`<div>${topbar(s.t, 'De 72 horas a una semana')}<h1>${s.ic} COMPRA DE COLAPSO</h1></div>`);
@@ -1030,6 +1036,7 @@ const TIPOS_BUSQUEDA = {
   juego: { t: 'Juegos', ic: '🎮', f: 'otros' },
   compra: { t: 'Compra', ic: '🛒', f: 'otros' },
   evacuacion: { t: 'Evacuación', ic: '🧭', f: 'otros' },
+  entrenamiento: { t: 'Entrenamiento', ic: '💪', f: 'otros' },
   audio: { t: 'Audio', ic: '🎵', f: 'otros' },
   familia: { t: 'Familia', ic: '👨‍👩‍👧', f: 'otros' },
 };
