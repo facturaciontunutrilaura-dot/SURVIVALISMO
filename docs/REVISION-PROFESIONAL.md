@@ -100,3 +100,6 @@ de la revisión profesional, con su fuente.
 | B | Primeras horas, energía, seguridad, vulnerables, trueque, agua de lluvia | `art-casa.js` | Protección civil | Coherencia con el resto de la app |
 | B | Pregúntale a Alex: intenciones y respuestas de salud | `data/content/alex.js` | Sanitario | Que ninguna respuesta dé dosis ni diagnósticos y que las urgencias lleven al 112 |
 | B | Entrenamiento en casa | `data/content/entrenamiento.js` | Graduado en CAFyD | Progresiones, dosis por nivel, avisos de seguridad |
+| **A** | Defensa personal y familiar (legítima defensa, agresiones, intrusos, plan familiar) | `data/content/art-defensa.js` | Abogado penalista y un instructor de defensa personal o un agente de seguridad | Que la explicación legal sea correcta y prudente y que las pautas físicas sean seguras |
+| **A** | Bricolaje: gas, electricidad y generadores | `data/content/art-bricolaje.js` · `bric-cortes`, `bric-electricidad` | Electricista o instalador de gas autorizado | Procedimientos seguros y conformes con la normativa |
+| B | Bricolaje: fugas, cristales, sellar, caja térmica, filtro, reparaciones | `art-bricolaje.js` | Técnico de mantenimiento; seguridad alimentaria para la caja térmica | Que los arreglos provisionales sean seguros |

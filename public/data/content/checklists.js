@@ -159,6 +159,17 @@ export const CHECKLISTS = [
     ],
   },
   {
+    id: 'herramientas',
+    t: 'Caja de herramientas de emergencia',
+    desc: 'Lo mínimo para cortar suministros, tapar, sellar y reparar de forma provisional.',
+    grupos: [
+      { g: 'Cintas y fijación', items: ['Cinta americana', 'Cinta autovulcanizante', 'Cinta de teflón', 'Bridas de plástico', 'Pegamento de contacto', 'Masilla epoxi'] },
+      { g: 'Herramientas', items: ['Destornilladores plano y de estrella', 'Alicates universales', 'Llave inglesa', 'Martillo', 'Sierra de mano', 'Cúter', 'Grapadora y grapas', 'Detector de tensión (buscapolos)'] },
+      { g: 'Materiales', items: ['Plástico grueso (rollo)', 'Tablero o madera para tapar huecos', 'Clavos y tornillos variados', 'Cuerda o cordino', 'Alambre', 'Abrazaderas metálicas'] },
+      { g: 'Protección', items: ['Guantes de trabajo', 'Gafas de protección', 'Linterna frontal y pilas', 'Kit de costura'] },
+    ],
+  },
+  {
     id: 'avila',
     t: 'Plan Ávila (estacional)',
     desc: 'Revisión en junio y en noviembre.',

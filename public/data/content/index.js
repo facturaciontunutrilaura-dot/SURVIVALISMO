@@ -8,6 +8,8 @@ import { ART_TERRITORIO } from './art-territorio.js';
 import { ART_COMUNICACIONES, FRECUENCIAS } from './comunicaciones.js';
 import { ART_HUERTO } from './art-huerto.js';
 import { ART_CASA } from './art-casa.js';
+import { ART_BRICOLAJE } from './art-bricolaje.js';
+import { ART_DEFENSA } from './art-defensa.js';
 import { CHECKLISTS } from './checklists.js';
 import { CURSOS } from './cursos.js';
 import { QUIZ, QUIZ_CATEGORIAS, RESPIRACIONES, GROUNDING } from './juegos.js';
@@ -28,6 +30,8 @@ export const SECCIONES = [
   { id: 'refugio', t: 'REFUGIO', ic: '🏕', desc: 'Protegerse del frío, el viento y el calor' },
   { id: 'alimentacion', t: 'ALIMENTACIÓN', ic: '🍲', desc: 'Despensa, conservación y cocina sin luz' },
   { id: 'en-casa', t: 'EN CASA DURANTE LA CRISIS', ic: '🏠', desc: 'Váter sin agua, frío, calor, luz, refugio ante un ataque, seguridad' },
+  { id: 'bricolaje', t: 'BRICOLAJE', ic: '🔧', desc: 'Cortar suministros, reparar fugas, cristales, electricidad segura y apaños' },
+  { id: 'defensa', t: 'DEFENSA PERSONAL', ic: '🛡️', desc: 'Prevenir, calmar, escapar, la ley y la seguridad de tu familia' },
   { id: 'huerto', t: 'HUERTO', ic: '🥔', desc: 'Huerto de supervivencia: patatas, calendario, semillas y conservar' },
   { id: 'primeros-auxilios', t: 'PRIMEROS AUXILIOS', ic: '🩹', desc: 'PAS, RCP, hemorragias y urgencias' },
   { id: 'comunicaciones', t: 'COMUNICACIONES', ic: '📻', desc: 'Plan de comunicación, radio y frecuencias' },
@@ -59,7 +63,7 @@ export const SECCIONES = [
    aparecer exactamente una vez (lo comprueba tools/test-unit.mjs). */
 export const PORTADA = {
   plan: ['evacuacion', 'alex', 'compra', 'entrenamiento', 'familia', 'mapa', 'orientacion', 'equipo', 'calculadoras', 'comunicaciones'],
-  manual: ['en-casa', 'primeros-auxilios', 'agua', 'fuego', 'refugio', 'alimentacion', 'huerto', 'psicologia',
+  manual: ['en-casa', 'primeros-auxilios', 'agua', 'fuego', 'refugio', 'alimentacion', 'huerto', 'bricolaje', 'defensa', 'psicologia',
     'vehiculo', 'mascotas', 'bushcraft', 'espana', 'avila', 'biblioteca'],
   mas: ['riesgos', 'juegos', 'audio', 'cursos', 'manual', 'fuentes', 'config'],
 };
@@ -79,6 +83,8 @@ export const ARTICULOS = [
   ...ART_COMUNICACIONES,
   ...ART_CASA,
   ...ART_HUERTO,
+  ...ART_BRICOLAJE,
+  ...ART_DEFENSA,
 ];
 
 export const ARTICULOS_MAP = Object.fromEntries(ARTICULOS.map((a) => [a.id, a]));

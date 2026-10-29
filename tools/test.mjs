@@ -2300,7 +2300,7 @@ try {
       });
       ok(`Tema ${tema}/${cont}: navegación, 112 y avisos siguen en pantalla`, pos.nav && pos.bar && pos.toast, JSON.stringify(pos));
       const malos = [];
-      for (const r of ['/', '/emergencia', '/emergencia/incendio-forestal', '/check/nivel2', '/sec/familia', '/sec/plan-familiar', '/sec/calculadoras', '/sec/config', '/sec/primeros-auxilios', '/sec/juegos/ajedrez', '/sec/evacuacion', '/sec/entrenamiento', '/sec/alex', '/sec/huerto', '/art/casa-frio', '/art/huerto-patatas']) {
+      for (const r of ['/', '/emergencia', '/emergencia/incendio-forestal', '/check/nivel2', '/sec/familia', '/sec/plan-familiar', '/sec/calculadoras', '/sec/config', '/sec/primeros-auxilios', '/sec/juegos/ajedrez', '/sec/evacuacion', '/sec/entrenamiento', '/sec/alex', '/sec/huerto', '/art/casa-frio', '/art/huerto-patatas', '/sec/bricolaje', '/sec/defensa', '/art/def-familia']) {
         await pt.goto(BASE + '#' + r); await pt.waitForTimeout(250);
         malos.push(...(await contraste(pt)).map((m) => r + ' ' + m));
       }

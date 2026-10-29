@@ -546,6 +546,16 @@ test('Alex: urgencias al 112, crisis al 024, escenarios, buscador y fuera de tem
   assert.equal(r('hay un bombardeo').urgente, true);
   assert.equal(r('hay un bombardeo').titulo, 'Refugiarse en casa ante un ataque o una explosión');
   assert.equal(r('qué hago ahora').titulo, 'Las primeras horas: qué hacer ya');
+  // Bricolaje y defensa: lo urgente lleva al 112; violencia de género, al 016.
+  const gas = r('huele a gas en la cocina'); assert.equal(gas.urgente, true); assert.equal(gas.titulo, 'Cortar el agua, la luz y el gas de tu casa');
+  assert.equal(r('me están atacando').urgente, true);
+  assert.equal(r('hay un intruso en casa').titulo, 'Proteger tu casa y qué hacer si entra alguien');
+  const vg = r('mi pareja me pega'); assert.equal(vg.urgente, true); assert.match(vg.intro, /016/);
+  assert.equal(r('mi hijo se ha perdido').titulo, 'Persona perdida');
+  assert.equal(r('tengo una fuga de agua').titulo, 'Fugas de agua y tuberías: arreglos provisionales');
+  assert.equal(r('puedo conectar el generador').titulo, 'Electricidad segura en una emergencia');
+  assert.equal(r('es legal defenderme').titulo, 'Legítima defensa: lo que dice la ley en España');
+  assert.equal(r('un tío agresivo en el bar').titulo, 'Calmar una situación tensa (desescalada)');
   assert.equal(r('cuántas patatas compro').titulo, 'Compra de colapso');
   assert.equal(r('plantas comestibles').titulo, 'Alimento silvestre: criterio y precauciones');
   assert.equal(r('hola').tipo, 'saludo');
@@ -556,6 +566,7 @@ test('Alex: urgencias al 112, crisis al 024, escenarios, buscador y fuera de tem
 test('contenido nuevo: huerto y en casa, con fuentes, listas y secciones válidas', async () => {
   const { ARTICULOS, SECCIONES, SOURCE_MAP, CHECKLISTS, articulosDeSeccion } = await imp('data/content/index.js');
   assert.ok(articulosDeSeccion('huerto').length >= 6 && articulosDeSeccion('en-casa').length >= 10);
+  assert.ok(articulosDeSeccion('bricolaje').length >= 9 && articulosDeSeccion('defensa').length >= 8);
   const ids = new Set(), secs = new Set(SECCIONES.map((x) => x.id)), checks = new Set(CHECKLISTS.map((c) => c.id));
   for (const a of ARTICULOS) {
     assert.ok(!ids.has(a.id), `artículo repetido: ${a.id}`); ids.add(a.id);
@@ -569,4 +580,9 @@ test('contenido nuevo: huerto y en casa, con fuentes, listas y secciones válida
   assert.match(texto('huerto-conservar'), /botulismo/);
   assert.match(texto('huerto-patatas'), /solanina/);
   assert.match(texto('huerto-brotes'), /Salmonella/);
+  assert.match(texto('bric-electricidad'), /Nunca conectes un generador/);
+  assert.match(texto('bric-filtro'), /no elimina bacterias/);
+  assert.match(texto('def-legal'), /20\.4/);
+  assert.match(texto('def-familia'), /016/);
+  assert.doesNotMatch(JSON.stringify(ARTICULOS.filter((a) => a.sec === 'defensa')), /spray|navaja (para|de) defensa|cómo apuñalar/i, 'no se recomiendan armas');
 });
