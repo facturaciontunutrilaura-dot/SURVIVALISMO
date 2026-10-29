@@ -1,0 +1,34 @@
+# Cabeceras para despliegues por arrastrar y soltar (Netlify Drop, Cloudflare
+# Pages / Drop) en los que este directorio es la raíz del sitio y no se lee
+# netlify.toml. Formato compatible con ambos proveedores.
+
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: no-referrer
+  Permissions-Policy: geolocation=(self), magnetometer=(self), accelerometer=(self), gyroscope=(self), camera=(), microphone=(), payment=(), usb=()
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://www.ign.es; media-src 'self' blob:; connect-src 'self' https://*.supabase.co https://*.supabase.in https://www.ign.es; font-src 'self'; worker-src 'self'; manifest-src 'self'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'
+
+# El Service Worker controla las actualizaciones de todo lo demás: nunca cacheado.
+/sw.js
+  Cache-Control: public, max-age=0, must-revalidate
+  Service-Worker-Allowed: /
+
+/index.html
+  Cache-Control: public, max-age=0, must-revalidate
+
+/precache-manifest.json
+  Cache-Control: public, max-age=0, must-revalidate
+
+/manifest.webmanifest
+  Content-Type: application/manifest+json; charset=utf-8
+  Cache-Control: public, max-age=3600
+
+/assets/*
+  Cache-Control: public, max-age=86400
+
+/data/*
+  Cache-Control: public, max-age=86400
+
+/icons/*
+  Cache-Control: public, max-age=2592000
