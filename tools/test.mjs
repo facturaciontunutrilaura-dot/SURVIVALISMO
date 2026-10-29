@@ -1463,6 +1463,12 @@ try {
   await page.fill('#al-q', 'alguien sangra mucho'); await page.press('#al-q', 'Enter');
   await page.waitForFunction(() => /Hemorragia grave/.test(document.querySelector('#al-log').textContent), null, { timeout: 10000 });
   ok('SIN RED: Alex responde', true);
+  await page.goto(BASE + '#/sec/en-casa', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('.list .row, a.row', { timeout: 10000 });
+  ok('SIN RED: «En casa durante la crisis» con sus fichas', (await page.locator('a.row').count()) >= 10);
+  await page.goto(BASE + '#/art/huerto-patatas', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('h1');
+  ok('SIN RED: ficha del huerto (patatas)', /solanina/.test(await page.textContent('#app')));
   await page.goto(BASE + '#/sec/evacuacion', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#ev-map .leaflet-overlay-pane path', { timeout: 15000 });
   ok('SIN RED: plan de evacuación con corredores y mapa', (await page.locator('#ev-corredores .ev-corr').count()) >= 4 && (await page.locator('#ev-map .leaflet-overlay-pane path').count()) >= 12);
@@ -2294,7 +2300,7 @@ try {
       });
       ok(`Tema ${tema}/${cont}: navegación, 112 y avisos siguen en pantalla`, pos.nav && pos.bar && pos.toast, JSON.stringify(pos));
       const malos = [];
-      for (const r of ['/', '/emergencia', '/emergencia/incendio-forestal', '/check/nivel2', '/sec/familia', '/sec/plan-familiar', '/sec/calculadoras', '/sec/config', '/sec/primeros-auxilios', '/sec/juegos/ajedrez', '/sec/evacuacion', '/sec/entrenamiento', '/sec/alex']) {
+      for (const r of ['/', '/emergencia', '/emergencia/incendio-forestal', '/check/nivel2', '/sec/familia', '/sec/plan-familiar', '/sec/calculadoras', '/sec/config', '/sec/primeros-auxilios', '/sec/juegos/ajedrez', '/sec/evacuacion', '/sec/entrenamiento', '/sec/alex', '/sec/huerto', '/art/casa-frio', '/art/huerto-patatas']) {
         await pt.goto(BASE + '#' + r); await pt.waitForTimeout(250);
         malos.push(...(await contraste(pt)).map((m) => r + ' ' + m));
       }

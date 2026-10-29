@@ -89,3 +89,14 @@ de la revisión profesional, con su fuente.
 | Fecha | Contenido (`id`) | Revisado por (profesión) | Fuentes | Resultado / cambios |
 |---|---|---|---|---|
 | — | — | — | — | — |
+
+## Bloques añadidos en la versión 1.10.0
+
+| Prioridad | Contenido | Dónde | Revisión por | Qué comprobar |
+|---|---|---|---|---|
+| **A** | Conservar la cosecha (conservas caseras, botulismo) y germinados | `data/content/art-huerto.js` · `huerto-conservar`, `huerto-brotes` | Tecnología de los alimentos, seguridad alimentaria o dietista-nutricionista | Procedimientos de conservación, grupos de riesgo, señales de alarma |
+| B | Huerto: empezar, patatas, calendario, semillas | `art-huerto.js` · `huerto-empezar`, `huerto-patatas`, `huerto-calendario`, `huerto-semillas` | Ingeniería agronómica o técnico agrario | Fechas por zona climática, marcos de plantación, plagas, solanina |
+| **A** | Váter sin agua, higiene, frío (monóxido), calor (golpe de calor), refugio ante un ataque | `data/content/art-casa.js` | Protección civil o salud pública; sanitario para golpe de calor e hipotermia | Que coincida con las guías oficiales vigentes |
+| B | Primeras horas, energía, seguridad, vulnerables, trueque, agua de lluvia | `art-casa.js` | Protección civil | Coherencia con el resto de la app |
+| B | Pregúntale a Alex: intenciones y respuestas de salud | `data/content/alex.js` | Sanitario | Que ninguna respuesta dé dosis ni diagnósticos y que las urgencias lleven al 112 |
+| B | Entrenamiento en casa | `data/content/entrenamiento.js` | Graduado en CAFyD | Progresiones, dosis por nivel, avisos de seguridad |

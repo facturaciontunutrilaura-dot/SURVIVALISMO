@@ -137,6 +137,28 @@ export const CHECKLISTS = [
     ],
   },
   {
+    id: 'saneamiento',
+    t: 'Saneamiento de emergencia',
+    desc: 'Lo necesario para un váter de emergencia y la higiene cuando falla el agua o el alcantarillado.',
+    grupos: [
+      { g: 'Váter de emergencia', items: ['Bolsas de basura muy resistentes (2 rollos)', 'Cubo con tapa de 15–20 l', 'Material seco: serrín, arena para gatos o tierra', 'Papel higiénico', 'Recipiente o botella para separar la orina', 'Guantes desechables'] },
+      { g: 'Higiene', items: ['Jabón', 'Gel hidroalcohólico', 'Garrafa con grifo para lavarse las manos', 'Palangana y esponja', 'Toallitas húmedas', 'Lejía'] },
+      { g: 'Residuos', items: ['Bolsas para pañales y compresas', 'Recipiente con tapa para guardar las bolsas', 'Bolsas para la basura orgánica'] },
+    ],
+  },
+  {
+    id: 'huerto',
+    t: 'Kit de huerto de supervivencia',
+    desc: 'Semillas y herramientas básicas para empezar a producir alimento.',
+    grupos: [
+      { g: 'Semillas (variedades tradicionales)', items: ['Judía', 'Haba', 'Guisante', 'Calabaza de invierno', 'Tomate', 'Pimiento', 'Lechuga', 'Acelga', 'Espinaca', 'Rábano', 'Cebolla', 'Zanahoria', 'Semillas para germinar (lenteja, alfalfa)'] },
+      { g: 'Patata', items: ['Patata de siembra certificada', 'Sacos de cultivo (si no hay terreno)'] },
+      { g: 'Herramientas', items: ['Azada', 'Rastrillo', 'Horca o laya', 'Pala de mano', 'Regadera o manguera', 'Guantes de jardinería', 'Tijeras de podar'] },
+      { g: 'Suelo y riego', items: ['Compost o estiércol descompuesto', 'Paja o restos vegetales para acolchar', 'Depósitos para recoger agua de lluvia', 'Macetas grandes (20 l o más)'] },
+      { g: 'Conservar la cosecha', items: ['Cajas o sacos de rafia', 'Tarros de cristal con tapa nueva', 'Vinagre y sal', 'Sobres de papel y etiquetas para semillas'] },
+    ],
+  },
+  {
     id: 'avila',
     t: 'Plan Ávila (estacional)',
     desc: 'Revisión en junio y en noviembre.',

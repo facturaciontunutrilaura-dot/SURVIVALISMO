@@ -40,18 +40,16 @@ export const INTENCIONES = [
     destino: { tipo: 'articulo', id: 'pa-botiquin' }, tambien: [{ tipo: 'compra', id: 'compra-colapso' }],
     intro: 'Con una enfermedad crónica, lo más importante en una emergencia es: medicación para el doble de días previstos, las recetas y un informe médico en papel, y que tu familia sepa qué hacer. Prepara tu plan personal con tu médico. Para el botiquín de casa:',
   },
-  // --- Temas que la app aún no cubre: se dice claramente ---
-  {
-    id: 'huerto', patrones: ['huerto', 'sembrar', 'siembra', 'plantar', 'cultivar', 'cultivo*', 'cosech*', 'semilla*'],
-    destino: { tipo: 'sin-contenido' },
-    intro: 'Todavía no tengo información sobre huerto y cultivos: no quiero darte consejos que no estén revisados. Mientras tanto, esto te puede servir:',
-  },
   // --- Escenarios frecuentes ---
+  { id: 'empieza', patrones: ['que hago ahora', 'acaba de empezar', 'esta pasando algo', 'por donde empiezo', 'primeras horas'], destino: { tipo: 'articulo', id: 'casa-primeras-horas' } },
+  { id: 'ataque', urgente: true, patrones: ['bombarde*', 'explosion*', 'misil*', 'ataque aereo', 'alerta aerea', 'refugio antiaereo', 'sirenas de ataque'], destino: { tipo: 'articulo', id: 'casa-ataque' }, tambien: [{ tipo: 'emergencia', id: 'conflicto' }] },
   { id: 'calorias', patrones: ['calorias', 'kcal', 'cuanto comer', 'cuanta comida', 'cuanto como'], destino: { tipo: 'articulo', id: 'alim-reserva' }, tambien: [{ tipo: 'compra', id: 'compra-colapso' }] },
   { id: 'silvestre', patrones: ['plantas comestibles', 'comer plantas', 'setas', 'bayas', 'frutos silvestres', 'comida del monte'], destino: { tipo: 'articulo', id: 'alim-silvestre' } },
+  { id: 'bateria', patrones: ['bateria*', 'cargar el movil', 'cargo el movil', 'sin bateria', 'cargar movil', 'power bank', 'placa solar', 'velas'], destino: { tipo: 'articulo', id: 'casa-energia' } },
+  { id: 'higiene', patrones: ['ducharme', 'lavarme', 'me lavo', 'lavarse', 'asearme', 'higiene', 'lavar los platos', 'lavar la ropa'], destino: { tipo: 'articulo', id: 'casa-higiene' } },
   { id: 'apagon', patrones: ['se ha ido la luz', 'sin luz', 'apagon*', 'no hay luz', 'corte de luz', 'sin electricidad', 'se fue la luz'], destino: { tipo: 'emergencia', id: 'apagon' } },
   { id: 'agua', patrones: ['sin agua', 'no sale agua', 'corte de agua', 'no hay agua'], destino: { tipo: 'emergencia', id: 'falta-agua' } },
-  { id: 'guerra', patrones: ['guerra', 'conflicto armado', 'bombarde*', 'misil*', 'invasion*', 'ataque aereo'], destino: { tipo: 'emergencia', id: 'conflicto' }, tambien: [{ tipo: 'evacuacion', id: 'plan-evacuacion' }] },
+  { id: 'guerra', patrones: ['guerra', 'conflicto armado', 'invasion*'], destino: { tipo: 'emergencia', id: 'conflicto' }, tambien: [{ tipo: 'evacuacion', id: 'plan-evacuacion' }] },
   { id: 'nuclear', patrones: ['nuclear', 'radiacion', 'radiactiv*', 'almaraz'], destino: { tipo: 'emergencia', id: 'radiologico' }, tambien: [{ tipo: 'evacuacion', id: 'plan-evacuacion' }] },
   { id: 'compra', patrones: ['que compro', 'que comprar', 'lista de la compra', 'hacer la compra', 'que tengo que comprar', 'compro', 'comprar'], destino: { tipo: 'compra', id: 'compra-colapso' } },
   { id: 'colapso', patrones: ['colapso', 'saqueo', 'fin del mundo', 'desabastec*', 'caos total', 'se acaba la comida'], destino: { tipo: 'evacuacion', id: 'plan-evacuacion' }, tambien: [{ tipo: 'compra', id: 'compra-colapso' }, { tipo: 'emergencia', id: 'falta-alimentos' }] },
@@ -62,8 +60,21 @@ export const INTENCIONES = [
   { id: 'fuego', patrones: ['hacer fuego', 'hago fuego', 'encender fuego', 'encender una hoguera', 'hacer una hoguera', 'sin mechero'], destino: { tipo: 'articulo', id: 'fuego-encender' } },
   { id: 'lesion', patrones: ['tobillo', 'esguince*', 'torcedura', 'me he torcido', 'se ha torcido', 'picadura', 'mordedura', 'me ha picado', 'le ha picado', 'fractura', 'roto un hueso'], destino: { tipo: 'articulo', id: 'pa-varios' } },
   { id: 'mascotas', patrones: ['perro', 'perros', 'gato', 'gatos', 'mascota*'], destino: { tipo: 'articulo', id: 'mascotas' } },
+  { id: 'patatas', patrones: ['patata*', 'papas'], destino: { tipo: 'articulo', id: 'huerto-patatas' } },
+  { id: 'calendario', patrones: ['cuando sembrar', 'cuando siembro', 'cuando plantar', 'calendario de siembra', 'que siembro', 'que planto'], destino: { tipo: 'articulo', id: 'huerto-calendario' } },
+  { id: 'semillas', patrones: ['semilla*'], destino: { tipo: 'articulo', id: 'huerto-semillas' } },
+  { id: 'conservas', patrones: ['conserva casera', 'conservas caseras', 'botulismo', 'embotar', 'hacer conservas', 'conservar la cosecha', 'deshidratar'], destino: { tipo: 'articulo', id: 'huerto-conservar' } },
+  { id: 'germinados', patrones: ['germin*', 'brotes'], destino: { tipo: 'articulo', id: 'huerto-brotes' } },
+  { id: 'huerto', patrones: ['huerto', 'sembrar', 'siembra', 'plantar', 'cultivar', 'cultivo*', 'cosech*', 'hortaliza*'], destino: { tipo: 'articulo', id: 'huerto-empezar' } },
+  { id: 'vater', patrones: ['vater', 'water', 'inodoro', 'wc', 'cisterna', 'hacer mis necesidades', 'ir al bano', 'cagar', 'mear'], destino: { tipo: 'articulo', id: 'casa-saneamiento' } },
+  { id: 'frio', patrones: ['sin calefaccion', 'frio en casa', 'mucho frio', 'calentar la casa', 'pasar frio', 'no hay calefaccion'], destino: { tipo: 'articulo', id: 'casa-frio' } },
+  { id: 'calor', patrones: ['sin aire acondicionado', 'mucho calor', 'calor en casa', 'pasar calor'], destino: { tipo: 'articulo', id: 'casa-calor' } },
+  { id: 'lluvia', patrones: ['agua de lluvia', 'recoger agua', 'recoger lluvia'], destino: { tipo: 'articulo', id: 'agua-lluvia' } },
+  { id: 'seguridad', patrones: ['robo*', 'ladron*', 'asalto', 'proteger la casa', 'seguridad en casa', 'me quieren robar'], destino: { tipo: 'articulo', id: 'casa-seguridad' } },
+  { id: 'trueque', patrones: ['trueque', 'intercambiar', 'dinero', 'efectivo', 'corralito', 'cajero*'], destino: { tipo: 'articulo', id: 'casa-trueque' } },
   { id: 'mochila', patrones: ['mochila', 'que llevo si', 'que meto', 'que me llevo'], destino: { tipo: 'checklist', id: 'bob' } },
   { id: 'entrenar', patrones: ['entren*', 'hacer ejercicio', 'ponerme en forma', 'rutina de ejercicio', 'forma fisica'], destino: { tipo: 'entrenamiento', id: 'entrenamiento-casa' } },
+  { id: 'vulnerables', patrones: ['nino*', 'bebe*', 'hijos', 'abuelo*', 'mayores', 'ancianos', 'dependiente*', 'discapacidad'], destino: { tipo: 'articulo', id: 'casa-vulnerables' } },
   { id: 'ansiedad', patrones: ['ansiedad', 'tengo miedo', 'ataque de panico', 'estoy nervios*', 'no puedo calmarme', 'agobiad*'], destino: { tipo: 'juego', id: 'calma' } },
 ];
 
@@ -82,5 +93,5 @@ export const CRISIS = [
 
 export const SUGERENCIAS = [
   'Se ha ido la luz', 'Alguien sangra mucho', '¿Qué meto en la mochila?', '¿Cómo potabilizo agua?',
-  'Hay un incendio cerca', '¿Qué hago si hay una guerra?', 'Me he perdido en el monte', 'Tengo ansiedad',
+  'Hay un incendio cerca', '¿Qué hago si hay una guerra?', 'El váter no funciona', '¿Cómo planto patatas?', 'Me he perdido en el monte', 'Tengo ansiedad',
 ];

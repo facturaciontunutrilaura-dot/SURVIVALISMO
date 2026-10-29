@@ -538,10 +538,35 @@ test('Alex: urgencias al 112, crisis al 024, escenarios, buscador y fuera de tem
   for (const q of ['cuánto ibuprofeno tomo', 'tengo fiebre qué tomo', 'qué hago con la diabetes en una emergencia']) {
     const x = r(q); assert.equal(x.titulo, 'Botiquín: qué llevar de verdad', q); assert.match(x.intro, /médico/, q);
   }
-  assert.equal(r('quiero sembrar patatas para cosecharlas').tipo, 'sin-contenido');
+  assert.equal(r('quiero sembrar patatas para cosecharlas').titulo, 'Patatas paso a paso');
+  assert.equal(r('cómo planto un huerto').titulo, 'Empezar un huerto de supervivencia');
+  assert.equal(r('no funciona el váter').titulo, 'Váter de emergencia y saneamiento');
+  assert.equal(r('hace mucho frío en casa y no hay calefacción').titulo, 'Mantener el calor sin calefacción');
+  assert.equal(r('cómo cargo el móvil sin luz').titulo, 'Luz, baterías y móvil sin electricidad');
+  assert.equal(r('hay un bombardeo').urgente, true);
+  assert.equal(r('hay un bombardeo').titulo, 'Refugiarse en casa ante un ataque o una explosión');
+  assert.equal(r('qué hago ahora').titulo, 'Las primeras horas: qué hacer ya');
   assert.equal(r('cuántas patatas compro').titulo, 'Compra de colapso');
   assert.equal(r('plantas comestibles').titulo, 'Alimento silvestre: criterio y precauciones');
   assert.equal(r('hola').tipo, 'saludo');
   assert.equal(r('gracias').tipo, 'gracias');
   assert.equal(r('').tipo, 'saludo');
+});
+
+test('contenido nuevo: huerto y en casa, con fuentes, listas y secciones válidas', async () => {
+  const { ARTICULOS, SECCIONES, SOURCE_MAP, CHECKLISTS, articulosDeSeccion } = await imp('data/content/index.js');
+  assert.ok(articulosDeSeccion('huerto').length >= 6 && articulosDeSeccion('en-casa').length >= 10);
+  const ids = new Set(), secs = new Set(SECCIONES.map((x) => x.id)), checks = new Set(CHECKLISTS.map((c) => c.id));
+  for (const a of ARTICULOS) {
+    assert.ok(!ids.has(a.id), `artículo repetido: ${a.id}`); ids.add(a.id);
+    assert.ok(secs.has(a.sec), `${a.id}: sección ${a.sec}`);
+    for (const s of a.src || []) assert.ok(SOURCE_MAP[s], `${a.id}: fuente ${s}`);
+    for (const b of a.body) if (b.check) assert.ok(checks.has(b.check), `${a.id}: checklist ${b.check}`);
+  }
+  // Lo peligroso se avisa.
+  const texto = (id) => JSON.stringify(ARTICULOS.find((a) => a.id === id).body);
+  assert.match(texto('casa-frio'), /monóxido/);
+  assert.match(texto('huerto-conservar'), /botulismo/);
+  assert.match(texto('huerto-patatas'), /solanina/);
+  assert.match(texto('huerto-brotes'), /Salmonella/);
 });
