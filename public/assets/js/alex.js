@@ -8,7 +8,7 @@ import { PRESENTACION, FUERA_DE_TEMA, AVISO_ALEX, CRISIS, SUGERENCIAS } from '..
 
 let alex = null;   // el índice se prepara una vez por sesión
 
-const avatar = '<span class="al-av" aria-hidden="true">A</span>';
+const avatar = '<img class="al-av" src="./assets/img/alex.png" alt="" width="36" height="36">';
 const chips = (lista) => `<div class="al-sug">${lista.map((s) => `<button type="button" class="ev-chip" data-preg="${esc(s)}">${esc(s)}</button>`).join('')}</div>`;
 const enlaces = (rel, t = 'También te puede servir') => rel?.length ? `<p class="al-rel-t">${t}</p><ul class="al-rel">${rel.map((r) => `<li><a href="${esc(r.ruta)}">${esc(r.t)}</a></li>`).join('')}</ul>` : '';
 
@@ -17,6 +17,7 @@ export function pintarRespuesta(r) {
   if (r.tipo === 'saludo') return `<p>${esc(PRESENTACION)}</p>${chips(r.sugerencias)}`;
   if (r.tipo === 'gracias') return '<p>Para eso estoy. Si pasa algo más, cuéntamelo.</p>';
   if (r.tipo === 'fuera') return `<p>${esc(FUERA_DE_TEMA)}</p>${chips(r.sugerencias)}`;
+  if (r.tipo === 'sin-contenido') return `<p>${esc(r.intro)}</p>${enlaces(r.relacionados, '')}`;
   if (r.tipo === 'crisis') {
     return `<p>${esc(r.intro)}</p>
       ${CRISIS.map((c) => `<a class="btn-112 al-tel" href="tel:${c.tel}" aria-label="Llamar al ${c.tel}, ${esc(c.t)}"><span class="ic" aria-hidden="true">📞</span><span class="tx"><b>${c.tel} · ${esc(c.t)}</b><small>${esc(c.d)}</small></span></a>`).join('')}
@@ -26,6 +27,7 @@ export function pintarRespuesta(r) {
     ${r.urgente ? `<div class="al-urg"><p><b>Lo primero: llama al 112.</b> Después sigue estos pasos.</p>
       <a class="btn-112 compacto" href="tel:112" aria-label="Llamar al 112, teléfono de emergencias"><span class="ic" aria-hidden="true">📞</span><span class="tx"><b>Llamar al 112</b></span></a></div>` : ''}
     ${r.duda ? '<p class="muted">Creo que te refieres a esto:</p>' : ''}
+    ${r.intro ? `<p class="al-intro">${esc(r.intro)}</p>` : ''}
     <h3>${esc(r.titulo)}</h3>
     ${r.resumen ? `<p>${esc(r.resumen)}</p>` : ''}
     ${r.pasos?.length ? `<ol class="steps">${r.pasos.map((p) => `<li>${esc(p)}</li>`).join('')}</ol>` : ''}

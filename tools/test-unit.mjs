@@ -512,7 +512,7 @@ test('Alex: urgencias al 112, crisis al 024, escenarios, buscador y fuera de tem
   const { crearAlex, coincide } = await imp('assets/js/alex-motor.js');
   const { INTENCIONES } = await imp('data/content/alex.js');
   // Cada intención apunta a contenido que existe.
-  for (const i of INTENCIONES) if (i.destino.tipo !== 'sos-lista') assert.ok(INDICE.some((it) => it.tipo === i.destino.tipo && it.id === i.destino.id), `${i.id} → ${i.destino.tipo}:${i.destino.id}`);
+  for (const i of INTENCIONES) if (!['sos-lista', 'sin-contenido'].includes(i.destino.tipo)) assert.ok(INDICE.some((it) => it.tipo === i.destino.tipo && it.id === i.destino.id), `${i.id} → ${i.destino.tipo}:${i.destino.id}`);
   // Palabra completa salvo raíz con «*».
   assert.ok(coincide(' hay una dana en valencia ', 'dana') && !coincide(' no quiero danar a nadie ', 'dana'));
   assert.ok(coincide(' se ha atragantado ', 'atragant*'));
@@ -534,6 +534,13 @@ test('Alex: urgencias al 112, crisis al 024, escenarios, buscador y fuera de tem
   assert.equal(r('cómo potabilizo agua').titulo, 'Potabilizar agua: hervir, cloro y filtros');
   assert.equal(r('cómo orientarme sin brújula').titulo, 'Orientarse sin brújula');
   assert.equal(r('receta de paella').tipo, 'fuera');
+  // Salud: nunca dosis ni diagnósticos; lo que la app no cubre, lo dice.
+  for (const q of ['cuánto ibuprofeno tomo', 'tengo fiebre qué tomo', 'qué hago con la diabetes en una emergencia']) {
+    const x = r(q); assert.equal(x.titulo, 'Botiquín: qué llevar de verdad', q); assert.match(x.intro, /médico/, q);
+  }
+  assert.equal(r('quiero sembrar patatas para cosecharlas').tipo, 'sin-contenido');
+  assert.equal(r('cuántas patatas compro').titulo, 'Compra de colapso');
+  assert.equal(r('plantas comestibles').titulo, 'Alimento silvestre: criterio y precauciones');
   assert.equal(r('hola').tipo, 'saludo');
   assert.equal(r('gracias').tipo, 'gracias');
   assert.equal(r('').tipo, 'saludo');

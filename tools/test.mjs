@@ -577,6 +577,7 @@ try {
     await page.waitForSelector('.home-alex');
     await page.click('.home-alex');
     await page.waitForSelector('.al-msg.alex');
+    ok('Alex: aparece con su cara', await page.locator('.al-msg.alex img.al-av').first().evaluate((i) => i.complete && i.naturalWidth > 0));
     ok('Alex: saluda y ofrece preguntas de ejemplo', (await page.locator('.al-msg.alex [data-preg]').count()) >= 6);
     const pregunta = async (q) => { const antes = await page.locator('.al-msg.alex').count(); await page.fill('#al-q', q); await page.press('#al-q', 'Enter'); await page.waitForFunction((k) => document.querySelectorAll('.al-msg.alex').length > k, antes); return page.locator('.al-msg.alex').last(); };
     let m = await pregunta('mi padre no respira');

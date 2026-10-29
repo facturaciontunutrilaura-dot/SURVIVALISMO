@@ -57,7 +57,7 @@ export function crearAlex(indice = INDICE) {
   function relacionados(q, excluir, extra = []) {
     const vistos = new Set(excluir.map((x) => x.ruta));
     const out = [];
-    const utiles = buscador.buscar(q).resultados.filter((r) => r.puntos >= CONFIANZA_MIN).map((r) => r.it);
+    const utiles = buscador.buscar(q).resultados.filter((r) => r.puntos >= CONFIANZA_DUDA).map((r) => r.it);
     for (const it of [...extra.map(entrada).filter(Boolean), ...utiles]) {
       if (vistos.has(it.ruta) || out.length >= 3) continue;
       vistos.add(it.ruta); out.push({ t: it.t, ruta: it.ruta });
@@ -79,11 +79,14 @@ export function crearAlex(indice = INDICE) {
     for (const intn of INTENCIONES) {
       if (!intn.patrones.some((p) => coincide(t, p))) continue;
       if (intn.crisis) return { tipo: 'crisis', intro: intn.intro, relacionados: [entrada(intn.destino)].filter(Boolean).map((it) => ({ t: it.t, ruta: it.ruta })) };
+      if (intn.destino.tipo === 'sin-contenido') {
+        return { tipo: 'sin-contenido', intro: intn.intro, relacionados: relacionados(q, [], [{ tipo: 'articulo', id: 'alim-reserva' }, { tipo: 'checklist', id: 'despensa' }]), sugerencias: SUGERENCIAS };
+      }
       if (intn.destino.tipo === 'sos-lista') {
         return { tipo: 'respuesta', urgente: true, titulo: 'Emergencia sanitaria', resumen: 'Mientras llega la ayuda, abre la ficha que corresponda.', ruta: '#/emergencia', pasos: [], mas: 'Ver todas las emergencias sanitarias', relacionados: relacionados(q, [{ ruta: '#/emergencia' }]) };
       }
       const it = entrada(intn.destino);
-      if (it) return respuestaDe(it, q, { urgente: !!intn.urgente, intencion: intn.id, tambien: intn.tambien });
+      if (it) return respuestaDe(it, q, { urgente: !!intn.urgente, intencion: intn.id, intro: intn.intro, tambien: intn.tambien });
     }
 
     const corto = t.trim().split(' ').length <= 3;

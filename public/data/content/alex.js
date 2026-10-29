@@ -29,12 +29,31 @@ export const INTENCIONES = [
   { id: 'ictus', urgente: true, patrones: ['ictus', 'cara torcida', 'boca torcida', 'no puede hablar', 'habla raro', 'no mueve el brazo', 'no mueve un lado', 'derrame cerebral', 'embolia'], destino: { tipo: 'sos', id: 'ictus' } },
   { id: 'urgencia', urgente: true, patrones: ['no puede respirar', 'convulsion*', 'quemadura grave', 'envenen*', 'intoxica*', 'se esta ahogando', 'ahogandose', 'fractura abierta', 'herido grave', 'se ha caido de'], destino: { tipo: 'sos-lista' } },
   { id: 'incendio-casa', urgente: true, patrones: ['fuego en casa', 'se quema la casa', 'incendio en casa', 'incendio en el piso', 'humo en casa', 'humo en la escalera'], destino: { tipo: 'emergencia', id: 'incendio-vivienda' } },
+  // --- Salud: Alex no da dosis ni diagnósticos ---
+  {
+    id: 'medicacion', patrones: ['ibuprofeno', 'paracetamol', 'dosis', 'que tomo', 'que le doy', 'cuanto tomo', 'pastilla*', 'medicament*', 'antibiotic*', 'fiebre'],
+    destino: { tipo: 'articulo', id: 'pa-botiquin' },
+    intro: 'No doy dosis, diagnósticos ni tratamientos: dependen de cada persona. Pregunta a tu farmacéutico o a tu médico y, si es urgente, llama al 112. Esto es lo que conviene tener en casa:',
+  },
+  {
+    id: 'cronica', patrones: ['diabet*', 'insulina', 'asma', 'hipertens*', 'epilep*', 'embaraz*', 'dialisis', 'marcapasos', 'enfermedad cronica', 'oxigeno en casa'],
+    destino: { tipo: 'articulo', id: 'pa-botiquin' }, tambien: [{ tipo: 'compra', id: 'compra-colapso' }],
+    intro: 'Con una enfermedad crónica, lo más importante en una emergencia es: medicación para el doble de días previstos, las recetas y un informe médico en papel, y que tu familia sepa qué hacer. Prepara tu plan personal con tu médico. Para el botiquín de casa:',
+  },
+  // --- Temas que la app aún no cubre: se dice claramente ---
+  {
+    id: 'huerto', patrones: ['huerto', 'sembrar', 'siembra', 'plantar', 'cultivar', 'cultivo*', 'cosech*', 'semilla*'],
+    destino: { tipo: 'sin-contenido' },
+    intro: 'Todavía no tengo información sobre huerto y cultivos: no quiero darte consejos que no estén revisados. Mientras tanto, esto te puede servir:',
+  },
   // --- Escenarios frecuentes ---
+  { id: 'calorias', patrones: ['calorias', 'kcal', 'cuanto comer', 'cuanta comida', 'cuanto como'], destino: { tipo: 'articulo', id: 'alim-reserva' }, tambien: [{ tipo: 'compra', id: 'compra-colapso' }] },
+  { id: 'silvestre', patrones: ['plantas comestibles', 'comer plantas', 'setas', 'bayas', 'frutos silvestres', 'comida del monte'], destino: { tipo: 'articulo', id: 'alim-silvestre' } },
   { id: 'apagon', patrones: ['se ha ido la luz', 'sin luz', 'apagon*', 'no hay luz', 'corte de luz', 'sin electricidad', 'se fue la luz'], destino: { tipo: 'emergencia', id: 'apagon' } },
   { id: 'agua', patrones: ['sin agua', 'no sale agua', 'corte de agua', 'no hay agua'], destino: { tipo: 'emergencia', id: 'falta-agua' } },
   { id: 'guerra', patrones: ['guerra', 'conflicto armado', 'bombarde*', 'misil*', 'invasion*', 'ataque aereo'], destino: { tipo: 'emergencia', id: 'conflicto' }, tambien: [{ tipo: 'evacuacion', id: 'plan-evacuacion' }] },
   { id: 'nuclear', patrones: ['nuclear', 'radiacion', 'radiactiv*', 'almaraz'], destino: { tipo: 'emergencia', id: 'radiologico' }, tambien: [{ tipo: 'evacuacion', id: 'plan-evacuacion' }] },
-  { id: 'compra', patrones: ['que compro', 'que comprar', 'lista de la compra', 'hacer la compra', 'que tengo que comprar'], destino: { tipo: 'compra', id: 'compra-colapso' } },
+  { id: 'compra', patrones: ['que compro', 'que comprar', 'lista de la compra', 'hacer la compra', 'que tengo que comprar', 'compro', 'comprar'], destino: { tipo: 'compra', id: 'compra-colapso' } },
   { id: 'colapso', patrones: ['colapso', 'saqueo', 'fin del mundo', 'desabastec*', 'caos total', 'se acaba la comida'], destino: { tipo: 'evacuacion', id: 'plan-evacuacion' }, tambien: [{ tipo: 'compra', id: 'compra-colapso' }, { tipo: 'emergencia', id: 'falta-alimentos' }] },
   { id: 'huir', patrones: ['huir', 'salir del pais', 'evacuar', 'frontera', 'escapar de espana', 'irme de espana'], destino: { tipo: 'evacuacion', id: 'plan-evacuacion' } },
   { id: 'inundacion', patrones: ['inundacion*', 'se inunda', 'riada', 'dana', 'crecida'], destino: { tipo: 'emergencia', id: 'inundacion' } },

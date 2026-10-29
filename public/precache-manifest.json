@@ -1,6 +1,7 @@
 [
   "./",
   "./assets/css/app.css",
+  "./assets/img/alex.png",
   "./assets/js/ajedrez-ia.js",
   "./assets/js/ajedrez.js",
   "./assets/js/alex-motor.js",
