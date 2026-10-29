@@ -28,7 +28,7 @@ const srv = spawn(process.execPath, [path.join(ROOT, 'tools/serve.mjs')], {
 await new Promise((r) => setTimeout(r, 900));
 
 import fs from 'node:fs';
-const CHROME = ['/opt/pw-browsers/chromium-1194/chrome-linux/chrome', '/usr/bin/chromium', '/usr/bin/google-chrome']
+const CHROME = ['/opt/pw-browsers/chromium-1194/chrome-linux/chrome', '/opt/pw-browsers/chromium', '/usr/bin/chromium', '/usr/bin/google-chrome']
   .find((p) => fs.existsSync(p));
 const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
 const ctx = await browser.newContext({ ...devices['Pixel 7'], serviceWorkers: 'allow' });
@@ -568,6 +568,29 @@ try {
     ok('Colapso: el buscador lo encuentra', busq === '#/sec/compra', String(busq));
     // Se deja como al principio para el resto de pruebas.
     await page.evaluate(async () => { const st = await import('./assets/js/store.js'); for (const k of ['compra.hogar', 'compra.marcadas', 'compra.dias', 'compra.activa']) await st.del?.('kv', k); });
+  }
+
+  /* ------------------------- 9 bis e. Pregúntale a Alex ------------------------- */
+  console.log('\n▸ Pregúntale a Alex');
+  {
+    await page.goto(BASE + '#/');
+    await page.waitForSelector('.home-alex');
+    await page.click('.home-alex');
+    await page.waitForSelector('.al-msg.alex');
+    ok('Alex: saluda y ofrece preguntas de ejemplo', (await page.locator('.al-msg.alex [data-preg]').count()) >= 6);
+    const pregunta = async (q) => { const antes = await page.locator('.al-msg.alex').count(); await page.fill('#al-q', q); await page.press('#al-q', 'Enter'); await page.waitForFunction((k) => document.querySelectorAll('.al-msg.alex').length > k, antes); return page.locator('.al-msg.alex').last(); };
+    let m = await pregunta('mi padre no respira');
+    ok('Alex: ante una urgencia vital, lo primero es llamar al 112', (await m.locator('a[href="tel:112"]').count()) === 1 && /Parada cardíaca/.test(await m.textContent()) && (await m.locator('.steps li').count()) >= 3);
+    ok('Alex: enlaza con la ficha completa', (await m.locator('a[href="#/emergencia/sanitaria/parada-cardiaca"]').count()) === 1);
+    ok('Alex: la caja de texto queda lista para seguir preguntando', (await page.inputValue('#al-q')) === '' && await page.evaluate(() => document.activeElement?.id === 'al-q'));
+    await page.locator('.al-msg.alex [data-preg="Se ha ido la luz"]').first().click();
+    m = page.locator('.al-msg.alex').last();
+    ok('Alex: las preguntas de ejemplo funcionan', /Apagón eléctrico/.test(await m.textContent()));
+    m = await pregunta('no quiero vivir');
+    ok('Alex: ante una crisis personal ofrece el 024 y el 112', (await m.locator('a[href="tel:024"]').count()) === 1 && (await m.locator('a[href="tel:112"]').count()) === 1);
+    m = await pregunta('receta de paella');
+    ok('Alex: fuera de tema lo dice y no inventa', /Solo puedo ayudarte/.test(await m.textContent()));
+    ok('Alex: la conversación es accesible (registro con anuncio)', (await page.getAttribute('#al-log', 'role')) === 'log');
   }
 
   /* ----------------------- 9 bis d. Entrenamiento en casa ----------------------- */
@@ -1434,6 +1457,11 @@ try {
   ok('SIN RED: sección Ávila', (await page.locator('.list .row').count()) >= 4);
 
   // Los apartados nuevos, también sin red.
+  await page.goto(BASE + '#/sec/alex', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#al-q');
+  await page.fill('#al-q', 'alguien sangra mucho'); await page.press('#al-q', 'Enter');
+  await page.waitForFunction(() => /Hemorragia grave/.test(document.querySelector('#al-log').textContent), null, { timeout: 10000 });
+  ok('SIN RED: Alex responde', true);
   await page.goto(BASE + '#/sec/evacuacion', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#ev-map .leaflet-overlay-pane path', { timeout: 15000 });
   ok('SIN RED: plan de evacuación con corredores y mapa', (await page.locator('#ev-corredores .ev-corr').count()) >= 4 && (await page.locator('#ev-map .leaflet-overlay-pane path').count()) >= 12);
@@ -2265,7 +2293,7 @@ try {
       });
       ok(`Tema ${tema}/${cont}: navegación, 112 y avisos siguen en pantalla`, pos.nav && pos.bar && pos.toast, JSON.stringify(pos));
       const malos = [];
-      for (const r of ['/', '/emergencia', '/emergencia/incendio-forestal', '/check/nivel2', '/sec/familia', '/sec/plan-familiar', '/sec/calculadoras', '/sec/config', '/sec/primeros-auxilios', '/sec/juegos/ajedrez', '/sec/evacuacion', '/sec/entrenamiento']) {
+      for (const r of ['/', '/emergencia', '/emergencia/incendio-forestal', '/check/nivel2', '/sec/familia', '/sec/plan-familiar', '/sec/calculadoras', '/sec/config', '/sec/primeros-auxilios', '/sec/juegos/ajedrez', '/sec/evacuacion', '/sec/entrenamiento', '/sec/alex']) {
         await pt.goto(BASE + '#' + r); await pt.waitForTimeout(250);
         malos.push(...(await contraste(pt)).map((m) => r + ' ' + m));
       }

@@ -169,6 +169,7 @@ function vHome() {
         <a class="home-112" href="tel:112" aria-label="Llamar al 112, emergencias"><span aria-hidden="true">📞</span><b>112</b></a>
       </div>
       <a class="home-buscar" href="#/buscar"><span aria-hidden="true">🔍</span> Buscar en el manual: «sangrado», «apagón»…</a>
+      <a class="home-buscar home-alex" href="#/sec/alex"><span aria-hidden="true">💬</span> Pregúntale a Alex: «se ha ido la luz»…</a>
     </section>
 
     <div id="home-prep" class="home-prep" hidden></div>
@@ -487,6 +488,12 @@ async function vSeccion(id, sub) {
     const { evacuacionView } = await import('./evacuacion.js');
     const w = el(`<div>${topbar(s.t, 'Salir de Ávila: España y fuera')}<h1>${s.ic} PLAN DE EVACUACIÓN</h1></div>`);
     w.appendChild(await evacuacionView());
+    return w;
+  }
+  if (id === 'alex') {
+    const { alexView } = await import('./alex.js');
+    const w = el(`<div>${topbar(s.t, 'También sin conexión')}<h1>${s.ic} PREGÚNTALE A ALEX</h1></div>`);
+    w.appendChild(alexView());
     return w;
   }
   if (id === 'entrenamiento') {
@@ -1037,6 +1044,7 @@ const TIPOS_BUSQUEDA = {
   compra: { t: 'Compra', ic: '🛒', f: 'otros' },
   evacuacion: { t: 'Evacuación', ic: '🧭', f: 'otros' },
   entrenamiento: { t: 'Entrenamiento', ic: '💪', f: 'otros' },
+  alex: { t: 'Alex', ic: '💬', f: 'otros' },
   audio: { t: 'Audio', ic: '🎵', f: 'otros' },
   familia: { t: 'Familia', ic: '👨‍👩‍👧', f: 'otros' },
 };

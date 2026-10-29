@@ -38,6 +38,7 @@ export const SECCIONES = [
   { id: 'mascotas', t: 'MASCOTAS', ic: '🐕', desc: 'Preparación y evacuación con animales' },
   { id: 'plan-familiar', t: 'PLAN FAMILIAR', ic: '👨‍👩‍👧', desc: 'Contactos, puntos de encuentro y reunificación' },
   { id: 'calculadoras', t: 'CALCULADORAS', ic: '🧮', desc: 'Agua, comida, marcha, rumbo, unidades' },
+  { id: 'alex', t: 'PREGÚNTALE A ALEX', ic: '💬', desc: 'Tu asistente de supervivencia, también sin conexión' },
   { id: 'evacuacion', t: 'PLAN DE EVACUACIÓN', ic: '🧭', cls: 'evacuacion', desc: 'Rutas para salir de Ávila: España, Portugal, Francia y por mar' },
   { id: 'entrenamiento', t: 'ENTRENAMIENTO', ic: '💪', desc: 'En casa, sin material: de principiante a extremo' },
   { id: 'compra', t: 'COLAPSO: COMPRA', ic: '🛒', cls: 'colapso', desc: 'Lista de compra urgente, oculta hasta que la actives' },
@@ -53,7 +54,7 @@ export const SECCIONES = [
    Familia (Contactos y acuerdos). Toda sección, salvo esas dos, debe
    aparecer exactamente una vez (lo comprueba tools/test-unit.mjs). */
 export const PORTADA = {
-  plan: ['evacuacion', 'compra', 'entrenamiento', 'familia', 'mapa', 'orientacion', 'equipo', 'calculadoras', 'comunicaciones'],
+  plan: ['evacuacion', 'alex', 'compra', 'entrenamiento', 'familia', 'mapa', 'orientacion', 'equipo', 'calculadoras', 'comunicaciones'],
   manual: ['primeros-auxilios', 'agua', 'fuego', 'refugio', 'alimentacion', 'psicologia',
     'vehiculo', 'mascotas', 'bushcraft', 'espana', 'avila', 'biblioteca'],
   mas: ['riesgos', 'juegos', 'audio', 'cursos', 'manual', 'fuentes', 'config'],
@@ -224,6 +225,11 @@ export const INDICE = [
     tipo: 'evacuacion', id: 'plan-evacuacion', ruta: '#/sec/evacuacion', t: 'Plan de evacuación', sec: 'evacuacion',
     pr: 'critico', sum: 'Qué hacer y por dónde salir de Ávila según el escenario: colapso, guerra, nuclear, apagón… De 72 horas a meses, con corredores a Portugal, Francia, Andorra y por mar.',
     texto: 'plan de evacuación evacuar huir salir del país frontera portugal francia andorra marruecos ceuta reino unido ferri corredor ruta carretera colapso guerra conflicto armado nuclear almaraz apagón refugio interior gredos tiétar escapar emigrar exilio',
+  },
+  {
+    tipo: 'alex', id: 'preguntale-alex', ruta: '#/sec/alex', t: 'Pregúntale a Alex', sec: 'alex',
+    pr: 'recomendado', sum: 'Cuéntale a Alex qué pasa con tus palabras y te responde con los pasos de la app, también sin conexión.',
+    texto: 'asistente alex preguntar pregunta ayuda chat conversación consejo qué hago inteligencia artificial ia',
   },
   {
     tipo: 'entrenamiento', id: 'entrenamiento-casa', ruta: '#/sec/entrenamiento', t: 'Entrenamiento en casa', sec: 'entrenamiento',

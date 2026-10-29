@@ -95,7 +95,7 @@ const srv = spawn(process.execPath, [path.join(ROOT, 'tools/serve.mjs')], {
 });
 await new Promise((r) => setTimeout(r, 900));
 
-const CHROME = ['/opt/pw-browsers/chromium-1194/chrome-linux/chrome', '/usr/bin/chromium']
+const CHROME = ['/opt/pw-browsers/chromium-1194/chrome-linux/chrome', '/opt/pw-browsers/chromium', '/usr/bin/chromium']
   .find((p) => fs.existsSync(p));
 const browser = await chromium.launch(CHROME ? { executablePath: CHROME } : {});
 

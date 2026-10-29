@@ -506,3 +506,35 @@ test('entrenamiento: niveles, planes de 2 a 5 días, semanas y progreso', async 
   assert.equal(resumen([ses(0, 0, { rpe: 10, hechas: 3 }), ses(1, 1, { rpe: 10, hechas: 3 })], { nivel: 2, dias: 3 }, hoy).sugerencia, 'bajar');
   assert.equal(resumen([], { nivel: 1, dias: 2 }, hoy).siguiente, 0);
 });
+
+/* ----------------------------- Pregúntale a Alex ----------------------------- */
+test('Alex: urgencias al 112, crisis al 024, escenarios, buscador y fuera de tema', async () => {
+  const { crearAlex, coincide } = await imp('assets/js/alex-motor.js');
+  const { INTENCIONES } = await imp('data/content/alex.js');
+  // Cada intención apunta a contenido que existe.
+  for (const i of INTENCIONES) if (i.destino.tipo !== 'sos-lista') assert.ok(INDICE.some((it) => it.tipo === i.destino.tipo && it.id === i.destino.id), `${i.id} → ${i.destino.tipo}:${i.destino.id}`);
+  // Palabra completa salvo raíz con «*».
+  assert.ok(coincide(' hay una dana en valencia ', 'dana') && !coincide(' no quiero danar a nadie ', 'dana'));
+  assert.ok(coincide(' se ha atragantado ', 'atragant*'));
+  const A = crearAlex();
+  const r = (q) => A.responder(q);
+  const urg = (q, titulo) => { const x = r(q); assert.equal(x.urgente, true, q); assert.equal(x.titulo, titulo, q); assert.ok(x.pasos.length >= 3, q); };
+  urg('mi padre no respira', 'Parada cardíaca');
+  urg('Alguien SANGRA MUCHO', 'Hemorragia grave');
+  urg('me duele el pecho', 'Infarto');
+  urg('tiene la boca torcida', 'Ictus');
+  urg('se ha atragantado con un caramelo', 'Atragantamiento');
+  assert.equal(r('me duele el pecho').pendiente, true, 'la ficha pendiente de revisión lo avisa');
+  assert.equal(r('no quiero vivir').tipo, 'crisis');
+  assert.equal(r('se ha ido la luz y tengo un bebé').titulo, 'Apagón eléctrico');
+  assert.equal(r('qué hago si hay una guerra').titulo, 'Conflicto armado');
+  assert.ok(r('qué hago si hay una guerra').relacionados.some((x) => x.ruta === '#/sec/evacuacion'));
+  assert.equal(r('qué compro si hay colapso').titulo, 'Compra de colapso');
+  assert.equal(r('¿Qué meto en la mochila?').titulo, 'Mochila de evacuación (BOB · 72 h)');
+  assert.equal(r('cómo potabilizo agua').titulo, 'Potabilizar agua: hervir, cloro y filtros');
+  assert.equal(r('cómo orientarme sin brújula').titulo, 'Orientarse sin brújula');
+  assert.equal(r('receta de paella').tipo, 'fuera');
+  assert.equal(r('hola').tipo, 'saludo');
+  assert.equal(r('gracias').tipo, 'gracias');
+  assert.equal(r('').tipo, 'saludo');
+});

@@ -805,6 +805,31 @@ details > div { padding: 0 12px 12px; }
 .ttt-c:disabled { cursor: default; }
 .ttt-c.win { background: var(--olive); border-color: var(--olive3); }
 
+/* --------------------------- Pregúntale a Alex --------------------------- */
+.home-alex { margin-top: 8px; }
+.al-log { display: flex; flex-direction: column; gap: 12px; margin-bottom: 12px; }
+.al-msg { display: flex; gap: 8px; align-items: flex-start; scroll-margin-top: 80px; }
+.al-msg.yo { justify-content: flex-end; }
+.al-av { flex: 0 0 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: var(--olive); border: 2px solid var(--olive3); color: #f2f1e6; font: 700 1rem var(--ff); }
+.al-bur { max-width: min(560px, 88%); padding: 10px 14px; border-radius: 14px; background: var(--panel); border: 1px solid var(--line); }
+.al-msg.alex .al-bur { border-top-left-radius: 4px; }
+.al-msg.yo .al-bur { background: var(--olive); border-color: var(--olive2); color: #f2f1e6; border-top-right-radius: 4px; }
+.al-bur > :first-child { margin-top: 0; }
+.al-bur > :last-child { margin-bottom: 0; }
+.al-bur h3 { margin: 6px 0; }
+.al-urg { margin: 0 0 10px; padding: 10px; border: 2px solid var(--red); border-radius: var(--r); background: rgba(200, 64, 47, .12); }
+.al-urg p { margin: 0 0 8px; }
+.al-tel { margin: 8px 0; min-height: 64px; }
+.al-sug { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.al-rel-t { margin: 12px 0 4px; color: var(--dim); font-size: .85rem; }
+.al-rel { margin: 0; padding-left: 1.1em; }
+.al-form {
+  position: sticky; bottom: calc(76px + env(safe-area-inset-bottom)); z-index: 30; display: flex; gap: 8px;
+  padding: 8px; background: var(--bg); border: 1px solid var(--line2); border-radius: var(--r);
+}
+.al-form input { flex: 1; min-width: 0; min-height: 48px; }
+.al-aviso { font-size: .82rem; }
+
 /* --------------------------- Entrenamiento --------------------------- */
 .en-opc { display: grid; grid-template-columns: 1fr; gap: 6px; }
 @media (min-width: 600px) { .en-opc { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
