@@ -16,7 +16,7 @@ import { QUIZ, QUIZ_CATEGORIAS, RESPIRACIONES, GROUNDING } from './juegos.js';
 import { RIESGOS, NIVELES, CATEGORIAS_RIESGO } from './riesgos.js';
 import { SITUACIONES } from './familia.js';
 
-export const VERSION = '1.10.0';
+export const VERSION = '1.11.0';
 export const FECHA_CONTENIDO = FECHA_CONSULTA;
 
 export const SECCIONES = [
