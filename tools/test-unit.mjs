@@ -609,9 +609,52 @@ test('noticias: lee RSS y Atom, filtra por temas, prioriza lo oficial y aguanta 
   assert.equal(N.leerCanal(rss).length, 6);
   assert.equal(N.leerCanal(rss)[1].titulo, 'El Madrid gana la Liga con un gol de penalti & fiesta');
   assert.equal(N.leerCanal(atom)[0].url, 'https://usgs.gov/x');
-  assert.equal(N.clasificar('Rusia lanza un ataque con misiles sobre Kiev').id, 'guerra');
+  assert.equal(N.clasificar('Rusia lanza un ataque con misiles sobre Kiev').id, 'guerra-europa');
   assert.equal(N.clasificar('El Madrid gana la Liga con un gol'), null, 'deportes fuera');
   assert.equal(N.clasificar('Receta de croquetas'), null);
+  // Titulares reales del 2/11/2026 que se colaban por frases hechas o política.
+  const medio = { oficial: false };
+  for (const t of ['Tormenta perfecta en la Facultad de Derecho de la Complutense: los recortes cierran la editorial',
+    'Juan Manuel Santos, un hombre de paz en tiempos de guerra',
+    'Zamora se pone en pie de guerra por la construcción de un macrocentro de datos',
+    'Buxadé responsabiliza al PSOE de la situación ferroviaria y pide dejar atrás "la España de la catástrofe"',
+    'De Cos, equilibrio y consenso para tiempos volcánicos',
+    'La guerra comercial entre EE UU y China dispara los aranceles']) assert.equal(N.clasificar(t, medio), null, t);
+  // Y lo que sí debe seguir entrando.
+  assert.equal(N.clasificar('Hezbolá se prepara para un posible regreso de la guerra con Israel', medio).id, 'guerra-global');
+  assert.equal(N.clasificar('Un nuevo ciberataque causa pérdidas millonarias en decenas de supermercados', medio).id, 'infra');
+  assert.equal(N.clasificar('Protección Civil activa el plan de emergencias por la DANA', medio).id, 'inundacion');
+  assert.equal(N.clasificar('Declarado el estado de emergencia en Florida', medio).id, 'emergencia');
+  // Prioridades: guerra en Europa, colapso, infraestructuras y meteorología.
+  const casos = {
+    'La OTAN eleva la alerta ante la escalada militar rusa en el Báltico': 'guerra-europa',
+    'Alemania recupera el servicio militar obligatorio ante la amenaza rusa': 'guerra-europa',
+    'Corralito en Bolivia: los bancos limitan la retirada de efectivo': 'colapso',
+    'Huelga general paraliza Francia': 'colapso',
+    'La Bolsa española vive un crash del 8%': 'colapso',
+    'Apagón en Chile deja sin luz a millones': 'infra',
+    'Aviso rojo por lluvias torrenciales en Valencia': 'meteo',
+    'Irán lanza misiles contra Israel y amenaza con cerrar el estrecho de Ormuz': 'guerra-global',
+    'China despliega tropas frente a Taiwán': 'guerra-global',
+    'Los hutíes atacan buques en el mar Rojo': 'guerra-global',
+    'Ataque con drones en Sudán deja decenas de muertos': 'guerra',
+  };
+  for (const [t, id] of Object.entries(casos)) assert.equal(N.clasificar(t, medio)?.id, id, t);
+  for (const t of ['El Real Madrid al ataque del liderato', 'Sánchez sufre un ataque de nervios', 'Ataque al corazón: síntomas',
+    'Incendio en una vivienda de Vallecas', 'El precio de la luz sube']) assert.equal(N.clasificar(t, medio), null, t);
+  // En los medios, lo leve y antiguo no entra (umbral de relevancia); lo oficial, sí.
+  const viejo = new Date(ahora - 40 * 3600e3).toISOString();
+  const umbral = N.seleccionar([
+    { fuente: { id: 'm', t: 'M', ambito: 'espana' }, items: [{ titulo: 'Protección Civil pide precaución', url: 'https://m.es/1', fecha: viejo }] },
+    { fuente: { id: 'o', t: 'O', ambito: 'espana', oficial: true }, items: [{ titulo: 'Protección Civil pide precaución por el temporal', url: 'https://o.es/1', fecha: viejo }] }], ahora);
+  assert.deepEqual(umbral.map((x) => x.url), ['https://o.es/1']);
+  // Las rutas a secciones existen.
+  const { SECCIONES } = await imp('data/content/index.js');
+  for (const t of N.TEMAS) { const m = t.ruta.match(/^#\/sec\/(.+)$/); if (m) assert.ok(SECCIONES.some((x) => x.id === m[1]), t.ruta); }
+  const sec = N.seleccionar([{ fuente: { id: 'm', t: 'M', ambito: 'espana' }, items: [
+    { titulo: 'Rusia ataca con misiles Kiev', url: 'https://elpais.com/eps/2026-11-01/reportaje.html', fecha: ahora.toISOString() },
+    { titulo: 'Rusia ataca con misiles Kiev de nuevo', url: 'https://elpais.com/internacional/2026-11-01/x.html', fecha: ahora.toISOString() }] }], ahora);
+  assert.deepEqual(sec.map((x) => x.url), ['https://elpais.com/internacional/2026-11-01/x.html'], 'fuera las secciones de reportajes y opinión');
   const F = (id, extra = {}) => ({ id, t: id, url: `https://${id}.test/rss`, ambito: 'espana', ...extra });
   const fuentes = [F('medio'), F('usgs', { ambito: 'internacional', oficial: true, todo: true, tema: 'terremoto' }), F('aemet', { oficial: true, todo: true, filtro: /naranja|rojo/i, tema: 'meteo' }), F('caida')];
   const canales = { medio: rss, usgs: atom, aemet };
@@ -627,7 +670,7 @@ test('noticias: lee RSS y Atom, filtra por temas, prioriza lo oficial y aguanta 
   assert.ok(!titulos.some((t) => /Liga|croquetas|amarillo/.test(t)), 'fuera deportes, recetas y avisos menores');
   assert.ok(!titulos.includes('Inundaciones por la DANA en Valencia'), 'fuera lo de hace más de 48 h');
   assert.equal(titulos.filter((t) => /Kiev/.test(t)).length, 1, 'sin duplicados');
-  assert.equal(d.noticias[0].oficial || d.noticias[0].tema === 'guerra' || d.noticias[0].tema === 'apagon', true);
+  assert.equal(d.noticias[0].oficial || d.noticias[0].tema === 'guerra-europa' || d.noticias[0].tema === 'infra', true);
   assert.deepEqual(d.fuentes.find((f) => f.id === 'caida'), { id: 'caida', t: 'caida', ok: false, error: 'HTTP 503' });
   // Cada tema enlaza con una ficha que existe.
   for (const t of N.TEMAS) {

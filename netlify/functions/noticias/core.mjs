@@ -20,30 +20,54 @@ export const FUENTES = [
   { id: 'bbc', t: 'BBC Mundo', url: 'https://feeds.bbci.co.uk/mundo/rss.xml', ambito: 'internacional' },
 ];
 
-/* Temas de la app. `peso`: gravedad (3 = lo más grave). `ruta`: ficha de la
-   app relacionada. Las palabras se comparan con el titular normalizado
-   (minúsculas, sin tildes); «*» al final = raíz de palabra. */
+/* Temas de la app, de más a menos grave (`peso`). `ruta`: ficha de la app.
+   Las palabras se comparan con el titular normalizado (minúsculas, sin
+   tildes); «*» al final = raíz de palabra. `requiere`: además, alguna de
+   estas palabras (p. ej., guerra Y Europa). Prioridades de la propietaria:
+   guerra en Europa, colapso económico o social, infraestructuras y avisos
+   meteorológicos importantes. */
+const GUERRA = ['guerra', 'misil*', 'bombarde*', 'ataque*', 'invasion', 'invadir', 'ofensiva', 'drones', 'movilizacion', 'reclutamiento', 'servicio militar', 'escalada militar', 'tropas', 'articulo 5', 'ley marcial', 'conflicto armado', 'amenaza nuclear'];
+const EUROPA = ['europa', 'europe*', 'ue', 'otan', 'nato', 'rusia', 'ruso*', 'rusa*', 'putin', 'ucrania', 'ucranian*', 'kiev', 'polonia', 'baltic*', 'lituania', 'letonia', 'estonia', 'finlandia', 'alemania', 'francia', 'espana', 'moldavia', 'rumania', 'kaliningrado', 'bielorrusia'];
+/* Conflictos fuera de Europa con impacto mundial (petróleo, comercio, armas nucleares). */
+const GLOBAL = ['oriente medio', 'oriente proximo', 'iran', 'irani*', 'israel', 'israeli*', 'gaza', 'libano', 'hezbola', 'siria', 'yemen', 'huties', 'ormuz', 'mar rojo', 'golfo persico', 'arabia saudi', 'china', 'chin*', 'taiwan', 'mar de china', 'corea del norte', 'pyongyang', 'india', 'pakistan', 'japon', 'filipinas', 'eeuu', 'ee uu', 'estados unidos', 'pentagono'];
 export const TEMAS = [
-  { id: 'nuclear', t: 'Nuclear', ic: '☢️', peso: 3, ruta: '#/emergencia/radiologico', palabras: ['nuclear', 'radiactiv*', 'radiacion', 'central nuclear'] },
-  { id: 'guerra', t: 'Conflicto', ic: '⚔️', peso: 3, ruta: '#/emergencia/conflicto', palabras: ['guerra', 'misil*', 'bombarde*', 'ataque aereo', 'invasion', 'ofensiva', 'drones', 'dron', 'otan', 'movilizacion', 'ataque con', 'ataque ruso', 'ataque iran*', 'ataque israel*'] },
+  { id: 'nuclear', t: 'Nuclear', ic: '☢️', peso: 4, ruta: '#/emergencia/radiologico', palabras: ['ataque nuclear', 'arma* nuclear*', 'amenaza nuclear', 'accidente nuclear', 'central nuclear', 'radiactiv*', 'radiacion', 'fuga radiactiva'] },
+  { id: 'guerra-europa', t: 'Guerra en Europa', ic: '⚔️', peso: 4, ruta: '#/emergencia/conflicto', palabras: GUERRA, requiere: EUROPA },
+  { id: 'colapso', t: 'Colapso económico o social', ic: '📉', peso: 3, ruta: '#/sec/evacuacion', palabras: ['corralito', 'crisis financiera', 'crash', 'desplome de la bolsa', 'desplome bursatil', 'hiperinflacion', 'suspension de pagos', 'default', 'rescate bancario', 'panico bancario', 'retirada masiva', 'quiebra del sistema', 'colapso economico', 'colapso social', 'colapso del sistema', 'huelga general', 'toque de queda', 'estado de sitio', 'estado de alarma', 'ley marcial', 'saqueo*', 'disturbios'] },
+  { id: 'infra', t: 'Infraestructuras', ic: '⚡', peso: 3, ruta: '#/emergencia/apagon', palabras: ['apagon*', 'blackout', 'cero energetico', 'gran apagon', 'corte de suministro', 'sin suministro', 'ciberataque*', 'ataque informatico', 'ransomware', 'caida masiva', 'caida de internet', 'caida de las telecomunicaciones', 'sabotaje*', 'cable submarino', 'cables submarinos', 'gasoducto', 'oleoducto'] },
+  { id: 'guerra-global', t: 'Guerra con impacto mundial', ic: '🌐', peso: 3, ruta: '#/emergencia/conflicto', palabras: [...GUERRA, 'atacan', 'ataca', 'bloqueo naval', 'cierre del estrecho', 'cerrar el estrecho'], requiere: GLOBAL },
   { id: 'terremoto', t: 'Terremoto', ic: '🌍', peso: 3, ruta: '#/emergencia/terremoto', palabras: ['terremoto*', 'sismo*', 'seismo*', 'earthquake', 'tsunami', 'maremoto'] },
-  { id: 'apagon', t: 'Apagón', ic: '⚡', peso: 3, ruta: '#/emergencia/apagon', palabras: ['apagon*', 'sin luz', 'corte de luz', 'cero energetico', 'red electrica', 'suministro electrico', 'blackout'] },
-  { id: 'inundacion', t: 'Inundación', ic: '🌊', peso: 2, ruta: '#/emergencia/inundacion', palabras: ['inundacion*', 'dana', 'riada*', 'crecida*', 'desbordamiento', 'lluvias torrenciales', 'gota fria', 'flood*'] },
-  { id: 'incendio', t: 'Incendio', ic: '🔥', peso: 2, ruta: '#/emergencia/incendio-forestal', palabras: ['incendio forestal', 'incendios forestales', 'incendio', 'wildfire', 'desalojo*', 'desaloja*'] },
-  { id: 'meteo', t: 'Aviso meteorológico', ic: '⛈️', peso: 2, ruta: '#/emergencia/tormenta', palabras: ['ola de calor', 'ola de frio', 'temporal', 'nevada*', 'aviso rojo', 'aviso naranja', 'huracan*', 'ciclon*', 'tifon*', 'borrasca', 'tormenta*', 'granizo', 'vendaval*'] },
-  { id: 'pandemia', t: 'Salud pública', ic: '🦠', peso: 2, ruta: '#/emergencia/general', palabras: ['pandemia*', 'epidemia*', 'brote de', 'gripe aviar', 'virus', 'alerta sanitaria', 'emergencia sanitaria', 'contagio*'] },
-  { id: 'ciber', t: 'Ciberataque', ic: '💻', peso: 2, ruta: '#/emergencia/apagon', palabras: ['ciberataque*', 'ataque informatico', 'hackeo', 'ransomware', 'caida de internet', 'caida masiva'] },
-  { id: 'quimico', t: 'Accidente químico', ic: '☣️', peso: 2, ruta: '#/emergencia/quimico', palabras: ['explosion', 'fuga toxica', 'nube toxica', 'escape de gas', 'quimico', 'confinamiento'] },
+  { id: 'guerra', t: 'Conflicto', ic: '⚔️', peso: 2, ruta: '#/emergencia/conflicto', palabras: GUERRA },
+  { id: 'meteo', t: 'Aviso meteorológico', ic: '⛈️', peso: 2, ruta: '#/emergencia/tormenta', palabras: ['aviso rojo', 'aviso naranja', 'alerta roja', 'alerta naranja', 'ola de calor', 'ola de frio', 'temporal de', 'nevadas', 'borrasca', 'huracan*', 'tifon*', 'ciclon*', 'tormenta tropical', 'lluvias torrenciales', 'granizo', 'vientos huracanados'] },
+  { id: 'inundacion', t: 'Inundación', ic: '🌊', peso: 2, ruta: '#/emergencia/inundacion', palabras: ['inundacion*', 'dana', 'riada*', 'crecida*', 'desbordamiento', 'gota fria', 'flood*'] },
+  { id: 'incendio', t: 'Incendio forestal', ic: '🔥', peso: 2, ruta: '#/emergencia/incendio-forestal', palabras: ['incendio forestal', 'incendios forestales', 'wildfire', 'incendio declarado nivel'] },
+  { id: 'suministros', t: 'Suministros', ic: '🛒', peso: 2, ruta: '#/sec/compra', palabras: ['desabastecimiento', 'escasez de', 'racionamiento', 'acaparamiento', 'restricciones de agua', 'cortes de agua', 'crisis energetica', 'crisis alimentaria'] },
+  { id: 'pandemia', t: 'Salud pública', ic: '🦠', peso: 2, ruta: '#/emergencia/general', palabras: ['pandemia*', 'epidemia*', 'gripe aviar', 'alerta sanitaria', 'emergencia sanitaria', 'ebola', 'brote de ebola'] },
+  { id: 'quimico', t: 'Accidente químico', ic: '☣️', peso: 2, ruta: '#/emergencia/quimico', palabras: ['fuga toxica', 'nube toxica', 'escape de gas', 'accidente quimico'] },
   { id: 'volcan', t: 'Volcán', ic: '🌋', peso: 2, ruta: '#/emergencia/general', palabras: ['volcan*', 'erupcion', 'volcanic*'] },
-  { id: 'suministros', t: 'Suministros', ic: '🛒', peso: 1, ruta: '#/sec/compra', palabras: ['desabastecimiento', 'escasez', 'racionamiento', 'acaparamiento', 'sequia', 'restricciones de agua', 'corte de agua', 'crisis energetica'] },
-  { id: 'emergencia', t: 'Emergencia', ic: '🚨', peso: 1, ruta: '#/emergencia', palabras: ['proteccion civil', 'es-alert', 'es alert', 'estado de emergencia', 'estado de alarma', 'emergencia', 'evacua*', 'alerta maxima', 'catastrofe', 'disturbios'] },
+  { id: 'emergencia', t: 'Emergencia', ic: '🚨', peso: 1, ruta: '#/emergencia', palabras: ['proteccion civil', 'es-alert', 'estado de emergencia', 'evacuacion masiva', 'es alert', 'emergencia', 'evacua*', 'alerta maxima', 'catastrofe'] },
 ];
 
-/* Lo que se descarta aunque coincida (deportes y espectáculos). */
-const EXCLUIR = ['futbol', 'liga', 'champions', 'fichaje*', 'gol', 'goles', 'baloncesto', 'tenis', 'motogp', 'formula 1', 'ciclismo', 'pelicula', 'concierto', 'eurovision', 'videojuego*'];
+/* Lo que se descarta aunque coincida: deportes, espectáculos y frases hechas
+   en las que «guerra», «tormenta» o «catástrofe» no significan eso. */
+const EXCLUIR = [
+  'futbol', 'liga', 'champions', 'fichaje*', 'gol', 'goles', 'baloncesto', 'tenis', 'motogp', 'formula 1', 'ciclismo', 'pelicula', 'concierto', 'eurovision', 'videojuego*',
+  'pie de guerra', 'tormenta perfecta', 'tormenta politica', 'terremoto politico', 'tsunami politico', 'tiempos volcanicos', 'tiempos de guerra', 'hombre de paz',
+  'guerra comercial', 'guerra arancelaria', 'guerra de precios', 'guerra cultural', 'guerra de audiencias', 'guerra sucia', 'guerra interna', 'guerra abierta entre', 'guerra judicial', 'guerra mediatica',
+  'catastrofe electoral', 'la espana de la catastrofe', 'desastre electoral',
+  'ataque de nervios', 'ataque de panico', 'ataque de risa', 'ataque al corazon', 'al ataque', 'ataque del', 'colapso del trafico', 'colapsa el trafico', 'crash test', 'bombardeo de', 'bombardeados a', 'tropas de asalto',
+];
+
+/* Secciones de los medios que no son actualidad de emergencias (por la URL). */
+const SECCIONES_FUERA = /\/(eps|opinion|cultura|deportes|television|gente|estilo|babelia|icon|smoda|elviajero|el-viajero|gastronomia|tendencias|ciencia\/[a-z-]*opinion|blogs?)\//i;
+
+/* En los medios, estos temas genéricos no bastan por sí solos: «emergencia» o
+   «catástrofe» aparecen a menudo en política. Sí cuentan en canales oficiales. */
+const SOLO_OFICIAL = new Set(['emergencia']);
 
 export const VENTANA_HORAS = 48;
 export const MAXIMO = 40;
+export const RELEVANCIA_MIN = 12;
 
 /* ------------------------------ Texto ------------------------------ */
 const ENT = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' };
@@ -86,7 +110,9 @@ export function leerCanal(xml) {
 export function clasificar(titulo, fuente = {}) {
   const t = normalizar(titulo);
   if (EXCLUIR.some((p) => coincide(t, p))) return null;
-  const temas = TEMAS.filter((x) => x.palabras.some((p) => coincide(t, p)));
+  const temas = TEMAS.filter((x) => x.palabras.some((p) => coincide(t, p))
+    && (!x.requiere || x.requiere.some((p) => coincide(t, p)))
+    && (fuente.oficial || !SOLO_OFICIAL.has(x.id) || x.palabras.slice(0, 4).some((p) => coincide(t, p))));
   if (!temas.length) return fuente.todo ? (TEMAS.find((x) => x.id === fuente.tema) || TEMAS.find((x) => x.id === 'emergencia')) : null;
   return temas.sort((a, b) => b.peso - a.peso)[0];
 }
@@ -99,6 +125,7 @@ export function seleccionar(porFuente, ahora = new Date()) {
   for (const { fuente, items } of porFuente) {
     for (const it of items) {
       if (fuente.filtro && !fuente.filtro.test(it.titulo)) continue;
+      if (!fuente.oficial && SECCIONES_FUERA.test(it.url)) continue;
       const fecha = it.fecha ? new Date(it.fecha) : null;
       if (fecha && (fecha.getTime() < limite || fecha.getTime() > ahora.getTime() + 3600e3)) continue;
       const tema = clasificar(it.titulo, fuente);
@@ -108,6 +135,8 @@ export function seleccionar(porFuente, ahora = new Date()) {
       vistos.add(clave); vistos.add(it.url);
       const horas = fecha ? (ahora - fecha) / 3600e3 : 24;
       const puntos = tema.peso * 10 + (fuente.oficial ? 8 : 0) - horas * 0.5;
+      // Solo lo muy relevante: en los medios, lo leve o ya antiguo no entra.
+      if (!fuente.oficial && puntos < RELEVANCIA_MIN) continue;
       lista.push({
         t: it.titulo.slice(0, 240), url: it.url, fuente: fuente.t, fuenteId: fuente.id, ambito: fuente.ambito,
         oficial: !!fuente.oficial, fecha: fecha ? fecha.toISOString() : null,
