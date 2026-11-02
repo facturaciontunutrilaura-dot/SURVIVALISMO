@@ -50,6 +50,7 @@ export const INTENCIONES = [
     intro: 'Con una enfermedad crónica, lo más importante en una emergencia es: medicación para el doble de días previstos, las recetas y un informe médico en papel, y que tu familia sepa qué hacer. Prepara tu plan personal con tu médico. Para el botiquín de casa:',
   },
   // --- Escenarios frecuentes ---
+  { id: 'noticias', patrones: ['noticias', 'ultima hora', 'que esta pasando', 'que pasa hoy', 'actualidad'], destino: { tipo: 'noticias', id: 'noticias-ultima-hora' } },
   { id: 'empieza', patrones: ['que hago ahora', 'acaba de empezar', 'esta pasando algo', 'por donde empiezo', 'primeras horas'], destino: { tipo: 'articulo', id: 'casa-primeras-horas' } },
   { id: 'ataque', urgente: true, patrones: ['bombarde*', 'explosion*', 'misil*', 'ataque aereo', 'alerta aerea', 'refugio antiaereo', 'sirenas de ataque'], destino: { tipo: 'articulo', id: 'casa-ataque' }, tambien: [{ tipo: 'emergencia', id: 'conflicto' }] },
   { id: 'calorias', patrones: ['calorias', 'kcal', 'cuanto comer', 'cuanta comida', 'cuanto como'], destino: { tipo: 'articulo', id: 'alim-reserva' }, tambien: [{ tipo: 'compra', id: 'compra-colapso' }] },

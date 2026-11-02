@@ -46,6 +46,7 @@ export const SECCIONES = [
   { id: 'mascotas', t: 'MASCOTAS', ic: '🐕', desc: 'Preparación y evacuación con animales' },
   { id: 'plan-familiar', t: 'PLAN FAMILIAR', ic: '👨‍👩‍👧', desc: 'Contactos, puntos de encuentro y reunificación' },
   { id: 'calculadoras', t: 'CALCULADORAS', ic: '🧮', desc: 'Agua, comida, marcha, rumbo, unidades' },
+  { id: 'noticias', t: 'NOTICIAS DE ÚLTIMA HORA', ic: '📰', cls: 'noticias', desc: 'España y el mundo: emergencias, catástrofes y conflictos, cada 30 min' },
   { id: 'alex', t: 'PREGÚNTALE A ALEX', ic: '💬', desc: 'Tu asistente de supervivencia, también sin conexión' },
   { id: 'evacuacion', t: 'PLAN DE EVACUACIÓN', ic: '🧭', cls: 'evacuacion', desc: 'Rutas para salir de Ávila: España, Portugal, Francia y por mar' },
   { id: 'entrenamiento', t: 'ENTRENAMIENTO', ic: '💪', desc: 'En casa, sin material: de principiante a extremo' },
@@ -62,7 +63,7 @@ export const SECCIONES = [
    Familia (Contactos y acuerdos). Toda sección, salvo esas dos, debe
    aparecer exactamente una vez (lo comprueba tools/test-unit.mjs). */
 export const PORTADA = {
-  plan: ['evacuacion', 'alex', 'compra', 'entrenamiento', 'familia', 'mapa', 'orientacion', 'equipo', 'calculadoras', 'comunicaciones'],
+  plan: ['evacuacion', 'noticias', 'alex', 'compra', 'entrenamiento', 'familia', 'mapa', 'orientacion', 'equipo', 'calculadoras', 'comunicaciones'],
   manual: ['en-casa', 'primeros-auxilios', 'agua', 'fuego', 'refugio', 'alimentacion', 'huerto', 'bricolaje', 'defensa', 'psicologia',
     'vehiculo', 'mascotas', 'bushcraft', 'espana', 'avila', 'biblioteca'],
   mas: ['riesgos', 'juegos', 'audio', 'cursos', 'manual', 'fuentes', 'config'],
@@ -237,6 +238,11 @@ export const INDICE = [
     tipo: 'evacuacion', id: 'plan-evacuacion', ruta: '#/sec/evacuacion', t: 'Plan de evacuación', sec: 'evacuacion',
     pr: 'critico', sum: 'Qué hacer y por dónde salir de Ávila según el escenario: colapso, guerra, nuclear, apagón… De 72 horas a meses, con corredores a Portugal, Francia, Andorra y por mar.',
     texto: 'plan de evacuación evacuar huir salir del país frontera portugal francia andorra marruecos ceuta reino unido ferri corredor ruta carretera colapso guerra conflicto armado nuclear almaraz apagón refugio interior gredos tiétar escapar emigrar exilio',
+  },
+  {
+    tipo: 'noticias', id: 'noticias-ultima-hora', ruta: '#/sec/noticias', t: 'Noticias de última hora', sec: 'noticias',
+    pr: 'importante', sum: 'Noticias importantes de España y del mundo sobre emergencias, catástrofes, conflictos y suministros, actualizadas cada 30 minutos.',
+    texto: 'noticias última hora actualidad qué está pasando hoy avisos alertas aemet terremotos guerra apagón catástrofe prensa',
   },
   {
     tipo: 'alex', id: 'preguntale-alex', ruta: '#/sec/alex', t: 'Pregúntale a Alex', sec: 'alex',

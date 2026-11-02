@@ -52,6 +52,9 @@ function cabecerasProduccion(ruta) {
 
 const server = http.createServer((req, res) => {
   let p = decodeURIComponent(new URL(req.url, 'http://x').pathname);
+  // Las funciones de Netlify (/api/…) no existen en la previsualización
+  // local: se responde 404 y la app muestra su aviso de «no disponible».
+  if (p.startsWith('/api/')) { res.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8' }).end('{"error":"sin funciones en local"}'); return; }
   if (p.endsWith('/')) p += 'index.html';
   let file = path.join(ROOT, p);
   if (!file.startsWith(ROOT)) { res.writeHead(403).end('403'); return; }

@@ -95,6 +95,11 @@ self.addEventListener('fetch', (e) => {
   // Terceros (teselas de mapa): la app los gestiona con IndexedDB.
   if (url.origin !== self.location.origin) return;
 
+  // Noticias de última hora (/api/…): siempre a la red, nunca a la caché del
+  // SW (se quedarían congeladas). Sin conexión, la app muestra la última
+  // copia que guardó ella misma.
+  if (url.pathname.startsWith('/api/')) return;
+
   // ---------------------------------------------------------------------
   // Navegación: CACHÉ PRIMERO, con revalidación en segundo plano.
   //

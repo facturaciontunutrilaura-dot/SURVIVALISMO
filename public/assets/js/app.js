@@ -148,7 +148,7 @@ const rutaSeccion = (id) => (id === 'mapa' ? '#/mapa' : `#/sec/${id}`);
 
 function vHome() {
   const sec = (id) => secMap[id];
-  const tarjeta = (id) => { const s = sec(id); return s ? `<a class="tile${s.cls === 'colapso' || s.cls === 'evacuacion' ? ' ' + s.cls : ''}" href="${rutaSeccion(id)}">
+  const tarjeta = (id) => { const s = sec(id); return s ? `<a class="tile${['colapso', 'evacuacion', 'noticias'].includes(s.cls) ? ' ' + s.cls : ''}" href="${rutaSeccion(id)}">
       <span class="ic" aria-hidden="true">${s.ic}</span>
       <span><span class="nm">${esc(s.t)}</span><span class="ds">${esc(s.desc)}</span></span>
     </a>` : ''; };
@@ -488,6 +488,12 @@ async function vSeccion(id, sub) {
     const { evacuacionView } = await import('./evacuacion.js');
     const w = el(`<div>${topbar(s.t, 'Salir de Ávila: España y fuera')}<h1>${s.ic} PLAN DE EVACUACIÓN</h1></div>`);
     w.appendChild(await evacuacionView());
+    return w;
+  }
+  if (id === 'noticias') {
+    const { noticiasView } = await import('./noticias.js');
+    const w = el(`<div>${topbar(s.t, 'Cada 30 minutos')}<h1>${s.ic} NOTICIAS DE ÚLTIMA HORA</h1></div>`);
+    w.appendChild(await noticiasView());
     return w;
   }
   if (id === 'alex') {
@@ -1045,6 +1051,7 @@ const TIPOS_BUSQUEDA = {
   evacuacion: { t: 'Evacuación', ic: '🧭', f: 'otros' },
   entrenamiento: { t: 'Entrenamiento', ic: '💪', f: 'otros' },
   alex: { t: 'Alex', ic: '💬', f: 'otros' },
+  noticias: { t: 'Noticias', ic: '📰', f: 'otros' },
   audio: { t: 'Audio', ic: '🎵', f: 'otros' },
   familia: { t: 'Familia', ic: '👨‍👩‍👧', f: 'otros' },
 };

@@ -45,7 +45,7 @@ await ctx.route('https://www.ign.es/**', (route) => {
 });
 
 const consoleErrors = [];
-page.on('console', (m) => { if (m.type() === 'error') consoleErrors.push(m.text()); });
+page.on('console', (m) => { if (m.type() === 'error') consoleErrors.push(`${m.text()} ${m.location()?.url || ''}`.trim()); });
 page.on('pageerror', (e) => consoleErrors.push('pageerror: ' + e.message));
 
 try {
@@ -568,6 +568,38 @@ try {
     ok('Colapso: el buscador lo encuentra', busq === '#/sec/compra', String(busq));
     // Se deja como al principio para el resto de pruebas.
     await page.evaluate(async () => { const st = await import('./assets/js/store.js'); for (const k of ['compra.hogar', 'compra.marcadas', 'compra.dias', 'compra.activa']) await st.del?.('kv', k); });
+  }
+
+  /* ----------------------- 9 bis f. Noticias de última hora ----------------------- */
+  console.log('\n▸ Noticias de última hora');
+  {
+    const ahoraISO = new Date().toISOString();
+    const NOTICIAS = { generado: ahoraISO, ventanaHoras: 48, fuentes: [], noticias: [
+      { t: 'Aviso rojo por lluvias en Valencia', url: 'https://www.aemet.es/x', fuente: 'AEMET (avisos)', ambito: 'espana', oficial: true, fecha: ahoraISO, tema: 'meteo', temaT: 'Aviso meteorológico', ic: '⛈️', ruta: '#/emergencia/tormenta', puntos: 30 },
+      { t: 'Ataque con misiles en Europa del Este', url: 'https://medio.example/y', fuente: 'Europa Press', ambito: 'internacional', oficial: false, fecha: ahoraISO, tema: 'guerra', temaT: 'Conflicto', ic: '⚔️', ruta: '#/emergencia/conflicto', puntos: 29 },
+    ] };
+    let modo = 'ok';
+    await page.route('**/api/noticias', (route) => (modo === 'ok' ? route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(NOTICIAS) }) : modo === '404' ? route.fulfill({ status: 404, body: '{}' }) : route.abort()));
+    await page.goto(BASE + '#/');
+    await page.waitForSelector('.tile.noticias');
+    await page.click('.tile.noticias');
+    await page.waitForSelector('.nt-item');
+    ok('Noticias: muestra titular, fuente y enlace a la ficha de la app', (await page.locator('.nt-item').count()) === 2 && (await page.locator('.nt-item a[href="#/emergencia/conflicto"]').count()) === 1 && /Actualizado/.test(await page.textContent('#nt-estado')));
+    ok('Noticias: los enlaces externos se abren aparte y sin rastreo', await page.locator('.nt-item h3 a').first().evaluate((a) => a.target === '_blank' && a.rel.includes('noopener') && a.rel.includes('noreferrer')));
+    await page.click('[data-f="oficial"]');
+    ok('Noticias: filtro de fuentes oficiales', (await page.locator('.nt-item').count()) === 1 && /AEMET/.test(await page.textContent('.nt-item')));
+    await page.click('[data-f="internacional"]');
+    ok('Noticias: filtro internacional', (await page.locator('.nt-item').count()) === 1 && /misiles/.test(await page.textContent('.nt-item')));
+    modo = 'caida';
+    await page.click('#nt-act');
+    await page.waitForFunction(() => /guardadas/.test(document.querySelector('#nt-estado').textContent));
+    ok('Noticias: si falla el servidor, se ven las últimas guardadas', (await page.locator('.nt-item').count()) >= 1);
+    await page.evaluate(async () => { const st = await import('./assets/js/store.js'); await st.del('kv', 'noticias.cache'); });
+    modo = '404';
+    await page.reload(); await page.waitForSelector('#nt-estado');
+    await page.waitForFunction(() => /no están disponibles/.test(document.querySelector('#nt-estado').textContent));
+    ok('Noticias: sin el servicio activado lo explica, sin romper nada', (await page.locator('.nt-item').count()) === 0);
+    await page.unroute('**/api/noticias');
   }
 
   /* ------------------------- 9 bis e. Pregúntale a Alex ------------------------- */
@@ -2215,6 +2247,7 @@ try {
       ['/sec/juegos/calma', '#ca-start', async () => { await pp.click('#ca-start'); await pp.waitForTimeout(1200); }],
       ['/sec/juegos', '.ttt-c', async () => { await pp.click('#jg-tabs [data-t="mem"]'); }],
       ['/sec/entrenamiento', '.en-op', async () => { await pp.click('[data-empezar="0"]'); await pp.locator('.en-serie').first().click(); await pp.waitForTimeout(300); }],
+      ['/sec/noticias', '#nt-estado', async () => { await pp.waitForTimeout(300); }],
       ['/sec/evacuacion', '.ev-corr', async () => { await pp.click('[data-esc="guerra"]'); }],
       ['/sec/juegos/ajedrez', '.aje-c', async () => { await pp.click('[data-modo="dificil"]'); await pp.click('[data-i="52"]'); await pp.click('[data-i="36"]'); await pp.waitForTimeout(200); }],
       ['/buscar', '#q', async () => { await pp.fill('#q', 'hipotermia'); }],
@@ -2300,7 +2333,7 @@ try {
       });
       ok(`Tema ${tema}/${cont}: navegación, 112 y avisos siguen en pantalla`, pos.nav && pos.bar && pos.toast, JSON.stringify(pos));
       const malos = [];
-      for (const r of ['/', '/emergencia', '/emergencia/incendio-forestal', '/check/nivel2', '/sec/familia', '/sec/plan-familiar', '/sec/calculadoras', '/sec/config', '/sec/primeros-auxilios', '/sec/juegos/ajedrez', '/sec/evacuacion', '/sec/entrenamiento', '/sec/alex', '/sec/huerto', '/art/casa-frio', '/art/huerto-patatas', '/sec/bricolaje', '/sec/defensa', '/art/def-familia']) {
+      for (const r of ['/', '/emergencia', '/emergencia/incendio-forestal', '/check/nivel2', '/sec/familia', '/sec/plan-familiar', '/sec/calculadoras', '/sec/config', '/sec/primeros-auxilios', '/sec/juegos/ajedrez', '/sec/evacuacion', '/sec/entrenamiento', '/sec/alex', '/sec/huerto', '/art/casa-frio', '/art/huerto-patatas', '/sec/bricolaje', '/sec/defensa', '/art/def-familia', '/sec/noticias']) {
         await pt.goto(BASE + '#' + r); await pt.waitForTimeout(250);
         malos.push(...(await contraste(pt)).map((m) => r + ' ' + m));
       }
@@ -2323,6 +2356,8 @@ try {
   console.log('\n▸ Errores de consola');
   const relevantes = consoleErrors.filter((e) =>
     !/favicon|ERR_INTERNET_DISCONNECTED|ERR_TUNNEL_CONNECTION_FAILED|ERR_NAME_NOT_RESOLVED|Failed to fetch|ign\.es|ERR_FAILED/i.test(e)
+    // El 404 del servicio de noticias es un caso probado a propósito (sin funciones en local).
+    && !/api\/noticias/.test(e)
   );
   ok('Sin errores de consola relevantes', relevantes.length === 0, relevantes.slice(0, 5).join(' | '));
 

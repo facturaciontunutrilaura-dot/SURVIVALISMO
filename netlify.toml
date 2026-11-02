@@ -12,10 +12,24 @@
 [build.environment]
   NODE_VERSION = "22"
 
+# Funciones (noticias de última hora). Solo se publican con el despliegue
+# conectado a GitHub o con la CLI de Netlify, no arrastrando un ZIP.
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
 # ---------------------------------------------------------------------------
 # SPA: cualquier ruta desconocida sirve index.html. La app usa rutas con
 # hash (#/...), así que esto solo cubre enlaces profundos escritos a mano.
 # ---------------------------------------------------------------------------
+# Noticias de última hora: la función de netlify/functions/noticias.
+# Va antes que la regla de la SPA para que no la tape.
+[[redirects]]
+  from = "/api/noticias"
+  to = "/.netlify/functions/noticias"
+  status = 200
+  force = true
+
 [[redirects]]
   from = "/*"
   to = "/index.html"

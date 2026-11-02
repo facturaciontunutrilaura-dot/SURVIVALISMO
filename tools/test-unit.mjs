@@ -586,3 +586,58 @@ test('contenido nuevo: huerto y en casa, con fuentes, listas y secciones válida
   assert.match(texto('def-familia'), /016/);
   assert.doesNotMatch(JSON.stringify(ARTICULOS.filter((a) => a.sec === 'defensa')), /spray|navaja (para|de) defensa|cómo apuñalar/i, 'no se recomiendan armas');
 });
+
+/* ------------------------- Noticias de última hora ------------------------- */
+test('noticias: lee RSS y Atom, filtra por temas, prioriza lo oficial y aguanta fuentes caídas', async () => {
+  const N = await import('../netlify/functions/noticias/core.mjs');
+  const { EMERGENCIAS_MAP } = await imp('data/content/index.js');
+  const ahora = new Date('2026-11-02T12:00:00Z');
+  const hace = (h) => new Date(ahora - h * 3600e3).toUTCString();
+  const rss = `<?xml version="1.0"?><rss><channel><title>Medio</title>
+    <item><title><![CDATA[Apagón en media Europa: millones de personas sin luz]]></title><link>https://medio.es/a</link><pubDate>${hace(1)}</pubDate></item>
+    <item><title>El Madrid gana la Liga con un gol de penalti &amp; fiesta</title><link>https://medio.es/b</link><pubDate>${hace(1)}</pubDate></item>
+    <item><title>Rusia lanza un ataque con misiles sobre Kiev</title><link>https://medio.es/c</link><pubDate>${hace(2)}</pubDate></item>
+    <item><title>Rusia lanza un ataque con misiles sobre Kiev</title><link>https://medio.es/c2</link><pubDate>${hace(2)}</pubDate></item>
+    <item><title>Inundaciones por la DANA en Valencia</title><link>https://medio.es/d</link><pubDate>${hace(60)}</pubDate></item>
+    <item><title>Receta de croquetas de la abuela</title><link>https://medio.es/e</link><pubDate>${hace(1)}</pubDate></item>
+  </channel></rss>`;
+  const atom = `<feed><entry><title>M 7.1 - 20 km SW of Tokyo, Japan</title><link rel="alternate" href="https://usgs.gov/x"/><updated>${new Date(ahora - 3 * 3600e3).toISOString()}</updated></entry></feed>`;
+  const aemet = `<rss><channel>
+    <item><title>Aviso naranja por lluvias. Ávila</title><link>https://aemet.es/1</link><pubDate>${hace(1)}</pubDate></item>
+    <item><title>Aviso amarillo por viento. Soria</title><link>https://aemet.es/2</link><pubDate>${hace(1)}</pubDate></item>
+  </channel></rss>`;
+  assert.equal(N.leerCanal(rss).length, 6);
+  assert.equal(N.leerCanal(rss)[1].titulo, 'El Madrid gana la Liga con un gol de penalti & fiesta');
+  assert.equal(N.leerCanal(atom)[0].url, 'https://usgs.gov/x');
+  assert.equal(N.clasificar('Rusia lanza un ataque con misiles sobre Kiev').id, 'guerra');
+  assert.equal(N.clasificar('El Madrid gana la Liga con un gol'), null, 'deportes fuera');
+  assert.equal(N.clasificar('Receta de croquetas'), null);
+  const F = (id, extra = {}) => ({ id, t: id, url: `https://${id}.test/rss`, ambito: 'espana', ...extra });
+  const fuentes = [F('medio'), F('usgs', { ambito: 'internacional', oficial: true, todo: true, tema: 'terremoto' }), F('aemet', { oficial: true, todo: true, filtro: /naranja|rojo/i, tema: 'meteo' }), F('caida')];
+  const canales = { medio: rss, usgs: atom, aemet };
+  const fetchFalso = async (url) => {
+    const id = new URL(url).hostname.split('.')[0];
+    if (!canales[id]) return { ok: false, status: 503 };
+    return { ok: true, status: 200, text: async () => canales[id] };
+  };
+  const d = await N.recopilar(fetchFalso, ahora, fuentes);
+  const titulos = d.noticias.map((x) => x.t);
+  assert.ok(titulos.includes('Apagón en media Europa: millones de personas sin luz'));
+  assert.ok(titulos.includes('M 7.1 - 20 km SW of Tokyo, Japan') && titulos.includes('Aviso naranja por lluvias. Ávila'));
+  assert.ok(!titulos.some((t) => /Liga|croquetas|amarillo/.test(t)), 'fuera deportes, recetas y avisos menores');
+  assert.ok(!titulos.includes('Inundaciones por la DANA en Valencia'), 'fuera lo de hace más de 48 h');
+  assert.equal(titulos.filter((t) => /Kiev/.test(t)).length, 1, 'sin duplicados');
+  assert.equal(d.noticias[0].oficial || d.noticias[0].tema === 'guerra' || d.noticias[0].tema === 'apagon', true);
+  assert.deepEqual(d.fuentes.find((f) => f.id === 'caida'), { id: 'caida', t: 'caida', ok: false, error: 'HTTP 503' });
+  // Cada tema enlaza con una ficha que existe.
+  for (const t of N.TEMAS) {
+    const m = t.ruta.match(/^#\/emergencia\/(.+)$/);
+    if (m) assert.ok(EMERGENCIAS_MAP[m[1]], `${t.id} → ${t.ruta}`);
+  }
+  // Las noticias nunca se cachean en el SW y la ruta llega a la función.
+  assert.match(fs.readFileSync(path.join(PUB, 'sw.js'), 'utf8'), /pathname\.startsWith\('\/api\/'\)\) return;/);
+  const red = fs.readFileSync(path.join(PUB, '_redirects'), 'utf8');
+  assert.ok(red.indexOf('/api/noticias') < red.indexOf('/*    /index.html'), '_redirects: la API antes que la SPA');
+  const toml = fs.readFileSync(path.join(ROOT, 'netlify.toml'), 'utf8');
+  assert.ok(toml.indexOf('from = "/api/noticias"') < toml.indexOf('from = "/*"'), 'netlify.toml: la API antes que la SPA');
+});

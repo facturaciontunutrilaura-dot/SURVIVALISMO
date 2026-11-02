@@ -805,6 +805,18 @@ details > div { padding: 0 12px 12px; }
 .ttt-c:disabled { cursor: default; }
 .ttt-c.win { background: var(--olive); border-color: var(--olive3); }
 
+/* --------------------------- Noticias de última hora --------------------------- */
+.tile.noticias, .grid .tile.noticias { border-left: 3px solid #7FA3B8; }
+.nt-barra { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin: 10px 0; }
+.nt-barra p { margin: 0; }
+.nt-item { padding: 10px 12px; margin: 0 0 10px; background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--line2); border-radius: var(--r); }
+.nt-item.oficial { border-left-color: var(--amber); }
+.nt-item h3 { margin: 4px 0 6px; font-size: 1rem; line-height: 1.35; text-transform: none; letter-spacing: normal; }
+.nt-item h3 a { color: var(--txt); }
+.nt-meta { margin: 0; color: var(--dim); font-size: .8rem; }
+.nt-tema { color: var(--olive3); font-weight: 600; }
+.nt-ficha { font-size: .85rem; }
+
 /* --------------------------- Pregúntale a Alex --------------------------- */
 .home-alex { margin-top: 8px; }
 .al-log { display: flex; flex-direction: column; gap: 12px; margin-bottom: 12px; }
