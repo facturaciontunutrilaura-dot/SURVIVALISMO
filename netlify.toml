@@ -30,6 +30,13 @@
   status = 200
   force = true
 
+# Avisos en el móvil: alta y baja (netlify/functions/push).
+[[redirects]]
+  from = "/api/push"
+  to = "/.netlify/functions/push"
+  status = 200
+  force = true
+
 [[redirects]]
   from = "/*"
   to = "/index.html"

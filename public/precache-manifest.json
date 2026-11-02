@@ -8,6 +8,7 @@
   "./assets/js/alex.js",
   "./assets/js/app.js",
   "./assets/js/audio.js",
+  "./assets/js/avisos.js",
   "./assets/js/calc.js",
   "./assets/js/checklist-claves.js",
   "./assets/js/compass.js",

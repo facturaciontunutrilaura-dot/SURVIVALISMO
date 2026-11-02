@@ -3,4 +3,5 @@
 # Los archivos que existen se sirven siempre antes que esta regla.
 # Noticias de última hora (función de Netlify). Antes que la regla de la SPA.
 /api/noticias    /.netlify/functions/noticias   200
+/api/push        /.netlify/functions/push       200
 /*    /index.html   200

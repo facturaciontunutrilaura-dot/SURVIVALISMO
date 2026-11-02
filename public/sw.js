@@ -13,7 +13,7 @@
        guarda ella misma en IndexedDB.
    ========================================================================= */
 
-const VERSION = '1.12.0';
+const VERSION = '1.13.0';
 const STATIC = `survival-static-v${VERSION}`;
 const RUNTIME = `survival-runtime-v${VERSION}`;
 
@@ -84,6 +84,34 @@ self.addEventListener('activate', (e) => {
 // La página lo envía cuando el usuario pulsa «Actualizar».
 self.addEventListener('message', (e) => {
   if (e.data === 'skipWaiting') self.skipWaiting();
+});
+
+/* Avisos graves en el móvil (push). Los envía la función programada
+   netlify/functions/avisos. Al tocar el aviso se abre la pestaña de noticias,
+   que funciona también sin conexión con la última copia guardada. */
+self.addEventListener('push', (e) => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch { d = { body: e.data ? e.data.text() : '' }; }
+  e.waitUntil(self.registration.showNotification(d.title || '🚨 Aviso', {
+    body: d.body || 'Hay una noticia grave. Abre la app para verla.',
+    icon: './icons/icon-192.png',
+    badge: './icons/icon-192.png',
+    tag: d.tag || 'aviso',
+    renotify: true,
+    data: { url: d.url || './#/sec/noticias' },
+  }));
+});
+
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  const destino = new URL(e.notification.data?.url || './#/sec/noticias', self.location.origin).href;
+  e.waitUntil((async () => {
+    const ventanas = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const v of ventanas) {
+      if (new URL(v.url).origin === self.location.origin) { await v.focus(); return v.navigate(destino).catch(() => {}); }
+    }
+    return self.clients.openWindow(destino);
+  })());
 });
 
 self.addEventListener('fetch', (e) => {

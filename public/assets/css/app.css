@@ -809,6 +809,9 @@ details > div { padding: 0 12px 12px; }
 .tile.noticias, .grid .tile.noticias { border-left: 3px solid #7FA3B8; }
 .nt-barra { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin: 10px 0; }
 .nt-barra p { margin: 0; }
+.nt-avisos h3 { margin-bottom: 4px; }
+.nt-avisos p { margin: 4px 0 8px; }
+.nt-av-bot { display: flex; gap: 8px; flex-wrap: wrap; }
 .nt-item { padding: 10px 12px; margin: 0 0 10px; background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--line2); border-radius: var(--r); }
 .nt-item.oficial { border-left-color: var(--amber); }
 .nt-item h3 { margin: 4px 0 6px; font-size: 1rem; line-height: 1.35; text-transform: none; letter-spacing: normal; }

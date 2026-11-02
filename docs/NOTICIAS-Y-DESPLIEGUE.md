@@ -58,3 +58,30 @@ Arrastrar un ZIP (Netlify Drop) solo publica archivos. **Las funciones solo se p
 - Los cambios se preparan en una rama aparte con su pull request.
 - Netlify crea una **previsualización** (*Deploy Preview*) de cada pull request: una dirección privada para probarlo todo, incluidas las noticias, **sin tocar la web publicada**.
 - **Se publica solo cuando apruebas e incorporas el pull request a `main`.** Ya no hay ZIP.
+
+## Avisos graves en el móvil (notificaciones push)
+
+```
+Cada 30 min: netlify/functions/avisos (programada)
+   │ lee las noticias (mismo core.mjs) y aplica criterio.mjs
+   ▼
+¿Algo GRAVE, nuevo y de las últimas 6 h?  ──no──►  nada
+   │ sí (máx. 4 al día, nunca repetido)
+   ▼
+web-push → servicio push del navegador (Google, Apple, Mozilla, Microsoft) → móvil
+   │
+   ▼
+sw.js muestra el aviso; al tocarlo abre la pestaña Noticias
+```
+
+- **Qué avisa** (`netlify/functions/avisos/criterio.mjs`). Es mucho más estricto que la pestaña:
+  - en cualquier lugar: ataque, accidente o alerta nuclear; artículo 5 de la OTAN; movilización general; declaración de guerra; tsunami; ES-Alert; cierre de Ormuz;
+  - en España: estado de alarma, de excepción o de sitio; toque de queda; corralito; gran apagón; servicio militar obligatorio; racionamiento o desabastecimiento; nivel 5 antiterrorista;
+  - oficiales: aviso **rojo** de la AEMET; alerta roja de GDACS; terremoto de magnitud 5 o más cerca de la península (o de 8 o más en cualquier lugar).
+- **Alta y baja:** `/api/push` (`netlify/functions/push`).
+  - Solo se aceptan direcciones de los servicios push oficiales.
+  - Se guarda la dirección técnica del navegador y sus claves de cifrado. **Ningún dato personal.**
+- **Almacén:** Netlify Blobs (tienda `avisos`). Las suscripciones caducadas se borran solas.
+- **Claves VAPID:** se generan solas la primera vez y se guardan en el almacén. **No hay que configurar nada.** Si algún día se quieren fijar, se crean las variables de entorno `VAPID_PUBLIC`, `VAPID_PRIVATE` y `VAPID_SUBJECT`. Ojo: si cambian las claves, cada móvil tiene que volver a activar los avisos.
+- **iPhone:** solo con la app instalada en la pantalla de inicio y con iOS 16.4 o posterior.
+- **Previsualizaciones:** la función programada solo se ejecuta en la web publicada. En una previsualización se puede activar y probar el aviso local, pero no llegan avisos reales.
