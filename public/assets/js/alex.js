@@ -62,6 +62,9 @@ export function alexView() {
   }
 
   n.querySelector('#al-form').addEventListener('submit', (ev) => { ev.preventDefault(); preguntar(input.value); input.value = ''; input.focus(); });
+  // Desde el buscador: #/sec/alex?q=… llega ya preguntado.
+  const desdeBuscador = new URLSearchParams(location.hash.split('?')[1] || '').get('q');
+  if (desdeBuscador) queueMicrotask(() => preguntar(desdeBuscador.slice(0, 300)));
   n.addEventListener('click', (ev) => { const b = ev.target.closest('[data-preg]'); if (b) preguntar(b.dataset.preg); });
 
   mensaje(`<p>${esc(PRESENTACION)}</p>${chips(SUGERENCIAS)}`, 'alex', false);

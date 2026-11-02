@@ -1,6 +1,8 @@
 [
   "./",
   "./assets/css/app.css",
+  "./assets/fonts/OFL-Manrope.txt",
+  "./assets/fonts/manrope-latin.woff2",
   "./assets/img/alex.png",
   "./assets/js/ajedrez-ia.js",
   "./assets/js/ajedrez.js",

@@ -556,7 +556,7 @@ export async function irView() {
   }
 
   const n = el(`<div>
-    <div class="emg-hd"><h1>❤️ QUIERO LLEGAR A MI FAMILIA</h1><p>Tres preguntas y tienes el plan.</p></div>
+    <div class="emg-hd"><h1>❤️ Quiero llegar a mi familia</h1><p>Tres preguntas y tienes el plan.</p></div>
     <div class="card"><h3>1 · ¿A quién quieres llegar?</h3>
       <div class="btnrow" id="w-quien">
         ${ds.map((d) => `<button class="btn ghost" data-d="${esc(d.id)}" type="button">${esc(d.ic)} ${esc((d.persona || d.nombre || 'Sin nombre').toUpperCase())}${d.persona && d.nombre ? ' — ' + esc(d.nombre) : ''}</button>`).join('')}
@@ -804,7 +804,7 @@ export async function offlineView() {
   const nRutas = ns.reduce((a, nd) => a + nd.rutas.length, 0);
 
   const n = el(`<div>
-    <div class="emg-hd"><h1>📴 PLAN OFFLINE</h1><p>Qué sigue funcionando cuando no hay nada.</p></div>
+    <div class="emg-hd"><h1>📴 Si no hay Internet</h1><p>Qué sigue funcionando cuando no hay nada.</p></div>
 
     <div class="card"><h3>Simulación de escenario</h3>
       <div class="sim">

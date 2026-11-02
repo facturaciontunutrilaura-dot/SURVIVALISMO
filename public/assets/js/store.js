@@ -236,7 +236,7 @@ export async function count(store) {
 /* --------------------------- Ajustes (localStorage) --------------------------- */
 const LS = 'survival.settings';
 const DEFAULTS = {
-  theme: 'dark',        // dark | night
+  theme: 'auto',        // auto (sigue al móvil) | claro | oscuro | night
   contrast: 'normal',   // normal | high
   fs: 'm',              // m | l | xl
   keepAwake: false,
@@ -244,9 +244,13 @@ const DEFAULTS = {
 };
 
 let _ajustesSesion = null;
+/* Hasta la v1.13 los temas eran «dark» (el único, por defecto) y «night».
+   «dark» pasa a «auto»: claro de día y oscuro de noche, según el móvil. */
+const TEMAS = ['auto', 'claro', 'oscuro', 'night'];
+const migrar = (s) => (TEMAS.includes(s.theme) ? s : { ...s, theme: 'auto' });
 export function settings() {
-  try { return { ...DEFAULTS, ...JSON.parse(localStorage.getItem(LS) || '{}') }; }
-  catch { return { ...DEFAULTS, ...(_ajustesSesion || {}) }; }
+  try { return migrar({ ...DEFAULTS, ...JSON.parse(localStorage.getItem(LS) || '{}') }); }
+  catch { return migrar({ ...DEFAULTS, ...(_ajustesSesion || {}) }); }
 }
 
 export function setSetting(k, v) {
@@ -264,9 +268,21 @@ export function applySettings() {
   html.dataset.theme = s.theme;
   html.dataset.contrast = s.contrast;
   html.dataset.fs = s.fs;
-  const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute('content', s.theme === 'night' ? '#060706' : '#0d110f');
+  pintarBarra();
 }
+
+/* Color de la barra del sistema, a juego con el tema (y con el móvil en «auto»). */
+const oscuroSistema = typeof matchMedia === 'function' ? matchMedia('(prefers-color-scheme: dark)') : null;
+function pintarBarra() {
+  const t = settings().theme;
+  const oscuro = t === 'oscuro' || (t === 'auto' && oscuroSistema?.matches);
+  // index.html trae dos (claro/oscuro por media query) para el arranque; luego manda el ajuste.
+  document.querySelectorAll('meta[name="theme-color"]').forEach((m) => {
+    m.removeAttribute('media');
+    m.setAttribute('content', t === 'night' ? '#080C11' : oscuro ? '#141B24' : '#F4F2EE');
+  });
+}
+oscuroSistema?.addEventListener?.('change', pintarBarra);
 
 /* --------------------------- Export / import --------------------------- */
 export async function exportAll() {
