@@ -684,3 +684,49 @@ test('noticias: lee RSS y Atom, filtra por temas, prioriza lo oficial y aguanta 
   const toml = fs.readFileSync(path.join(ROOT, 'netlify.toml'), 'utf8');
   assert.ok(toml.indexOf('from = "/api/noticias"') < toml.indexOf('from = "/*"'), 'netlify.toml: la API antes que la SPA');
 });
+
+test('avisos push: solo lo muy grave, sin repetir, máximo diario y suscripciones válidas', async () => {
+  const A = await import('../netlify/functions/avisos/criterio.mjs');
+  const n = (t, extra = {}) => ({ t, fuente: 'M', fuenteId: 'm', ambito: 'internacional', ic: '⚔️', temaT: 'Guerra en Europa', fecha: '2026-11-02T11:00:00Z', ...extra });
+  // Avisa
+  for (const x of [n('La OTAN invoca el artículo 5 tras un ataque ruso a Polonia'), n('Rusia amenaza y ordena la movilización general'),
+    n('Alerta por tsunami en el Mediterráneo'), n('El Gobierno decreta el estado de alarma en toda España', { ambito: 'espana' }),
+    n('Gran apagón en la península: millones sin luz', { ambito: 'espana' }), n('Aviso rojo por lluvias. Valencia', { fuenteId: 'aemet' }),
+    n('Red alert for tropical cyclone X', { fuenteId: 'gdacs' }), n('M 5.4 - 30 km S of Almería, Spain', { fuenteId: 'usgs' })]) assert.ok(A.esCritica(x), x.t);
+  // No avisa
+  for (const x of [n('Rusia lanza un ataque con misiles sobre Kiev'), n('Aviso naranja por viento. Ávila', { fuenteId: 'aemet' }),
+    n('Orange alert for flood in India', { fuenteId: 'gdacs' }), n('M 6.1 - Tonga', { fuenteId: 'usgs' }),
+    n('Toque de queda en Nairobi tras las protestas'), n('El precio de la luz sube')]) assert.ok(!A.esCritica(x), x.t);
+  // Sin repetir, solo recientes y máximo 4 al día
+  const ahora = new Date('2026-11-02T12:00:00Z');
+  const graves = ['artículo 5', 'movilización general', 'tsunami', 'alerta nuclear', 'ataque nuclear', 'guerra mundial'].map((p) => n(`Última hora: ${p} en Europa`));
+  assert.equal(A.avisosPendientes(graves, {}, ahora).length, A.MAX_AVISOS_DIA);
+  const ya = { [A.claveAviso(graves[0])]: '2026-11-02T10:00:00Z', [A.claveAviso(graves[1])]: '2026-11-02T09:00:00Z' };
+  const p = A.avisosPendientes(graves, ya, ahora);
+  assert.equal(p.length, 2);
+  assert.ok(!p.includes(graves[0]) && !p.includes(graves[1]));
+  assert.equal(A.avisosPendientes([n('Alerta nuclear en Europa', { fecha: '2026-11-01T12:00:00Z' })], {}, ahora).length, 0, 'lo viejo no avisa');
+  const c = A.cargaAviso(graves[0]);
+  assert.equal(c.url, '/#/sec/noticias');
+  assert.ok(c.title.length <= 60 && c.body.length <= 200);
+  // Suscripciones
+  const keys = { p256dh: 'B'.repeat(87), auth: 'a'.repeat(22) };
+  assert.ok(A.suscripcionValida({ endpoint: 'https://fcm.googleapis.com/fcm/send/abc', keys }));
+  assert.ok(A.suscripcionValida({ endpoint: 'https://web.push.apple.com/QX', keys }));
+  assert.ok(A.suscripcionValida({ endpoint: 'https://updates.push.services.mozilla.com/wpush/v2/x', keys }));
+  for (const e of ['https://evil.test/x', 'http://fcm.googleapis.com/x', 'https://fcm.googleapis.com.evil.test/x']) assert.ok(!A.suscripcionValida({ endpoint: e, keys }), e);
+  assert.ok(!A.suscripcionValida({ endpoint: 'https://fcm.googleapis.com/x' }));
+  // Cableado: redirecciones antes de la SPA y SW con push + notificationclick
+  const red = fs.readFileSync(path.join(PUB, '_redirects'), 'utf8');
+  assert.ok(red.indexOf('/api/push') > -1 && red.indexOf('/api/push') < red.indexOf('/*    /index.html'));
+  const toml = fs.readFileSync(path.join(ROOT, 'netlify.toml'), 'utf8');
+  assert.ok(toml.indexOf('from = "/api/push"') < toml.indexOf('from = "/*"'));
+  const sw = fs.readFileSync(path.join(PUB, 'sw.js'), 'utf8');
+  assert.match(sw, /addEventListener\('push'/);
+  assert.match(sw, /addEventListener\('notificationclick'/);
+  const fn = fs.readFileSync(path.join(ROOT, 'netlify/functions/avisos/avisos.mjs'), 'utf8');
+  assert.match(fn, /schedule: '\*\/30 \* \* \* \*'/);
+  // Cliente: clave VAPID base64url → bytes
+  const { claveABytes } = await imp('assets/js/avisos.js');
+  assert.deepEqual([...claveABytes('AQID_-8')], [1, 2, 3, 255, 239]);
+});

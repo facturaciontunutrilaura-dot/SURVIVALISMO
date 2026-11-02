@@ -600,6 +600,24 @@ try {
     await page.waitForFunction(() => /no están disponibles/.test(document.querySelector('#nt-estado').textContent));
     ok('Noticias: sin el servicio activado lo explica, sin romper nada', (await page.locator('.nt-item').count()) === 0);
     await page.unroute('**/api/noticias');
+
+    // Avisos en el móvil: la tarjeta explica el estado y activar no rompe nada,
+    // aunque aquí no haya servicio push real (falla con un mensaje claro).
+    await ctx.grantPermissions(['notifications']);
+    const altas = [];
+    await page.route('**/api/push', (route) => { altas.push(route.request().method()); return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ clave: 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U', ok: true }) }); });
+    await page.route('**/api/noticias', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(NOTICIAS) }));
+    await page.reload(); await page.waitForSelector('.nt-avisos');
+    await page.waitForFunction(() => document.querySelector('#nt-av-estado').textContent.length > 5);
+    ok('Avisos: la tarjeta explica qué avisa y su estado', /muy grave/.test(await page.textContent('.nt-avisos')) && (await page.textContent('#nt-av-estado')).length > 5);
+    const boton = page.locator('[data-av="on"]');
+    if (await boton.count()) {
+      const antes = await page.textContent('#nt-av-estado');
+      await boton.click();
+      await page.waitForFunction((a) => document.querySelector('#nt-av-estado').textContent !== a, antes, { timeout: 15000 }).catch(() => {});
+      ok('Avisos: activar responde con un mensaje (alta o motivo del fallo)', (await page.textContent('#nt-av-estado')) !== antes && altas.includes('GET'));
+    } else ok('Avisos: sin soporte push en este navegador, lo explica', /navegador|instala/.test(await page.textContent('#nt-av-estado')));
+    await page.unroute('**/api/push'); await page.unroute('**/api/noticias');
   }
 
   /* ------------------------- 9 bis e. Pregúntale a Alex ------------------------- */
@@ -2357,7 +2375,9 @@ try {
   const relevantes = consoleErrors.filter((e) =>
     !/favicon|ERR_INTERNET_DISCONNECTED|ERR_TUNNEL_CONNECTION_FAILED|ERR_NAME_NOT_RESOLVED|Failed to fetch|ign\.es|ERR_FAILED/i.test(e)
     // El 404 del servicio de noticias es un caso probado a propósito (sin funciones en local).
-    && !/api\/noticias/.test(e)
+    && !/api\/(noticias|push)/.test(e)
+    // Chromium de pruebas va en incógnito: ahí el navegador no admite push (probado a propósito).
+    && !/Push API in incognito/.test(e)
   );
   ok('Sin errores de consola relevantes', relevantes.length === 0, relevantes.slice(0, 5).join(' | '));
 

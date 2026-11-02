@@ -6,6 +6,7 @@
    ========================================================================= */
 import { el, esc, alSalir } from './ui.js';
 import * as store from './store.js';
+import * as avisos from './avisos.js';
 
 const CADA = 30 * 60 * 1000;
 const kv = async (id, def) => (await store.get('kv', id).catch(() => null))?.v ?? def;
@@ -27,6 +28,12 @@ export async function noticiasView() {
   const n = el(`<div>
     <p class="muted">Noticias importantes de España y del mundo relacionadas con emergencias, catástrofes, conflictos y suministros. Se actualizan cada 30 minutos; sin conexión verás las últimas guardadas.</p>
     <div class="blk-note">Contrasta siempre con fuentes oficiales y no difundas bulos. Ante una emergencia, sigue las instrucciones del 112, Protección Civil y los avisos ES-Alert de tu móvil.</div>
+    <section class="card nt-avisos" aria-labelledby="nt-av-t">
+      <h3 id="nt-av-t">🔔 Avisos graves en el móvil</h3>
+      <p class="muted">Solo ante algo muy grave: guerra que escala en Europa, alerta nuclear, aviso rojo de la AEMET, gran apagón, estado de alarma, terremoto fuerte cerca… Como mucho 4 al día. No se envía ningún dato tuyo.</p>
+      <p id="nt-av-estado" role="status" aria-live="polite"></p>
+      <div class="nt-av-bot"></div>
+    </section>
     <div class="nt-barra">
       <p id="nt-estado" class="muted" role="status" aria-live="polite"></p>
       <button class="btn sm ghost" id="nt-act" type="button">↻ Actualizar</button>
@@ -96,7 +103,38 @@ export async function noticiasView() {
   document.addEventListener('visibilitychange', alVolver);
   alSalir(() => document.removeEventListener('visibilitychange', alVolver));
 
+  // Avisos push
+  const TXT = {
+    'sin-soporte': 'Este navegador no admite avisos. Prueba con Chrome, Edge, Firefox o Safari (iPhone con iOS 16.4 o posterior).',
+    instalar: 'En iPhone, primero instala la app: botón Compartir → «Añadir a pantalla de inicio». Ábrela desde ese icono y activa aquí los avisos.',
+    bloqueado: 'Has bloqueado las notificaciones para esta app. Actívalas en los ajustes del navegador o del móvil y vuelve aquí.',
+    activo: '✅ Avisos activados en este dispositivo.',
+    inactivo: 'Avisos desactivados.',
+  };
+  let ocupado = false;
+  async function pintarAvisos(msg) {
+    const e = await avisos.estado().catch(() => 'sin-soporte');
+    n.querySelector('#nt-av-estado').textContent = msg || TXT[e];
+    n.querySelector('.nt-av-bot').innerHTML = e === 'activo'
+      ? '<button class="btn sm ghost" type="button" data-av="probar">Probar un aviso</button> <button class="btn sm ghost" type="button" data-av="off">Desactivar</button>'
+      : e === 'inactivo' ? '<button class="btn sm" type="button" data-av="on">Activar avisos</button>' : '';
+  }
+  n.querySelector('.nt-av-bot').addEventListener('click', async (ev) => {
+    const b = ev.target.closest('[data-av]');
+    if (!b || ocupado) return;
+    ocupado = true; b.disabled = true;
+    let msg;
+    try {
+      if (b.dataset.av === 'on') { await avisos.activar(); msg = '✅ Listo. Te avisaremos solo si pasa algo grave.'; }
+      if (b.dataset.av === 'off') await avisos.desactivar();
+      if (b.dataset.av === 'probar') { await avisos.probar(); msg = TXT.activo; }
+    } catch (e) { msg = e?.message || 'No se ha podido completar.'; }
+    ocupado = false;
+    pintarAvisos(msg);
+  });
+
   pintar();
+  pintarAvisos();
   actualizar();
   return n;
 }
