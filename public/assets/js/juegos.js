@@ -5,6 +5,7 @@
 import { el, esc, toast, alSalir } from './ui.js';
 import * as store from './store.js';
 import * as AJ from './ajedrez.js';
+import * as NUEVOS from './juegos-nuevos.js';
 import { MEMORY_CARTAS, QUIZ, QUIZ_CATEGORIAS, DIFICULTAD, RESPIRACIONES, GROUNDING, CALMA_AVISO } from '../../data/content/juegos.js';
 
 const kv = async (id, def) => (await store.get('kv', id))?.v ?? def;
@@ -659,12 +660,27 @@ export function modoCalma() {
 /* --------------------------- Vista de la sección --------------------------- */
 export function juegosView(inicial) {
   const n = el(`<div>
-    <div class="tabs tabs-grid" role="tablist" id="jg-tabs" aria-label="Juegos y modo calma">
-      <button role="tab" data-t="ttt" aria-selected="true">Tres en raya</button>
-      <button role="tab" data-t="aje" aria-selected="false"><span aria-hidden="true">♞</span> Ajedrez</button>
-      <button role="tab" data-t="mem" aria-selected="false">Memory</button>
-      <button role="tab" data-t="ret" aria-selected="false">Reto</button>
-      <button role="tab" data-t="cal" aria-selected="false">🧘 Modo calma</button>
+    <div id="jg-tabs" class="jg-tabs">
+      <p class="jg-grupo" id="jg-g1">📱 Con el móvil</p>
+      <div class="tabs tabs-grid" role="tablist" aria-labelledby="jg-g1">
+        <button role="tab" data-t="des" aria-selected="false">🎒 Salva la despensa</button>
+        <button role="tab" data-t="ttt" aria-selected="true">Tres en raya</button>
+        <button role="tab" data-t="aje" aria-selected="false"><span aria-hidden="true">♞</span> Ajedrez</button>
+        <button role="tab" data-t="dam" aria-selected="false">⚪ Damas</button>
+        <button role="tab" data-t="sud" aria-selected="false">🔢 Sudoku</button>
+        <button role="tab" data-t="mem" aria-selected="false">Memory</button>
+      </div>
+      <p class="jg-grupo" id="jg-g2">🧠 Aprender jugando</p>
+      <div class="tabs tabs-grid" role="tablist" aria-labelledby="jg-g2">
+        <button role="tab" data-t="moc" aria-selected="false">⏱️ Mochila en 60 s</button>
+        <button role="tab" data-t="mor" aria-selected="false">📡 Código Morse</button>
+        <button role="tab" data-t="ret" aria-selected="false">Reto</button>
+      </div>
+      <p class="jg-grupo" id="jg-g3">🔋 Sin pantalla y para calmarse</p>
+      <div class="tabs tabs-grid" role="tablist" aria-labelledby="jg-g3">
+        <button role="tab" data-t="sin" aria-selected="false">🃏 Juegos sin pantalla</button>
+        <button role="tab" data-t="cal" aria-selected="false">🧘 Modo calma</button>
+      </div>
     </div>
     <div id="jg-body"></div>
     <details class="card jg-info"><summary>¿Para qué sirven los juegos?</summary><div>
@@ -673,7 +689,8 @@ export function juegosView(inicial) {
   </div>`);
 
   const body = n.querySelector('#jg-body');
-  const vistas = { ttt: tresEnRaya, aje: ajedrez, mem: memory, ret: reto, cal: modoCalma };
+  const vistas = { ttt: tresEnRaya, aje: ajedrez, mem: memory, ret: reto, cal: modoCalma,
+    des: NUEVOS.despensa, dam: NUEVOS.damas, sud: NUEVOS.sudoku, moc: NUEVOS.mochila, mor: NUEVOS.morse, sin: NUEVOS.sinPantalla };
   const destruir = () => body.firstElementChild?.destruir?.();
   const pinta = (t) => {
     destruir();
@@ -682,7 +699,7 @@ export function juegosView(inicial) {
   };
   n.querySelectorAll('#jg-tabs button').forEach((b) => b.addEventListener('click', () => pinta(b.dataset.t)));
   alSalir(destruir);
-  // '#/sec/juegos/calma' abre directamente el modo calma ('/ajedrez', el ajedrez).
-  pinta({ calma: 'cal', memory: 'mem', reto: 'ret', ajedrez: 'aje' }[inicial] || 'ttt');
+  // '#/sec/juegos/calma' abre directamente el modo calma ('/ajedrez', el ajedrez…).
+  pinta({ calma: 'cal', memory: 'mem', reto: 'ret', ajedrez: 'aje', despensa: 'des', damas: 'dam', sudoku: 'sud', mochila: 'moc', morse: 'mor', 'sin-pantalla': 'sin' }[inicial] || 'ttt');
   return n;
 }

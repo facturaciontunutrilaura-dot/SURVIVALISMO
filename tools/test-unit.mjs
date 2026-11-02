@@ -740,3 +740,55 @@ test('avisos push: solo lo muy grave, sin repetir, máximo diario y suscripcione
   const { claveABytes } = await imp('assets/js/avisos.js');
   assert.deepEqual([...claveABytes('AQID_-8')], [1, 2, 3, 255, 239]);
 });
+
+test('juegos nuevos: damas españolas, sudoku de solución única y Morse', async () => {
+  const D = await imp('assets/js/damas.js');
+  const vacio = () => Array(64).fill(null);
+  const i = (f, c) => f * 8 + c;
+  // Salida: 7 jugadas de las blancas, ninguna captura.
+  assert.equal(D.jugadas(D.inicial(), 'w').length, 7);
+  // Captura obligatoria: con una captura posible, solo vale esa.
+  let t = vacio(); t[i(5, 2)] = 'w'; t[i(4, 3)] = 'b'; t[i(6, 7)] = 'w';
+  let js = D.jugadas(t, 'w');
+  assert.equal(js.length, 1); assert.deepEqual(js[0].caps, [i(4, 3)]); assert.equal(js[0].a, i(3, 4));
+  // El peón no captura hacia atrás.
+  t = vacio(); t[i(3, 3)] = 'w'; t[i(4, 4)] = 'b';
+  assert.ok(D.jugadas(t, 'w').every((m) => !m.caps.length));
+  // Captura máxima: se elige la cadena de 2 frente a la de 1.
+  t = vacio(); t[i(7, 0)] = 'w'; t[i(6, 1)] = 'b'; t[i(4, 3)] = 'b'; t[i(7, 6)] = 'w'; t[i(6, 5)] = 'b';
+  js = D.jugadas(t, 'w');
+  assert.ok(js.length && js.every((m) => m.caps.length === 2), JSON.stringify(js));
+  // La dama vuela y captura a distancia; las capturadas no se saltan dos veces.
+  t = vacio(); t[i(7, 0)] = 'W'; t[i(3, 4)] = 'b';
+  js = D.jugadas(t, 'w');
+  assert.ok(js.some((m) => m.caps[0] === i(3, 4) && m.a === i(2, 5)) && js.some((m) => m.a === i(0, 7)));
+  // Coronación al terminar en la última fila.
+  t = vacio(); t[i(1, 2)] = 'w';
+  assert.equal(D.aplicar(t, D.jugadas(t, 'w')[0])[D.jugadas(t, 'w')[0].a], 'W');
+  // La IA devuelve siempre una jugada legal.
+  const ia = D.jugadaIA(D.inicial(), 'normal', () => 0.3);
+  assert.ok(D.jugadas(D.inicial(), 'b').some((m) => m.de === ia.de && m.a === ia.a));
+
+  const S = await imp('assets/js/sudoku.js');
+  let semilla = 7; const azar = () => ((semilla = (semilla * 16807) % 2147483647) / 2147483647);
+  for (const nivel of Object.keys(S.NIVELES)) {
+    const g = S.generar(nivel, azar);
+    assert.equal(S.soluciones(g.puzle, 2), 1, `${nivel}: solución única`);
+    assert.ok(g.puzle.every((v, k) => !v || v === g.solucion[k]));
+    assert.ok(g.puzle.filter(Boolean).length >= S.NIVELES[nivel].pistas);
+    assert.ok(S.completo(g.solucion, g.solucion) && S.errores(g.puzle, g.solucion).length === 0);
+  }
+
+  const M = await imp('assets/js/morse.js');
+  assert.equal(M.aMorse('sos'), '... --- ...');
+  assert.equal(M.aMorse('Ávila ñ'), '.- ...- .. .-.. .- / --.--');
+  assert.equal(M.deMorse(M.aMorse('Ayuda en casa')), 'AYUDA EN CASA');
+  const sec = M.secuencia('SOS');
+  assert.equal(sec.filter(([on]) => on).length, 9);
+  assert.equal(sec.reduce((s, [, d]) => s + d, 0), 5 + 3 + 11 + 3 + 5, "S(5) + hueco(3) + O(11) + hueco(3) + S(5)");
+
+  const X = await imp('data/content/juegos-extra.js');
+  assert.ok(X.SIN_PANTALLA.length >= 4 && X.SIN_PANTALLA.every((g) => g.juegos.length && g.juegos.every((j) => j.pasos.length)));
+  const ese = X.MOCHILA_OBJETOS.filter((o) => o.esencial);
+  assert.ok(ese.reduce((s, o) => s + o.kg, 0) <= X.MOCHILA_MAX_KG, 'todo lo esencial cabe en la mochila');
+});
