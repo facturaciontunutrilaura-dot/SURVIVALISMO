@@ -612,6 +612,23 @@ test('noticias: lee RSS y Atom, filtra por temas, prioriza lo oficial y aguanta 
   assert.equal(N.clasificar('Rusia lanza un ataque con misiles sobre Kiev').id, 'guerra');
   assert.equal(N.clasificar('El Madrid gana la Liga con un gol'), null, 'deportes fuera');
   assert.equal(N.clasificar('Receta de croquetas'), null);
+  // Titulares reales del 2/11/2026 que se colaban por frases hechas o política.
+  const medio = { oficial: false };
+  for (const t of ['Tormenta perfecta en la Facultad de Derecho de la Complutense: los recortes cierran la editorial',
+    'Juan Manuel Santos, un hombre de paz en tiempos de guerra',
+    'Zamora se pone en pie de guerra por la construcción de un macrocentro de datos',
+    'Buxadé responsabiliza al PSOE de la situación ferroviaria y pide dejar atrás "la España de la catástrofe"',
+    'De Cos, equilibrio y consenso para tiempos volcánicos',
+    'La guerra comercial entre EE UU y China dispara los aranceles']) assert.equal(N.clasificar(t, medio), null, t);
+  // Y lo que sí debe seguir entrando.
+  assert.equal(N.clasificar('Hezbolá se prepara para un posible regreso de la guerra con Israel', medio).id, 'guerra');
+  assert.equal(N.clasificar('Un nuevo ciberataque causa pérdidas millonarias en decenas de supermercados', medio).id, 'ciber');
+  assert.equal(N.clasificar('Protección Civil activa el plan de emergencias por la DANA', medio).id, 'inundacion');
+  assert.equal(N.clasificar('Declarado el estado de emergencia en Florida', medio).id, 'emergencia');
+  const sec = N.seleccionar([{ fuente: { id: 'm', t: 'M', ambito: 'espana' }, items: [
+    { titulo: 'Rusia ataca con misiles Kiev', url: 'https://elpais.com/eps/2026-11-01/reportaje.html', fecha: ahora.toISOString() },
+    { titulo: 'Rusia ataca con misiles Kiev de nuevo', url: 'https://elpais.com/internacional/2026-11-01/x.html', fecha: ahora.toISOString() }] }], ahora);
+  assert.deepEqual(sec.map((x) => x.url), ['https://elpais.com/internacional/2026-11-01/x.html'], 'fuera las secciones de reportajes y opinión');
   const F = (id, extra = {}) => ({ id, t: id, url: `https://${id}.test/rss`, ambito: 'espana', ...extra });
   const fuentes = [F('medio'), F('usgs', { ambito: 'internacional', oficial: true, todo: true, tema: 'terremoto' }), F('aemet', { oficial: true, todo: true, filtro: /naranja|rojo/i, tema: 'meteo' }), F('caida')];
   const canales = { medio: rss, usgs: atom, aemet };

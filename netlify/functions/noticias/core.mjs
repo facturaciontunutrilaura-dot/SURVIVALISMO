@@ -36,11 +36,24 @@ export const TEMAS = [
   { id: 'quimico', t: 'Accidente químico', ic: '☣️', peso: 2, ruta: '#/emergencia/quimico', palabras: ['explosion', 'fuga toxica', 'nube toxica', 'escape de gas', 'quimico', 'confinamiento'] },
   { id: 'volcan', t: 'Volcán', ic: '🌋', peso: 2, ruta: '#/emergencia/general', palabras: ['volcan*', 'erupcion', 'volcanic*'] },
   { id: 'suministros', t: 'Suministros', ic: '🛒', peso: 1, ruta: '#/sec/compra', palabras: ['desabastecimiento', 'escasez', 'racionamiento', 'acaparamiento', 'sequia', 'restricciones de agua', 'corte de agua', 'crisis energetica'] },
-  { id: 'emergencia', t: 'Emergencia', ic: '🚨', peso: 1, ruta: '#/emergencia', palabras: ['proteccion civil', 'es-alert', 'es alert', 'estado de emergencia', 'estado de alarma', 'emergencia', 'evacua*', 'alerta maxima', 'catastrofe', 'disturbios'] },
+  { id: 'emergencia', t: 'Emergencia', ic: '🚨', peso: 1, ruta: '#/emergencia', palabras: ['proteccion civil', 'es-alert', 'estado de emergencia', 'estado de alarma', 'es alert', 'emergencia', 'evacua*', 'alerta maxima', 'catastrofe', 'disturbios'] },
 ];
 
-/* Lo que se descarta aunque coincida (deportes y espectáculos). */
-const EXCLUIR = ['futbol', 'liga', 'champions', 'fichaje*', 'gol', 'goles', 'baloncesto', 'tenis', 'motogp', 'formula 1', 'ciclismo', 'pelicula', 'concierto', 'eurovision', 'videojuego*'];
+/* Lo que se descarta aunque coincida: deportes, espectáculos y frases hechas
+   en las que «guerra», «tormenta» o «catástrofe» no significan eso. */
+const EXCLUIR = [
+  'futbol', 'liga', 'champions', 'fichaje*', 'gol', 'goles', 'baloncesto', 'tenis', 'motogp', 'formula 1', 'ciclismo', 'pelicula', 'concierto', 'eurovision', 'videojuego*',
+  'pie de guerra', 'tormenta perfecta', 'tormenta politica', 'terremoto politico', 'tsunami politico', 'tiempos volcanicos', 'tiempos de guerra', 'hombre de paz',
+  'guerra comercial', 'guerra arancelaria', 'guerra de precios', 'guerra cultural', 'guerra de audiencias', 'guerra sucia', 'guerra interna', 'guerra abierta entre', 'guerra judicial', 'guerra mediatica',
+  'catastrofe electoral', 'la espana de la catastrofe', 'desastre electoral',
+];
+
+/* Secciones de los medios que no son actualidad de emergencias (por la URL). */
+const SECCIONES_FUERA = /\/(eps|opinion|cultura|deportes|television|gente|estilo|babelia|icon|smoda|elviajero|el-viajero|gastronomia|tendencias|ciencia\/[a-z-]*opinion|blogs?)\//i;
+
+/* En los medios, estos temas genéricos no bastan por sí solos: «emergencia» o
+   «catástrofe» aparecen a menudo en política. Sí cuentan en canales oficiales. */
+const SOLO_OFICIAL = new Set(['emergencia']);
 
 export const VENTANA_HORAS = 48;
 export const MAXIMO = 40;
@@ -86,7 +99,7 @@ export function leerCanal(xml) {
 export function clasificar(titulo, fuente = {}) {
   const t = normalizar(titulo);
   if (EXCLUIR.some((p) => coincide(t, p))) return null;
-  const temas = TEMAS.filter((x) => x.palabras.some((p) => coincide(t, p)));
+  const temas = TEMAS.filter((x) => x.palabras.some((p) => coincide(t, p)) && (fuente.oficial || !SOLO_OFICIAL.has(x.id) || x.palabras.slice(0, 4).some((p) => coincide(t, p))));
   if (!temas.length) return fuente.todo ? (TEMAS.find((x) => x.id === fuente.tema) || TEMAS.find((x) => x.id === 'emergencia')) : null;
   return temas.sort((a, b) => b.peso - a.peso)[0];
 }
@@ -99,6 +112,7 @@ export function seleccionar(porFuente, ahora = new Date()) {
   for (const { fuente, items } of porFuente) {
     for (const it of items) {
       if (fuente.filtro && !fuente.filtro.test(it.titulo)) continue;
+      if (!fuente.oficial && SECCIONES_FUERA.test(it.url)) continue;
       const fecha = it.fecha ? new Date(it.fecha) : null;
       if (fecha && (fecha.getTime() < limite || fecha.getTime() > ahora.getTime() + 3600e3)) continue;
       const tema = clasificar(it.titulo, fuente);
