@@ -22,6 +22,9 @@ netlify/functions/noticias  ──►  /api/noticias (JSON)  ──►  CDN de N
   - de AEMET solo pasan los avisos naranja y rojo; de GDACS, las alertas naranja y roja;
   - solo noticias de las últimas 48 h, sin duplicados;
   - ordena por gravedad y da prioridad a las fuentes oficiales.
+  - temas prioritarios (de más a menos peso): **nuclear**, **guerra en Europa** (guerra + un país o actor europeo: Rusia, OTAN, Ucrania…), **colapso económico o social** (corralito, crash, huelga general, toque de queda…), **infraestructuras** (apagones, ciberataques, sabotajes), **guerras con impacto mundial** (Oriente Medio y Asia: Irán, Israel, Ormuz, Mar Rojo, China-Taiwán, Corea del Norte, India-Pakistán…), terremotos; después, otros conflictos, **avisos meteorológicos** importantes, inundaciones, incendios forestales, suministros, salud pública, etc.;
+  - en los medios solo entra lo **muy relevante**: cada noticia suma puntos por gravedad y pierde con las horas; por debajo de `RELEVANCIA_MIN` no se muestra. Los avisos oficiales (AEMET naranja/rojo, GDACS, USGS) entran siempre;
+  - se descartan frases hechas («en pie de guerra», «ataque de nervios», «tormenta perfecta»…) y secciones de opinión, reportajes, cultura y deportes.
 - **Qué se muestra:** solo **titular, fuente, hora y enlace**. No se copian textos de los medios (LPI art. 32.2).
 - **Frecuencia:**
   - la CDN guarda la respuesta 30 minutos, así que las fuentes se consultan unas pocas veces por hora, haya los usuarios que haya;
