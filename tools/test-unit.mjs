@@ -268,16 +268,26 @@ test('mapas IGN: la CSP permite las teselas del IGN y nada más de terceros para
 });
 
 /* ------------------------------ Portada ------------------------------ */
-test('portada: cada sección aparece una sola vez y «Plan familiar» sigue accesible', async () => {
-  const { SECCIONES, PORTADA } = await imp('data/content/index.js');
-  const enPortada = [...PORTADA.plan, ...PORTADA.manual, ...PORTADA.mas];
+test('portada: cada sección aparece una sola vez (directa o en un grupo) y lo de fuera sigue accesible', async () => {
+  const { SECCIONES, PORTADA, GRUPOS, seccionesDePuerta } = await imp('data/content/index.js');
+  const puertas = PORTADA.flatMap((b) => b.puertas);
+  for (const p of puertas) if (p.startsWith('g:')) assert.ok(GRUPOS[p.slice(2)], `grupo inexistente: ${p}`);
+  assert.deepEqual(Object.keys(GRUPOS).sort(), puertas.filter((p) => p.startsWith('g:')).map((p) => p.slice(2)).sort(), 'todo grupo está en la portada');
+  const enPortada = puertas.flatMap(seccionesDePuerta);
   assert.equal(new Set(enPortada).size, enPortada.length, 'duplicadas');
   const ids = SECCIONES.map((s) => s.id);
   for (const id of enPortada) assert.ok(ids.includes(id), `sección inexistente: ${id}`);
   const fuera = ids.filter((id) => !enPortada.includes(id));
-  assert.deepEqual(fuera.sort(), ['emergencia', 'plan-familiar'], 'solo SOS (arriba) y Plan familiar (desde Familia) quedan fuera');
+  assert.deepEqual(fuera.sort(), ['alex', 'config', 'emergencia', 'noticias', 'plan-familiar'], 'solo SOS, Noticias, Alex, Ajustes y Contactos quedan fuera');
+  const html = fs.readFileSync(path.join(PUB, 'index.html'), 'utf8');
+  for (const r of ['#/emergencia', '#/sec/noticias', '#/sec/alex', '#/sec/familia']) assert.ok(html.includes(`href="${r}"`), `barra inferior: ${r}`);
+  const app = fs.readFileSync(path.join(PUB, 'assets/js/app.js'), 'utf8');
+  assert.ok(app.includes('href="#/sec/config"'), 'Ajustes en la cabecera');
   const fam = fs.readFileSync(path.join(PUB, 'assets/js/familia.js'), 'utf8');
   assert.ok(fam.includes('#/sec/plan-familiar'), 'Familia debe enlazar a Contactos y acuerdos');
+  // Ajustes: el tema antiguo «dark» pasa a automático.
+  const st = fs.readFileSync(path.join(PUB, 'assets/js/store.js'), 'utf8');
+  assert.match(st, /theme: 'auto'/);
 });
 
 test('copias: validarCopia acepta una copia correcta y rechaza las dañadas sin escribir', async () => {

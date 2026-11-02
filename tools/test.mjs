@@ -55,15 +55,20 @@ try {
   await page.waitForSelector('.tile.sos', { timeout: 10000 });
   ok('Portada renderiza el botón de emergencia', await page.locator('.tile.sos').isVisible());
   const enlacesPortada = await page.locator('#app a[href^="#/sec/"], #app a[href="#/mapa"]').count();
-  ok('Se muestran todas las secciones', enlacesPortada >= 25, `(${enlacesPortada})`);
-  ok('Portada: nombre visible SUPERVIVENCIA', (await page.textContent('.brand h1')).trim() === 'SUPERVIVENCIA');
-  ok('Portada: cuatro bloques (SOS y búsqueda · Mi plan · Manual · Más)', (await page.locator('.home-bloque').count()) === 4
-    && /Mi plan y herramientas/i.test(await page.textContent('#h-plan')) && /Manual/i.test(await page.textContent('#h-manual')) && /Más/i.test(await page.textContent('#h-mas')));
+  const puertas = await page.locator('#app .home-bloque .grid a.tile').count();
+  ok('Portada: puertas ordenadas por momentos (pocas y claras)', puertas >= 12 && puertas <= 18 && enlacesPortada >= 6, `(${puertas} puertas, ${enlacesPortada} secciones directas)`);
+  ok('Portada: nombre visible Supervivencia', (await page.textContent('.brand h1')).trim() === 'Supervivencia');
+  ok('Portada: SOS y búsqueda + cinco bloques (Prepárate · Si está pasando · Si tienes que salir · Calma · Aprende más)', (await page.locator('.home-bloque').count()) === 6
+    && /Prepárate/.test(await page.textContent('#h-preparate')) && /Si está pasando/.test(await page.textContent('#h-pasando')) && /Si tienes que salir/.test(await page.textContent('#h-salir')) && /Aprende más/.test(await page.textContent('#h-aprende')));
+  ok('Portada: Ajustes en la cabecera', (await page.locator('.brand a[href="#/sec/config"]').count()) === 1);
+  await page.goto(BASE + '#/grupo/orientacion'); await page.waitForSelector('.list .row');
+  ok('Grupo: «Orientación y mapas» lleva al mapa y a orientación', (await page.locator('.list a[href="#/mapa"]').count()) === 1 && (await page.locator('.list a[href="#/sec/orientacion"]').count()) === 1);
+  await page.goto(BASE + '#/'); await page.waitForSelector('.tile.sos');
   ok('Portada: SOS, 112 y buscador en la primera pantalla', await page.evaluate(() => ['.tile.sos', '.home-112', '.home-buscar'].every((s) => document.querySelector(s).getBoundingClientRect().bottom <= innerHeight)));
   ok('Portada: el 112 es una llamada directa', (await page.getAttribute('.home-112', 'href')) === 'tel:112');
   ok('Portada: sin tarjeta propia de «Plan familiar»', (await page.locator('#app a[href="#/sec/plan-familiar"]').count()) === 0);
-  ok('Portada: Familia accesible desde «Mi plan»', (await page.locator('.home-bloque .grid a[href="#/sec/familia"]').count()) === 1);
-  ok('Título correcto', (await page.title()).includes('SUPERVIVENCIA'));
+  ok('Portada: Mi plan familiar en «Prepárate»', (await page.locator('#h-preparate + .grid a[href="#/sec/familia"]').count()) === 1);
+  ok('Título correcto', (await page.title()).includes('Supervivencia'));
 
   /* --------------------------- 2. Modo emergencia --------------------------- */
   console.log('\n▸ Modo emergencia');
@@ -519,9 +524,11 @@ try {
   console.log('\n▸ Compra de colapso');
   {
     await page.goto(BASE + '#/');
-    await page.waitForSelector('.tile.colapso');
-    ok('Colapso: acceso en la portada, en «Mi plan y herramientas»', (await page.getAttribute('.tile.colapso', 'href')) === '#/sec/compra');
-    await page.click('.tile.colapso');
+    await page.waitForSelector('a.tile[href="#/grupo/mochila"]');
+    await page.click('a.tile[href="#/grupo/mochila"]');
+    await page.waitForSelector('.list a[href="#/sec/compra"]');
+    ok('Colapso: acceso desde «Prepárate → Mochila y despensa»', true);
+    await page.click('.list a[href="#/sec/compra"]');
     await page.waitForSelector('#co-activar');
     ok('Colapso: la lista está oculta hasta pulsar el botón rojo', (await page.locator('.co-item').count()) === 0 && /COLAPSO/.test(await page.textContent('#co-activar')));
     await page.evaluate(() => { window.__conf = window.confirm; window.confirm = () => false; });
@@ -581,8 +588,8 @@ try {
     let modo = 'ok';
     await page.route('**/api/noticias', (route) => (modo === 'ok' ? route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(NOTICIAS) }) : modo === '404' ? route.fulfill({ status: 404, body: '{}' }) : route.abort()));
     await page.goto(BASE + '#/');
-    await page.waitForSelector('.tile.noticias');
-    await page.click('.tile.noticias');
+    await page.waitForSelector('.bottomnav a[href="#/sec/noticias"]');
+    await page.click('.bottomnav a[href="#/sec/noticias"]');
     await page.waitForSelector('.nt-item');
     ok('Noticias: muestra titular, fuente y enlace a la ficha de la app', (await page.locator('.nt-item').count()) === 2 && (await page.locator('.nt-item a[href="#/emergencia/conflicto"]').count()) === 1 && /Actualizado/.test(await page.textContent('#nt-estado')));
     ok('Noticias: los enlaces externos se abren aparte y sin rastreo', await page.locator('.nt-item h3 a').first().evaluate((a) => a.target === '_blank' && a.rel.includes('noopener') && a.rel.includes('noreferrer')));
@@ -624,8 +631,8 @@ try {
   console.log('\n▸ Pregúntale a Alex');
   {
     await page.goto(BASE + '#/');
-    await page.waitForSelector('.home-alex');
-    await page.click('.home-alex');
+    await page.waitForSelector('.bottomnav a[href="#/sec/alex"]');
+    await page.click('.bottomnav a[href="#/sec/alex"]');
     await page.waitForSelector('.al-msg.alex');
     ok('Alex: aparece con su cara', await page.locator('.al-msg.alex img.al-av').first().evaluate((i) => i.complete && i.naturalWidth > 0));
     ok('Alex: saluda y ofrece preguntas de ejemplo', (await page.locator('.al-msg.alex [data-preg]').count()) >= 6);
@@ -684,7 +691,7 @@ try {
   {
     await page.goto(BASE + '#/');
     await page.waitForSelector('.tile.evacuacion');
-    ok('Evacuación: es lo primero de «Mi plan y herramientas»', await page.evaluate(() => document.querySelector('#h-plan + .grid .tile')?.classList.contains('evacuacion')));
+    ok('Evacuación: en «Prepárate», destacada', await page.evaluate(() => !!document.querySelector('#h-preparate + .grid .tile.evacuacion')));
     await page.click('.tile.evacuacion');
     await page.waitForSelector('.ev-corr');
     await page.waitForSelector('#ev-map .leaflet-overlay-pane path');
@@ -1039,7 +1046,7 @@ try {
   ok('Modo noche aplicado', (await page.getAttribute('html', 'data-theme')) === 'night');
   await page.selectOption('#cfg-fs', 'xl'); await page.waitForTimeout(150);
   ok('Tamaño de texto XL', (await page.getAttribute('html', 'data-fs')) === 'xl');
-  await page.selectOption('#cfg-theme', 'dark'); await page.selectOption('#cfg-fs', 'm');
+  await page.selectOption('#cfg-theme', 'auto'); await page.selectOption('#cfg-fs', 'm');
   ok('Estado del Service Worker mostrado', (await page.textContent('body')).includes('Service Worker'));
 
   const dl = page.waitForEvent('download', { timeout: 8000 });
@@ -1320,8 +1327,8 @@ try {
     await pa.goto(BASE + '#/emergencia'); await pa.waitForSelector('.btn-112');
     // Lo que anuncia un lector de pantalla en lo crítico (árbol de accesibilidad).
     const nav = await pa.locator('#nav').ariaSnapshot();
-    ok('Lector de pantalla: la barra inferior se anuncia sin emojis (Inicio, SOS, Familia, Mapa, Buscar)',
-      ['Inicio', 'SOS', 'Familia', 'Mapa', 'Buscar'].every((t) => nav.includes(`link "${t}"`)), nav.replace(/\n/g, ' ').slice(0, 200));
+    ok('Lector de pantalla: la barra inferior se anuncia sin emojis (Inicio, SOS, Noticias, Alex, Mi plan)',
+      ['Inicio', 'SOS', 'Noticias', 'Alex', 'Mi plan'].every((t) => nav.includes(`link "${t}"`)), nav.replace(/\n/g, ' ').slice(0, 200));
     const llamar = await pa.locator('.sos-llamar').ariaSnapshot();
     ok('Lector de pantalla: SOS anuncia «Llamar al 112, teléfono de emergencias» como enlace', /link "Llamar al 112, teléfono de emergencias"/.test(llamar) && /\/url: tel:112/.test(llamar));
     ok('Lector de pantalla: «Mi posición» y «Mis datos vitales» sin emojis leídos', /button "Mi posición para dar al 112"/.test(llamar) && /Mis datos vitales/.test(llamar) && !/📍|🩺/.test(llamar), llamar.replace(/\n/g, ' ').slice(0, 300));
@@ -1783,10 +1790,10 @@ try {
 
     // Al navegar, el foco pasa al título de la nueva pantalla.
     await pe.goto(BASE + '#/'); await pe.waitForSelector('.home-bloque');
-    await pe.click('a.home-enlace[href="#/sec/agua"]');
+    await pe.click('a.tile[href="#/sec/primeros-auxilios"]');
     await pe.waitForTimeout(400);
     const foco = await pe.evaluate(() => ({ tag: document.activeElement?.tagName, txt: document.activeElement?.textContent || '' }));
-    ok('Accesibilidad: al cambiar de pantalla el foco pasa a su título', foco.tag === 'H1' && /AGUA/i.test(foco.txt), JSON.stringify(foco));
+    ok('Accesibilidad: al cambiar de pantalla el foco pasa a su título', foco.tag === 'H1' && /primeros auxilios/i.test(foco.txt), JSON.stringify(foco));
     await pe.goto(BASE + '#/sec/agua'); await pe.waitForTimeout(300);
     await pe.evaluate(() => { document.activeElement?.blur(); window.dispatchEvent(new HashChangeEvent('hashchange')); });
     await pe.waitForTimeout(400);
@@ -2173,7 +2180,7 @@ try {
     // Título: sin duplicar cuando la cabecera lo muestra entero.
     await ir('/sec/familia', '#fa-nodos');
     ok('Título: el H1 repetido se oculta (sigue para lectores de pantalla)', (await pm.locator('h1.h1-en-barra').count()) === 1);
-    await ir('/check/nivel2', '.chk-item');
+    await ir('/art/fuego-legal', '.topbar');
     ok('Título: si la cabecera lo corta, el H1 completo se mantiene visible', (await pm.locator('h1.h1-en-barra').count()) === 0);
     await cm.close();
   }
@@ -2337,7 +2344,7 @@ try {
       }
       return [...new Set(malos)];
     });
-    for (const [tema, cont] of [['dark', 'normal'], ['night', 'normal'], ['dark', 'high'], ['night', 'high']]) {
+    for (const [tema, cont] of [['claro', 'normal'], ['oscuro', 'normal'], ['night', 'normal'], ['claro', 'high'], ['oscuro', 'high'], ['night', 'high']]) {
       const ct = await browser.newContext({ viewport: { width: 375, height: 667 }, isMobile: true, hasTouch: true });
       await ct.addInitScript(([t, c]) => localStorage.setItem('survival.settings', JSON.stringify({ theme: t, contrast: c })), [tema, cont]);
       const pt = await ct.newPage();
@@ -2351,7 +2358,7 @@ try {
       });
       ok(`Tema ${tema}/${cont}: navegación, 112 y avisos siguen en pantalla`, pos.nav && pos.bar && pos.toast, JSON.stringify(pos));
       const malos = [];
-      for (const r of ['/', '/emergencia', '/emergencia/incendio-forestal', '/check/nivel2', '/sec/familia', '/sec/plan-familiar', '/sec/calculadoras', '/sec/config', '/sec/primeros-auxilios', '/sec/juegos/ajedrez', '/sec/evacuacion', '/sec/entrenamiento', '/sec/alex', '/sec/huerto', '/art/casa-frio', '/art/huerto-patatas', '/sec/bricolaje', '/sec/defensa', '/art/def-familia', '/sec/noticias']) {
+      for (const r of ['/', '/emergencia', '/emergencia/incendio-forestal', '/check/nivel2', '/sec/familia', '/sec/plan-familiar', '/sec/calculadoras', '/sec/config', '/sec/primeros-auxilios', '/sec/juegos/ajedrez', '/sec/evacuacion', '/sec/entrenamiento', '/sec/alex', '/sec/huerto', '/art/casa-frio', '/art/huerto-patatas', '/sec/bricolaje', '/sec/defensa', '/art/def-familia', '/sec/noticias', '/grupo/mochila', '/sec/riesgos']) {
         await pt.goto(BASE + '#' + r); await pt.waitForTimeout(250);
         malos.push(...(await contraste(pt)).map((m) => r + ' ' + m));
       }

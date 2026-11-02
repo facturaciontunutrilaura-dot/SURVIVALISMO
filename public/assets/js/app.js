@@ -2,7 +2,7 @@
    app.js — router y vistas
    ========================================================================= */
 import {
-  VERSION, FECHA_CONTENIDO, SECCIONES, PORTADA, PRIORIDADES, ARTICULOS, ARTICULOS_MAP,
+  VERSION, FECHA_CONTENIDO, SECCIONES, PORTADA, GRUPOS, PRIORIDADES, ARTICULOS, ARTICULOS_MAP,
   articulosDeSeccion, EMERGENCIAS, EMERGENCIAS_MAP, CHECKLISTS, CURSOS,
   SOS_SANITARIAS, SOS_SANITARIAS_MAP, GRUPOS_EMERGENCIA,
   FRECUENCIAS, SOURCES, SOURCE_MAP, DISCLAIMER,
@@ -21,7 +21,7 @@ const secMap = Object.fromEntries(SECCIONES.map((s) => [s.id, s]));
 store.applySettings();
 
 function setNav(route, sub = '') {
-  const activo = route === '/sec' && (sub === 'familia') ? '/familia' : route;
+  const activo = route === '/sec' && ['familia', 'noticias', 'alex'].includes(sub) ? '/' + sub : route;
   $$('#nav a').forEach((a) => {
     const t = a.dataset.nav;
     a.classList.toggle('on', activo === t || (t !== '/' && activo.startsWith(t)));
@@ -138,62 +138,82 @@ netBadge();
 
 /* ================================ VISTAS ================================ */
 
-/* Portada en cuatro bloques, de más a menos urgente:
-     1. SOS (con el 112 directo) y el buscador.
-     2. Mi plan y herramientas: lo que se usa y se configura.
-     3. Manual: los temas, en una lista compacta.
-     4. Más: el resto.
-   Nada tiene el mismo peso que SOS, y no es un panel de tarjetas. */
+/* Portada (v1.14):
+     1. Emergencia ahora (con el 112 directo), un solo buscador que también
+        pregunta a Alex, y una franja si hay una noticia muy grave.
+     2. Cinco bloques por momentos: Prepárate · Si está pasando · Si tienes
+        que salir · Calma y ánimo · Aprende más (PORTADA en data/content/index.js).
+   Nada tiene el mismo peso que Emergencia. Ajustes, en la cabecera. */
 const rutaSeccion = (id) => (id === 'mapa' ? '#/mapa' : `#/sec/${id}`);
+
+/* Franja de aviso en la portada: solo si la última copia de noticias trae
+   algo muy grave y reciente (12 h). Sin red no pasa nada: usa lo guardado. */
+const MUY_GRAVE = new Set(['nuclear', 'guerra-europa', 'guerra-global', 'colapso', 'infra']);
+async function avisoNoticias(caja) {
+  const d = (await store.get('kv', 'noticias.cache').catch(() => null))?.v;
+  const x = (d?.noticias || []).find((n) => (MUY_GRAVE.has(n.tema) || (n.oficial && /rojo|red alert/i.test(n.t)))
+    && n.fecha && Date.now() - new Date(n.fecha) < 12 * 3600e3);
+  if (!x || !caja.isConnected) return;
+  caja.className = 'home-aviso';
+  caja.innerHTML = `<a href="#/sec/noticias"><span aria-hidden="true">${esc(x.ic || '📰')}</span> <span><b>${esc(x.temaT || 'Aviso')}:</b> ${esc(x.t)}</span></a>`;
+  caja.hidden = false;
+}
+
+/* Pantalla de grupo (#/grupo/<id>): reúne varias secciones de la portada. */
+function vGrupo(id) {
+  const g = GRUPOS[id];
+  if (!g) return v404();
+  return el(`<div>${topbar(g.t, 'Inicio')}<h1>${g.ic} ${esc(g.t)}</h1><p class="muted">${esc(g.desc)}</p>
+    <div class="list">${g.secs.map((sid) => secMap[sid]).filter(Boolean).map((s) => `<a class="row" href="${rutaSeccion(s.id)}">
+      <span class="ric" aria-hidden="true">${s.ic}</span><div class="rt"><b>${esc(s.t)}</b><span>${esc(s.desc)}</span></div><span class="chev" aria-hidden="true">›</span></a>`).join('')}</div></div>`);
+}
 
 function vHome() {
   const sec = (id) => secMap[id];
-  const tarjeta = (id) => { const s = sec(id); return s ? `<a class="tile${['colapso', 'evacuacion', 'noticias'].includes(s.cls) ? ' ' + s.cls : ''}" href="${rutaSeccion(id)}">
+  const clase = (s) => (['colapso', 'evacuacion'].includes(s.cls) ? ' ' + s.cls : '');
+  const puerta = (p) => {
+    const g = p.startsWith('g:') ? GRUPOS[p.slice(2)] : null;
+    const s = g || sec(p);
+    if (!s) return '';
+    const href = g ? `#/grupo/${p.slice(2)}` : rutaSeccion(p);
+    return `<a class="tile${g ? '' : clase(s)}" href="${href}">
       <span class="ic" aria-hidden="true">${s.ic}</span>
       <span><span class="nm">${esc(s.t)}</span><span class="ds">${esc(s.desc)}</span></span>
-    </a>` : ''; };
-  const enlace = (id) => { const s = sec(id); return s ? `<a class="home-enlace" href="${rutaSeccion(id)}"><span aria-hidden="true">${s.ic}</span> ${esc(s.t)}</a>` : ''; };
+    </a>`;
+  };
 
   const n = el(`<div class="home">
     <header class="brand">
-      <h1>SUPERVIVENCIA</h1>
-      <div class="sub">Herramientas de preparación y emergencia offline</div>
+      <h1>Supervivencia</h1>
+      <div class="sub">Preparación y emergencias, también sin conexión</div>
+      <a class="btn-ico brand-ajustes" href="#/sec/config" aria-label="Ajustes"><span aria-hidden="true">⚙️</span></a>
     </header>
 
     <section class="home-bloque home-sos" aria-label="Emergencia y búsqueda">
       <div class="home-sos-fila">
         <a class="tile sos" href="#/emergencia">
           <span class="ic" aria-hidden="true">🚨</span>
-          <span><span class="nm">SOS</span><span class="ds">Emergencia: qué hacer ahora</span></span>
+          <span><span class="nm">Emergencia ahora</span><span class="ds">Qué hacer, paso a paso</span></span>
         </a>
         <a class="home-112" href="tel:112" aria-label="Llamar al 112, emergencias"><span aria-hidden="true">📞</span><b>112</b></a>
       </div>
-      <a class="home-buscar" href="#/buscar"><span aria-hidden="true">🔍</span> Buscar en el manual: «sangrado», «apagón»…</a>
-      <a class="home-buscar home-alex" href="#/sec/alex"><span aria-hidden="true">💬</span> Pregúntale a Alex: «se ha ido la luz»…</a>
+      <a class="home-buscar" href="#/buscar"><span aria-hidden="true">🔍</span> Busca o pregunta a Alex: «se ha ido la luz»…</a>
+      <div id="home-aviso" hidden></div>
     </section>
 
     <div id="home-prep" class="home-prep" hidden></div>
 
-    <section class="home-bloque" aria-labelledby="h-plan">
-      <h2 id="h-plan">Mi plan y herramientas</h2>
-      <div class="grid">${PORTADA.plan.map(tarjeta).join('')}</div>
-    </section>
-
-    <section class="home-bloque" aria-labelledby="h-manual">
-      <h2 id="h-manual">Manual</h2>
-      <nav class="home-lista" aria-labelledby="h-manual">${PORTADA.manual.map(enlace).join('')}</nav>
-    </section>
-
-    <section class="home-bloque" aria-labelledby="h-mas">
-      <h2 id="h-mas">Más</h2>
-      <nav class="home-lista" aria-labelledby="h-mas">${PORTADA.mas.map(enlace).join('')}</nav>
-    </section>
+    ${PORTADA.map((b) => `<section class="home-bloque" aria-labelledby="h-${b.id}">
+      <h2 id="h-${b.id}">${esc(b.t)}</h2>
+      <div class="grid${b.puertas.length === 1 ? ' uno' : ''}">${b.puertas.map(puerta).join('')}</div>
+    </section>`).join('')}
 
     <div class="card home-pie">
       <p class="muted" style="margin:0">${esc(DISCLAIMER)}</p>
       <p class="muted" style="margin:.6em 0 0">Contenido actualizado el ${esc(FECHA_CONTENIDO)} · v${esc(VERSION)} · ${store.syncActiva() ? 'Tus datos se guardan en este dispositivo y se sincronizan con tu servidor.' : 'Tus datos se guardan en este dispositivo.'}</p>
     </div>
   </div>`);
+  avisoNoticias(n.querySelector('#home-aviso'));
   // Solo aparece si algo requiere atención (recursos offline, copia, protección).
   prep.montarAvisoPortada(n.querySelector('#home-prep'));
   return n;
@@ -486,50 +506,50 @@ async function vSeccion(id, sub) {
   }
   if (id === 'evacuacion') {
     const { evacuacionView } = await import('./evacuacion.js');
-    const w = el(`<div>${topbar(s.t, 'Salir de Ávila: España y fuera')}<h1>${s.ic} PLAN DE EVACUACIÓN</h1></div>`);
+    const w = el(`<div>${topbar(s.t, 'Salir de Ávila: España y fuera')}<h1>${s.ic} Plan de evacuación</h1></div>`);
     w.appendChild(await evacuacionView());
     return w;
   }
   if (id === 'noticias') {
     const { noticiasView } = await import('./noticias.js');
-    const w = el(`<div>${topbar(s.t, 'Cada 30 minutos')}<h1>${s.ic} NOTICIAS DE ÚLTIMA HORA</h1></div>`);
+    const w = el(`<div>${topbar(s.t, 'Cada 30 minutos')}<h1>${s.ic} Noticias de última hora</h1></div>`);
     w.appendChild(await noticiasView());
     return w;
   }
   if (id === 'alex') {
     const { alexView } = await import('./alex.js');
-    const w = el(`<div>${topbar(s.t, 'También sin conexión')}<h1>${s.ic} PREGÚNTALE A ALEX</h1></div>`);
+    const w = el(`<div>${topbar(s.t, 'También sin conexión')}<h1>${s.ic} Pregúntale a Alex</h1></div>`);
     w.appendChild(alexView());
     return w;
   }
   if (id === 'entrenamiento') {
     const { entrenamientoView } = await import('./entrenamiento.js');
-    const w = el(`<div>${topbar(s.t, 'En casa, sin material')}<h1>${s.ic} ENTRENAMIENTO EN CASA</h1></div>`);
+    const w = el(`<div>${topbar(s.t, 'En casa, sin material')}<h1>${s.ic} Entrenamiento en casa</h1></div>`);
     w.appendChild(await entrenamientoView());
     return w;
   }
   if (id === 'compra') {
     const { compraView } = await import('./compra.js');
-    const w = el(`<div>${topbar(s.t, 'De 72 horas a una semana')}<h1>${s.ic} COMPRA DE COLAPSO</h1></div>`);
+    const w = el(`<div>${topbar(s.t, 'De 72 horas a una semana')}<h1>${s.ic} Compra urgente</h1></div>`);
     w.appendChild(await compraView());
     return w;
   }
   if (id === 'audio') {
     const { audioView } = await import('./audio.js');
-    const w = el(`<div>${topbar(s.t, s.desc)}<h1>${s.ic} AUDIO OFFLINE</h1></div>`);
+    const w = el(`<div>${topbar(s.t, s.desc)}<h1>${s.ic} Audio sin conexión</h1></div>`);
     w.appendChild(await audioView());
     return w;
   }
   if (id === 'riesgos') {
     const { riesgosView } = await import('./riesgos.js');
-    const w = el(`<div>${topbar(s.t, 'Horizonte 2026 → 2036')}<h1>${s.ic} RIESGOS 2026 — 2036</h1>
+    const w = el(`<div>${topbar(s.t, 'Horizonte 2026 → 2036')}<h1>${s.ic} Riesgos que vienen (2026–2036)</h1>
       <p class="muted">${esc(s.desc)}</p></div>`);
     w.appendChild(await riesgosView());
     return w;
   }
   if (id === 'familia') {
     const { familiaView } = await import('./familia.js');
-    const w = el(`<div>${topbar('Centro familiar', 'Tus ubicaciones y rutas')}<h1>${s.ic} CENTRO FAMILIAR</h1></div>`);
+    const w = el(`<div>${topbar('Mi plan familiar', 'Tus ubicaciones y rutas')}<h1>${s.ic} Mi plan familiar</h1></div>`);
     w.appendChild(await familiaView());
     return w;
   }
@@ -860,7 +880,7 @@ async function vChecklist(id) {
 function vCursos() {
   return el(`<div>
     ${topbar('Formación')}
-    <h1>🎓 FORMACIÓN</h1>
+    <h1>🎓 Formación</h1>
     <p class="muted">Diez cursos breves. Teoría, ejercicio práctico y autoevaluación. Todo funciona sin conexión.</p>
     <div class="list">${CURSOS.map((c) => `
       <a class="row" href="#/curso/${c.id}"><div class="rt"><b>${esc(c.n)} — ${esc(c.t)}</b><span>${esc(c.dur)} · ${esc(c.obj)}</span></div><span class="chev">›</span></a>`).join('')}</div>
@@ -932,8 +952,8 @@ async function vCurso(id) {
 /* ---------------------------- PLAN FAMILIAR ---------------------------- */
 async function vPlanFamiliar() {
   const n = el(`<div>
-    ${topbar('Plan familiar')}
-    <h1>👨‍👩‍👧 PLAN FAMILIAR</h1>
+    ${topbar('Contactos y acuerdos', 'Mi plan familiar', '#/sec/familia')}
+    <h1>👨‍👩‍👧 Contactos y acuerdos</h1>
     <div class="blk-note">${store.syncActiva()
       ? 'Todo lo que escribas aquí se guarda <b>en este dispositivo</b> y, como tienes la sincronización activada, <b>se copia en tu servidor de sincronización</b> (incluida la información médica).'
       : 'Todo lo que escribas aquí se guarda <b>solo en este dispositivo</b>. No se envía a ningún servidor mientras no actives la sincronización.'} Haz una copia con Ajustes → Exportar datos e imprime una versión en papel para cada mochila.</div>
@@ -1025,7 +1045,7 @@ async function vPlanFamiliar() {
 function vCalculadoras() {
   const n = el(`<div>
     ${topbar('Calculadoras')}
-    <h1>🧮 CALCULADORAS</h1>
+    <h1>🧮 Calculadoras</h1>
     <p class="muted">Todas funcionan sin conexión.</p>
     <div id="calcs"></div>
   </div>`);
@@ -1067,17 +1087,27 @@ async function vBuscar(inicial = '') {
   const n = el(`<div>
     ${topbar('Buscar')}
     <div class="searchbar" role="search">
-      <label for="q" class="vh">Buscar en el manual</label>
+      <label for="q" class="vh">Buscar en el manual o preguntar a Alex</label>
       <div class="q-caja">
         <input id="q" type="search" placeholder="sangrado, apagón, incendio, RCP…" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" value="${esc(inicial)}">
         <button type="button" id="q-limpiar" class="q-limpiar" aria-label="Borrar la búsqueda"${inicial ? '' : ' hidden'}>✕</button>
       </div>
       <div class="filtros-busq" id="fb" role="group" aria-label="Filtrar resultados"></div>
     </div>
+    <a id="q-alex" class="home-buscar q-alex" href="#/sec/alex"><span aria-hidden="true">💬</span> <span>Pregúntale a Alex</span></a>
     <div id="res" aria-live="polite"></div>
   </div>`);
 
   const res = n.querySelector('#res');
+  // El mismo texto sirve para preguntar a Alex.
+  const alexLink = n.querySelector('#q-alex');
+  const pintaAlex = () => {
+    const q = n.querySelector('#q').value.trim();
+    alexLink.href = q ? `#/sec/alex?q=${encodeURIComponent(q)}` : '#/sec/alex';
+    alexLink.lastElementChild.textContent = q ? `Preguntar a Alex: «${q.slice(0, 60)}»` : 'Pregúntale a Alex';
+  };
+  n.querySelector('#q').addEventListener('input', pintaAlex);
+  pintaAlex();
   const input = n.querySelector('#q');
   const fb = n.querySelector('#fb');
   let filtro = 'todo';
@@ -1192,7 +1222,7 @@ function vManual() {
   const porSec = SECCIONES.filter((s) => ARTICULOS.some((a) => a.sec === s.id));
   return el(`<div>
     ${topbar('Manual completo')}
-    <h1>📖 MANUAL</h1>
+    <h1>📖 Índice completo</h1>
     <p class="muted">Índice completo: ${ARTICULOS.length} artículos, ${EMERGENCIAS.length} escenarios de emergencia, ${CHECKLISTS.length} checklists, ${CURSOS.length} cursos y ${FRECUENCIAS.length} entradas de frecuencias.</p>
     <details open><summary>🚨 Escenarios de emergencia</summary><div class="list">
       ${EMERGENCIAS.map((e) => `<a class="row pr-${e.pr}" href="#/emergencia/${e.id}"><span>${e.ic}</span><div class="rt"><b>${esc(e.t)}</b></div><span class="chev">›</span></a>`).join('')}
@@ -1215,7 +1245,7 @@ function vFuentes() {
   const ord = [...SOURCES].sort((a, b) => a.tipo - b.tipo || a.org.localeCompare(b.org));
   return el(`<div>
     ${topbar('Fuentes y referencias')}
-    <h1>📑 FUENTES Y REFERENCIAS</h1>
+    <h1>📑 Fuentes y referencias</h1>
     <div class="blk-note">Jerarquía aplicada al redactar el contenido: 1) organismos oficiales, 2) información científica o técnica, 3) manuales reconocidos, 4) fuentes especializadas, 5) contenido de comunidades. Cuando no ha sido posible verificar un dato, se indica expresamente como "pendiente de verificación" en lugar de inventarlo.</div>
     ${ord.map((s) => `<div class="card">
       <span class="badge">${esc(tipos[s.tipo])}</span>
@@ -1271,8 +1301,8 @@ async function vConfig() {
   for (const cn of cacheNames) { try { cachedCount += (await (await caches.open(cn)).keys()).length; } catch {} }
 
   const n = el(`<div>
-    ${topbar('Configuración')}
-    <h1>⚙️ CONFIGURACIÓN</h1>
+    ${topbar('Ajustes')}
+    <h1>⚙️ Ajustes</h1>
 
     ${hayAlmacen ? '' : `<h2>No se pueden guardar datos</h2>${avisoSinAlmacenamiento()}`}
     <h2 id="preparacion">¿Está lista tu app?</h2>
@@ -1324,7 +1354,9 @@ async function vConfig() {
     <div class="card">
       <label>Tema</label>
       <select id="cfg-theme">
-        <option value="dark"${s.theme === 'dark' ? ' selected' : ''}>Campo (oscuro)</option>
+        <option value="auto"${s.theme === 'auto' ? ' selected' : ''}>Automático (claro de día, oscuro de noche según el móvil)</option>
+        <option value="claro"${s.theme === 'claro' ? ' selected' : ''}>Refugio (claro)</option>
+        <option value="oscuro"${s.theme === 'oscuro' ? ' selected' : ''}>Noche serena (oscuro)</option>
         <option value="night"${s.theme === 'night' ? ' selected' : ''}>🌙 Modo noche (baja luminosidad)</option>
       </select>
       <label>Contraste</label>
@@ -1338,7 +1370,7 @@ async function vConfig() {
         <option value="l"${s.fs === 'l' ? ' selected' : ''}>Grande</option>
         <option value="xl"${s.fs === 'xl' ? ' selected' : ''}>Muy grande</option>
       </select>
-      <div class="blk-note">El modo noche reduce la luminosidad global y evita superficies claras. Útil para conservar la visión nocturna y ahorrar batería en pantallas OLED.</div>
+      <div class="blk-note">En automático, la app usa el tema claro o el oscuro según el ajuste de tu móvil. El modo noche reduce aún más la luminosidad: útil para conservar la visión nocturna y ahorrar batería en pantallas OLED.</div>
     </div>
 
     <details class="card plegable" ${lsGet('survival.sync') ? 'open' : ''}>
@@ -1754,6 +1786,7 @@ async function route() {
     if (!a) out = vHome();
     else if (a === 'emergencia') out = b === 'sanitaria' ? vSanitaria(c) : b ? vEmergencia(b) : vEmergenciaLista();
     else if (a === 'art') out = vArticulo(b);
+    else if (a === 'grupo') out = vGrupo(b);
     else if (a === 'sec') out = await vSeccion(b, c);
     else if (a === 'check') out = await vChecklist(b);
     else if (a === 'curso') out = await vCurso(b);
@@ -1767,7 +1800,7 @@ async function route() {
     else if (a === 'riesgos' && b === 'comparar') {
       const { compararView } = await import('./riesgos.js');
       const wrap = el(`<div>${topbar('Comparar ubicaciones', 'Tus ubicaciones', '#/sec/riesgos')}
-        <h1>📊 COMPARAR UBICACIONES</h1></div>`);
+        <h1>📊 Comparar ubicaciones</h1></div>`);
       wrap.appendChild(await compararView());
       out = wrap;
     }
