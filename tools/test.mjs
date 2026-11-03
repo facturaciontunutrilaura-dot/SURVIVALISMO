@@ -829,7 +829,8 @@ try {
     await page.click('[data-hr="lin"]'); await page.click('#li-on');
     ok('Linterna: pantalla en blanco que se apaga al tocarla', await page.locator('#li-luz').isVisible());
     await page.locator('#li-luz').click({ force: true });
-    ok('Linterna: se apaga', await page.locator('#li-luz').isHidden());
+    await page.waitForFunction(() => document.querySelector('#li-luz')?.hidden && !document.fullscreenElement, null, { timeout: 5000 }).catch(() => {});
+    ok('Linterna: se apaga y sale de pantalla completa', await page.locator('#li-luz').isHidden() && !(await page.evaluate(() => !!document.fullscreenElement)));
     await page.click('[data-hr="sen"]');
     ok('Señales: explica el espejo y las señales tierra-aire', /espejo/i.test(await page.textContent('#hr-body')) && /asistencia médica/.test(await page.textContent('#hr-body')));
     await page.click('[data-hr="tar"]');

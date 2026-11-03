@@ -100,12 +100,23 @@ function linterna() {
     try { lock = await navigator.wakeLock?.request('screen'); } catch { lock = null; }
     try { await luz.requestFullscreen?.(); } catch { /* opcional */ }
   };
-  const apagar = () => { luz.hidden = true; try { lock?.release(); } catch {} lock = null; if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {}); };
+  // Primero se sale de pantalla completa y luego se oculta: si se oculta el
+  // elemento que está a pantalla completa, el navegador puede quedarse en ese
+  // modo sin nada visible y los toques no llegan a la app.
+  const apagar = async () => {
+    try { lock?.release(); } catch {}
+    lock = null;
+    if (document.fullscreenElement) { try { await document.exitFullscreen(); } catch { /* sigue */ } }
+    luz.hidden = true;
+  };
+  // Si se sale de pantalla completa con el botón «atrás» del móvil, se apaga también.
+  const alCambiar = () => { if (!document.fullscreenElement && !luz.hidden) apagar(); };
+  document.addEventListener('fullscreenchange', alCambiar);
   n.querySelector('#li-on').addEventListener('click', () => encender(false));
   n.querySelector('#li-rojo').addEventListener('click', () => encender(true));
   luz.addEventListener('click', apagar);
   luz.addEventListener('keydown', (e) => { if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') apagar(); });
-  n.destruir = apagar;
+  n.destruir = () => { document.removeEventListener('fullscreenchange', alCambiar); apagar(); };
   return n;
 }
 
