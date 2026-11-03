@@ -41,11 +41,13 @@ export async function noticiasView() {
       <button class="btn sm ghost" id="nt-act" type="button">↻ Actualizar</button>
     </div>
     <div class="ev-esc" role="group" aria-label="Filtrar noticias">${FILTROS.map(([k, t]) => `<button type="button" class="ev-chip" data-f="${k}" aria-pressed="${k === 'todo'}">${t}</button>`).join('')}</div>
+    <div class="ev-esc" role="group" aria-label="Ordenar noticias"><button type="button" class="ev-chip" data-o="recientes" aria-pressed="true">🕒 Más recientes</button><button type="button" class="ev-chip" data-o="importantes" aria-pressed="false">⚠️ Más importantes</button></div>
+    <p id="nt-calma" class="muted" hidden></p>
     <div id="nt-lista"></div>
   </div>`);
 
   let datos = await kv('noticias.cache', null);
-  let filtro = 'todo', cargando = false, error = null;
+  let filtro = 'todo', orden = 'recientes', cargando = false, error = null;
 
   function pintar() {
     const estado = n.querySelector('#nt-estado');
@@ -54,9 +56,16 @@ export async function noticiasView() {
     estado.textContent = cargando ? 'Buscando noticias…'
       : error && hora ? `Sin conexión con el servidor de noticias. Mostrando las guardadas el ${hora}.`
       : error ? error
-      : hora ? `Actualizado: ${hora}` : '';
+      : hora ? `Comprobado ${haceCuanto(datos.generado)} (${hora})${datos.fuentes?.length ? ` · ${datos.fuentes.filter((f) => f.ok).length} de ${datos.fuentes.length} fuentes responden` : ''}` : '';
     const todas = datos?.noticias || [];
-    const vista = todas.filter((x) => filtro === 'todo' || (filtro === 'oficial' ? x.oficial : x.ambito === filtro));
+    const vista = todas.filter((x) => filtro === 'todo' || (filtro === 'oficial' ? x.oficial : x.ambito === filtro))
+      .slice().sort((a, b) => (orden === 'recientes' ? (new Date(b.fecha || 0) - new Date(a.fecha || 0)) : (b.puntos || 0) - (a.puntos || 0)));
+    // Si la noticia más reciente es de hace horas, se explica: no es que no se actualice.
+    const ultima = Math.max(0, ...todas.map((x) => (x.fecha ? new Date(x.fecha).getTime() : 0)));
+    const calma = n.querySelector('#nt-calma');
+    const horasSin = ultima ? (Date.now() - ultima) / 3600e3 : 0;
+    calma.hidden = !(horasSin >= 3 && !error);
+    if (!calma.hidden) calma.textContent = `No ha habido noticias importantes nuevas desde hace unas ${Math.round(horasSin)} horas. La app solo muestra lo relevante para emergencias (guerra, colapso, apagones, avisos meteorológicos…), y lo comprueba cada 30 minutos.`;
     if (!todas.length) {
       lista.innerHTML = datos ? '<div class="card"><p>No hay noticias importantes sobre estos temas en las últimas 48 horas. Buena señal.</p></div>' : '';
       return;
@@ -90,6 +99,11 @@ export async function noticiasView() {
     const b = ev.target.closest('button');
     if (!b) return;
     if (b.id === 'nt-act') return actualizar();
+    if (b.dataset.o) {
+      orden = b.dataset.o;
+      n.querySelectorAll('[data-o]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+      return pintar();
+    }
     if (b.dataset.f) {
       filtro = b.dataset.f;
       n.querySelectorAll('[data-f]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));

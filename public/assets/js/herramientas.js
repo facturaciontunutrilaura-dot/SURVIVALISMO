@@ -9,6 +9,7 @@ import { el, esc, toast, alSalir } from './ui.js';
 import * as store from './store.js';
 import * as ubi from './ubicacion.js';
 import { ESTADOS_MENSAJE, textoMensaje, enlaceSms, enlaceWhatsapp, telefono } from './herramientas-core.js';
+import { contextoAudio } from './sonido.js';
 import { A4, C, lit, limpiar, partir, escribir, medirHelvetica } from './compra-pdf.js';
 
 const kv = async (id, def) => (await store.get('kv', id).catch(() => null))?.v ?? def;
@@ -68,7 +69,7 @@ function silbato() {
     <p class="muted">Repite los 3 pitidos cada minuto. Si te responden con 2, te han oído. Un silbato de verdad en la mochila no gasta batería: llévalo también.</p>
   </div>`);
   let ctx = null, osc = null, temp = 0, sonando = false;
-  const on = () => { try { ctx ||= new (window.AudioContext || window.webkitAudioContext)(); if (ctx.state === 'suspended') ctx.resume(); const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'square'; o.frequency.value = 3150; g.gain.value = 0.9; o.connect(g).connect(ctx.destination); o.start(); osc = o; } catch { /* sin audio */ } };
+  const on = () => { try { ctx = contextoAudio(); const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'square'; o.frequency.value = 3150; g.gain.value = 0.9; o.connect(g).connect(ctx.destination); o.start(); osc = o; } catch { /* sin audio */ } };
   const off = () => { try { osc?.stop(); } catch {} osc = null; };
   const parar = () => { sonando = false; clearTimeout(temp); off(); };
   function tres() {
@@ -81,7 +82,7 @@ function silbato() {
   n.querySelector('#si-3').addEventListener('click', tres);
   n.querySelector('#si-c').addEventListener('click', () => { parar(); sonando = true; on(); });
   n.querySelector('#si-stop').addEventListener('click', parar);
-  n.destruir = () => { parar(); try { ctx?.close(); } catch {} };
+  n.destruir = parar;
   return n;
 }
 

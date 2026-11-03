@@ -619,8 +619,9 @@ try {
     await page.waitForSelector('.bottomnav a[href="#/sec/noticias"]');
     await page.click('.bottomnav a[href="#/sec/noticias"]');
     await page.waitForSelector('.nt-item');
-    ok('Noticias: muestra titular, fuente y enlace a la ficha de la app', (await page.locator('.nt-item').count()) === 2 && (await page.locator('.nt-item a[href="#/emergencia/conflicto"]').count()) === 1 && /Actualizado/.test(await page.textContent('#nt-estado')));
+    ok('Noticias: muestra titular, fuente y enlace a la ficha de la app', (await page.locator('.nt-item').count()) === 2 && (await page.locator('.nt-item a[href="#/emergencia/conflicto"]').count()) === 1 && /Comprobado/.test(await page.textContent('#nt-estado')));
     ok('Noticias: los enlaces externos se abren aparte y sin rastreo', await page.locator('.nt-item h3 a').first().evaluate((a) => a.target === '_blank' && a.rel.includes('noopener') && a.rel.includes('noreferrer')));
+    ok('Noticias: por defecto, lo más reciente primero', await page.getAttribute('[data-o="recientes"]', 'aria-pressed') === 'true');
     await page.click('[data-f="oficial"]');
     ok('Noticias: filtro de fuentes oficiales', (await page.locator('.nt-item').count()) === 1 && /AEMET/.test(await page.textContent('.nt-item')));
     await page.click('[data-f="internacional"]');
