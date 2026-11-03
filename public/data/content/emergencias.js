@@ -241,7 +241,7 @@ export const EMERGENCIAS = [
     ev: {
       quedarse: ['Durante la sacudida, siempre quedarse en el sitio y protegerse.'],
       evacuar: ['Después de la sacudida, si el edificio presenta daños visibles, olor a gas o riesgo de colapso.'],
-      nota: 'La provincia de Ávila se sitúa en una zona de sismicidad baja según los mapas de peligrosidad sísmica del IGN, pero se pueden sentir terremotos moderados. Consulta la normativa NCSE y los mapas del IGN para datos concretos de tu municipio.',
+      nota: 'La peligrosidad sísmica cambia mucho de una zona a otra: es mayor en el sureste (Granada, Murcia, Almería, Alicante) y en el Pirineo. Consulta la normativa NCSE y los mapas del IGN para los datos concretos de tu municipio.',
     },
     src: ['ign', 'pc-es'],
   },
@@ -333,7 +333,7 @@ export const EMERGENCIAS = [
     ev: {
       quedarse: ['Tu vivienda es fresca o puedes acondicionar una habitación en el lado norte.'],
       evacuar: ['Tu vivienda no baja de temperatura y hay personas vulnerables: busca un lugar climatizado (centro cívico, biblioteca, centro comercial).'],
-      nota: 'Para la zona del Sistema Central de Ávila, AEMET fija el aviso por temperatura máxima en 34 °C (amarillo), 37 °C (naranja) y 40 °C (rojo). Los umbrales varían por zona; consulta el mapa oficial.',
+      nota: 'AEMET fija los umbrales de aviso por temperatura máxima para cada zona: lo que en la montaña es un aviso rojo, en el valle del Guadalquivir puede ser un día normal. Consulta los de tu zona en el mapa oficial de avisos.',
     },
     src: ['aemet-meteoalerta', 'pc-es'],
   },
@@ -385,7 +385,7 @@ export const EMERGENCIAS = [
     ev: {
       quedarse: ['Puedes mantener una habitación por encima de unos 15 °C y tienes agua y comida.'],
       evacuar: ['No hay forma segura de calentar y hay personas vulnerables; busca alojamiento o el punto habilitado por el ayuntamiento.'],
-      nota: 'Umbral de aviso por temperatura mínima en la zona del Sistema Central de Ávila: −6 °C (amarillo), −10 °C (naranja), −14 °C (rojo).',
+      nota: 'Los umbrales de aviso por temperatura mínima cambian mucho por zona (en la montaña son mucho más bajos que en la costa). Consulta los de la tuya en el mapa oficial de avisos de AEMET.',
     },
     src: ['aemet-meteoalerta', 'pc-es'],
   },
@@ -403,7 +403,7 @@ export const EMERGENCIAS = [
       'Señaliza tu posición y espera',
     ],
     ahora: [
-      'Evita desplazarte por carretera. Consulta el estado de las vías antes de salir; en la provincia de Ávila los puertos de montaña se cierran o exigen cadenas con frecuencia.',
+      'Evita desplazarte por carretera. Consulta el estado de las vías antes de salir (DGT); los puertos de montaña se cierran o exigen cadenas con frecuencia.',
       'Si vas a salir: cadenas o neumáticos de invierno, depósito lleno, manta, agua, comida, pala y móvil cargado.',
       'Si el vehículo queda atrapado: no lo abandones salvo que veas un refugio a la vista. Es tu abrigo y te hace visible.',
       'Enciende el motor solo a intervalos cortos para calentarte y comprueba SIEMPRE que el tubo de escape está libre de nieve.',
@@ -431,7 +431,7 @@ export const EMERGENCIAS = [
     ev: {
       quedarse: ['Estás en casa con calor, agua y comida: quedarse siempre es preferible.'],
       evacuar: ['Solo si la vivienda es inhabitable o hay orden de las autoridades.'],
-      nota: 'Umbral de aviso por nieve en 24 h para la zona del Sistema Central de Ávila: 5 cm (amarillo), 20 cm (naranja), 40 cm (rojo).',
+      nota: 'Los umbrales de aviso por nieve dependen de la zona: en las ciudades de costa unos pocos centímetros ya son un aviso alto. Consulta los de la tuya en el mapa oficial de avisos de AEMET.',
     },
     src: ['aemet-meteoalerta', 'pc-es'],
   },
@@ -519,7 +519,7 @@ export const EMERGENCIAS = [
       'Consulta con el ayuntamiento o la empresa suministradora los puntos de reparto de agua y su horario.',
       'Recoge agua en recipientes limpios con tapa. Etiqueta lo potable y lo no potable.',
       'Reutiliza el agua en cascada: agua de lavar verduras → limpiar → cisterna.',
-      'Si has de tratar agua de origen dudoso: filtra la turbidez con un paño y luego hierve un minuto (tres minutos por encima de 1.000 m de altitud, lo que aplica a buena parte de la provincia de Ávila).',
+      'Si has de tratar agua de origen dudoso: filtra la turbidez con un paño y luego hierve un minuto (tres minutos por encima de 1.000 m de altitud).',
     ],
     dias: [
       'Establece un racionamiento por escrito y por persona; es más fácil de cumplir que "gastar poco".',
@@ -790,7 +790,7 @@ export const EMERGENCIAS = [
       'No aísles a las personas mayores del grupo: la soledad deteriora rápido.',
     ],
     eq: ['Reserva de 7 días de agua y comida', 'Fuente de calor segura', 'Radio', 'Botiquín y medicación crónica', 'Iluminación', 'Herramienta manual básica'],
-    ev: { quedarse: ['Mientras tengas agua, calor y salud.'], evacuar: ['Cuando la reserva baje del margen necesario para salir con seguridad, o haya urgencia sanitaria.'], nota: 'Muchos municipios de la provincia de Ávila son pequeños y de montaña; en episodios de nieve el aislamiento de 24–72 h es un escenario realista.' },
+    ev: { quedarse: ['Mientras tengas agua, calor y salud.'], evacuar: ['Cuando la reserva baje del margen necesario para salir con seguridad, o haya urgencia sanitaria.'], nota: 'En pueblos pequeños y de montaña, durante una nevada el aislamiento de 24–72 h es un escenario realista.' },
     src: ['pc-es', 'dipavila-platea'],
   },
 

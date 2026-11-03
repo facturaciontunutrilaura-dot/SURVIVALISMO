@@ -725,6 +725,14 @@ try {
     await page.goto(BASE + '#/');
     await page.waitForSelector('.tile.evacuacion');
     ok('Evacuación: en «Prepárate», destacada', await page.evaluate(() => !!document.querySelector('#h-preparate + .grid .tile.evacuacion')));
+    // Sin ubicación, pide provincia y ciudad.
+    await page.evaluate(async () => (await import('./assets/js/ubicacion.js')).olvidar());
+    await page.click('.tile.evacuacion');
+    await page.waitForSelector('#ev-ubi select');
+    ok('Evacuación: sin ubicación pide provincia y ciudad', /Indica dónde vives/.test(await page.textContent('#ev-desde')) && (await page.locator('#ev-ubi select').count()) === 2);
+    // Ávila: corredores trazados a mano.
+    await page.evaluate(async () => (await import('./assets/js/ubicacion.js')).guardar('05', 'manual', '05019'));
+    await page.goto(BASE + '#/'); await page.waitForSelector('.tile.evacuacion');
     await page.click('.tile.evacuacion');
     await page.waitForSelector('.ev-corr');
     await page.waitForSelector('#ev-map .leaflet-overlay-pane path');
@@ -755,7 +763,35 @@ try {
     await page.waitForSelector('#ev-map .leaflet-popup', { timeout: 3000 }).catch(() => {});
     ok('Evacuación: «Ver en el mapa» muestra el corredor', /Fuentes de Oñoro/.test(await page.textContent('#ev-map')));
     ok('Evacuación: salir del país explica la documentación', /Pasaporte en vigor/.test(await page.textContent('#ev-todos ~ details')));
-    await page.waitForTimeout(300);
+    // Resto de España: destinos por distancia desde el municipio elegido.
+    await page.evaluate(async () => (await import('./assets/js/ubicacion.js')).guardar('41', 'manual', '41091'));
+    await page.goto(BASE + '#/sec/evacuacion'); await page.reload(); await page.waitForSelector('#ev-corredores .ev-corr');
+    const sev = await page.evaluate(() => ({
+      desde: document.querySelector('#ev-desde').textContent,
+      ids: [...document.querySelectorAll('#ev-corredores [data-corr]')].map((x) => x.dataset.corr),
+      interior: /Refugio en el interior, cerca de ti/.test(document.querySelector('#ev-corredores').textContent),
+      texto: document.querySelector('#ev-detalle').textContent,
+    }));
+    ok('Evacuación general: sale desde tu ciudad, sin nombrar Ávila', /Sevilla/.test(sev.desde) && !/Ávila|Gredos|Tiétar/.test(sev.texto), JSON.stringify(sev).slice(0, 300));
+    ok('Evacuación general: colapso → interior y luego la frontera más cercana (Ayamonte)', sev.interior && sev.ids[0] === 'pt-ayamonte', sev.ids.join());
+    await page.click('[data-esc="nuclear"]');
+    const nuc = await page.evaluate(() => [...document.querySelectorAll('#ev-corredores [data-corr]')].map((x) => x.dataset.corr));
+    ok('Evacuación general: en un accidente nuclear descarta salidas que pasan junto a una central', nuc.length && !nuc.includes('pt-marvao'), nuc.join());
+    await page.waitForSelector('#ev-map .leaflet-overlay-pane path');
+    ok('Evacuación general: líneas en el mapa desde tu ciudad', (await page.locator('#ev-map .leaflet-overlay-pane path').count()) >= 10);
+    await page.click('[data-esc="colapso"]');
+    // Fuera de Ávila, lo local de Ávila no aparece.
+    await page.goto(BASE + '#/grupo/riesgos'); await page.reload(); await page.waitForSelector('.list .row');
+    ok('Fuera de Ávila: la Guía de Ávila no aparece en «Riesgos en España y en tu zona»', (await page.locator('.list a[href="#/sec/avila"]').count()) === 0);
+    await page.evaluate(async () => (await import('./assets/js/ubicacion.js')).olvidar());
+    await page.goto(BASE + '#/'); await page.reload(); await page.waitForSelector('#home-ubi select');
+    ok('Portada: sin ubicación pregunta dónde vives (provincia y ciudad)', /dónde vives/.test(await page.textContent('#home-ubi')) && (await page.locator('#home-ubi select').count()) === 2);
+    await page.locator('#home-ubi select').first().selectOption('41');
+    await page.waitForFunction(() => document.querySelectorAll('#home-ubi select')[1]?.options.length > 50);
+    ok('Portada: al elegir provincia se cargan sus municipios', (await page.locator('#home-ubi select').nth(1).locator('option').count()) > 50);
+    // El resto de pruebas siguen con Ávila (corredores trazados).
+    await page.evaluate(async () => (await import('./assets/js/ubicacion.js')).guardar('05', 'manual', '05019'));
+    await page.goto(BASE + '#/sec/evacuacion');
     await page.reload(); await page.waitForSelector('.ev-corr');
     ok('Evacuación: recuerda la autonomía del coche', (await page.inputValue('#ev-auto')) === '200');
     ok('Evacuación: los tiempos nunca salen como «60 min»', await page.evaluate(async () => { const { horas } = await import('./assets/js/evacuacion.js'); return [horas(2.995), horas(0.995), horas(1.5), horas(0.25)].join('|'); }) === '3 h|1 h|1 h 30 min|15 min');
@@ -1559,6 +1595,7 @@ try {
   await page.goto(BASE + '#/art/huerto-patatas', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('h1');
   ok('SIN RED: ficha del huerto (patatas)', /solanina/.test(await page.textContent('#app')));
+  await page.evaluate(async () => (await import('./assets/js/ubicacion.js')).guardar('05', 'manual', '05019'));
   await page.goto(BASE + '#/sec/evacuacion', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#ev-map .leaflet-overlay-pane path', { timeout: 15000 });
   ok('SIN RED: plan de evacuación con corredores y mapa', (await page.locator('#ev-corredores .ev-corr').count()) >= 4 && (await page.locator('#ev-map .leaflet-overlay-pane path').count()) >= 12);
@@ -1848,6 +1885,7 @@ try {
   await page.goto(BASE + '#/emergencia/apagon', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('.qcard', { timeout: 10000 });
   ok('SERVIDOR APAGADO: escenarios accesibles', (await page.locator('.qcard li').count()) >= 4);
+  await page.evaluate(async () => (await import('./assets/js/ubicacion.js')).guardar('05', 'manual', '05019'));
   await page.goto(BASE + '#/sec/evacuacion', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#ev-corredores .ev-corr', { timeout: 10000 });
   ok('SERVIDOR APAGADO: el plan de evacuación sigue disponible', (await page.locator('#ev-corredores .ev-corr').count()) >= 4);
@@ -2047,14 +2085,16 @@ try {
   await page.waitForSelector('#rz button', { timeout: 8000 });
   ok('Existe el ámbito MI ZONA', await page.locator('#rz button[data-z="mizona"]').count() === 1);
 
+  await page.evaluate(async () => (await import('./assets/js/ubicacion.js')).olvidar());
+  await page.reload(); await page.waitForSelector('#rz button', { timeout: 8000 });
   await page.locator('#rz button[data-z="mizona"]').click();
-  await page.waitForSelector('#ubi', { timeout: 5000 });
-  ok('Al elegir MI ZONA aparece el panel de ubicación', await page.locator('#ubi').isVisible());
-  ok('Se puede elegir la provincia a mano', await page.locator('#ubi-sel option').count() >= 53);
+  await page.waitForSelector('#ubi-wrap .ubi-sel', { timeout: 5000 });
+  ok('Al elegir MI ZONA aparece el panel de ubicación', await page.locator('#ubi-wrap .ubi-sel').isVisible());
+  ok('Se puede elegir la provincia a mano', await page.locator('#ubi-wrap select').first().locator('option').count() >= 53);
   ok('Sin ubicación no se muestra ninguna ficha de riesgo', await page.locator('#r-list .riesgo').count() === 0);
 
   // Una provincia SIN evaluación propia: aviso claro + datos estatales.
-  await page.selectOption('#ubi-sel', '46'); // Valencia
+  await page.locator('#ubi-wrap select').first().selectOption('46'); // Valencia
   await page.waitForTimeout(700);
   const txtVal = await page.locator('#r-list').innerText();
   ok('Se avisa de que no hay evaluación específica para esa provincia', /Sin evaluación específica/i.test(txtVal));
@@ -2064,7 +2104,7 @@ try {
   ok('Se distingue lo confirmado de lo pendiente', /pendiente de confirmar|oficial/i.test(txtVal));
 
   // Ávila SÍ tiene evaluación propia: no debe salir el aviso.
-  await page.selectOption('#ubi-sel', '05');
+  await page.locator('#ubi-wrap select').first().selectOption('05');
   await page.waitForTimeout(700);
   const txtAvi = await page.locator('#r-list').innerText();
   ok('En Ávila no se avisa de falta de evaluación', !/Sin evaluación específica/i.test(txtAvi));
@@ -2073,13 +2113,14 @@ try {
   // Persistencia: la provincia sobrevive a una recarga, las coordenadas no
   // se guardan en ningún sitio.
   await page.reload({ waitUntil: 'networkidle' });
-  await page.waitForSelector('#ubi', { timeout: 8000 });
-  ok('La ubicación elegida se recuerda tras recargar', /Ávila/i.test(await page.locator('#ubi').innerText()));
+  await page.waitForSelector('#ubi-wrap .ubi-act-txt', { timeout: 8000 });
+  await page.waitForFunction(() => /Ávila/.test(document.querySelector('#ubi-wrap .ubi-act-txt')?.textContent || ''), null, { timeout: 5000 }).catch(() => {});
+  ok('La ubicación elegida se recuerda tras recargar', /Ávila/i.test(await page.locator('#ubi-wrap .ubi-sel').innerText()));
   const guardado = await page.evaluate(async () => {
     const s = await import('./assets/js/store.js');
     return JSON.stringify((await s.get('kv', 'ubicacion'))?.v || {});
   });
-  ok('Solo se guarda el código de provincia y el modo', /"cod":"05"/.test(guardado) && /"modo":"manual"/.test(guardado), guardado);
+  ok('Solo se guardan los códigos de provincia y municipio y el modo', /"cod":"05"/.test(guardado) && /"modo":"manual"/.test(guardado), guardado);
   ok('No se guarda ninguna coordenada', !/lat|lon|coord|accuracy|precision/i.test(guardado), guardado);
 
   /* ------------- 13 quater. Uso con una mano y navegación (Fase 3) ------------- */
@@ -2306,7 +2347,7 @@ try {
       ['/sec/juegos', '.ttt-c', async () => { await pp.click('#jg-tabs [data-t="mem"]'); }],
       ['/sec/entrenamiento', '.en-op', async () => { await pp.click('[data-empezar="0"]'); await pp.locator('.en-serie').first().click(); await pp.waitForTimeout(300); }],
       ['/sec/noticias', '#nt-estado', async () => { await pp.waitForTimeout(300); }],
-      ['/sec/evacuacion', '.ev-corr', async () => { await pp.click('[data-esc="guerra"]'); }],
+      ['/sec/evacuacion', '#ev-desde', async () => { await pp.evaluate(async () => (await import('./assets/js/ubicacion.js')).guardar('05', 'manual', '05019')); await pp.reload(); await pp.waitForSelector('.ev-corr'); await pp.click('[data-esc="guerra"]'); }],
       ['/sec/juegos/ajedrez', '.aje-c', async () => { await pp.click('[data-modo="dificil"]'); await pp.click('[data-i="52"]'); await pp.click('[data-i="36"]'); await pp.waitForTimeout(200); }],
       ['/buscar', '#q', async () => { await pp.fill('#q', 'hipotermia'); }],
       ['/familia/mapa', '#map.leaflet-container'],

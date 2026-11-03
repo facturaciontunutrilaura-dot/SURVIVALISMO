@@ -170,7 +170,7 @@ export const CHECKLISTS = [
     ],
   },
   {
-    id: 'avila',
+    id: 'avila', prov: '05',
     t: 'Plan Ávila (estacional)',
     desc: 'Revisión en junio y en noviembre.',
     grupos: [

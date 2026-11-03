@@ -150,7 +150,7 @@ export const ART_PREPARACION = [
         'Rompecristales y cortacinturones al alcance del conductor.',
         'Papel, bolígrafo, bolsas de basura, papel higiénico.',
       ] },
-      { h: 'Añadidos de invierno (octubre–abril, especialmente en la provincia de Ávila)' },
+      { h: 'Añadidos de invierno (octubre–abril, sobre todo en zonas altas y de montaña)' },
       { ul: [
         'Cadenas homologadas para tu medida de neumático, PROBADAS antes en seco.',
         'Rascador y anticongelante de parabrisas.',
@@ -274,8 +274,9 @@ export const ART_PREPARACION = [
           ],
         },
       },
-      { h: 'Umbrales para la zona del Sistema Central de Ávila' },
+      { h: 'Umbrales para la zona del Sistema Central de Ávila', soloProv: '05' },
       {
+        soloProv: '05',
         table: {
           head: ['Fenómeno', 'Amarillo', 'Naranja', 'Rojo'],
           rows: [
@@ -288,7 +289,8 @@ export const ART_PREPARACION = [
           ],
         },
       },
-      { note: 'Umbrales del Plan METEOALERTA de AEMET para la zona "Sistema Central de Ávila". Cada zona de aviso tiene sus propios umbrales; los de la Meseta abulense son distintos. Consulta el mapa oficial de zonas.' },
+      { soloProv: '05', note: 'Umbrales del Plan METEOALERTA de AEMET para la zona "Sistema Central de Ávila". Cada zona de aviso tiene sus propios umbrales; los de la Meseta abulense son distintos. Consulta el mapa oficial de zonas.' },
+      { noProv: '05', note: 'Cada zona de aviso de AEMET tiene sus propios umbrales de amarillo, naranja y rojo. Consulta los de la tuya en aemet.es (Avisos → tu provincia → tu zona) y apúntalos aquí: lo que es normal en la montaña es grave en la costa, y al revés.' },
       { h: 'Leer el cielo' },
       { ul: [
         'Cirros (finos, blancos, muy altos) que van cubriendo el cielo: frente cálido en 12–24 h, lluvia probable.',

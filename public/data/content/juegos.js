@@ -476,7 +476,7 @@ export const QUIZ_CATEGORIAS = {
   meteorologia: { t: 'Meteorología', ic: '⛈' },
   seguridad: { t: 'Seguridad', ic: '🛡' },
   preparacion: { t: 'Preparación', ic: '🎒' },
-  avila: { t: 'Ávila', ic: '📍' },
+  avila: { t: 'Ávila', ic: '📍', prov: '05' },
   espana: { t: 'España', ic: '🇪🇸' },
 };
 

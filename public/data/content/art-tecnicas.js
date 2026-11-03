@@ -50,7 +50,7 @@ export const ART_TECNICAS = [
     sec: 'orientacion',
     t: 'Coordenadas: latitud/longitud y UTM',
     pr: 'importante',
-    sum: 'Al 112 dale grados decimales o UTM completo con huso. En España peninsular, husos 29, 30 y 31; Ávila está en el 30.',
+    sum: 'Al 112 dale grados decimales o UTM completo con huso. En España peninsular, husos 29, 30 y 31; la mayor parte del centro está en el 30.',
     tags: ['orientación', 'coordenadas', 'UTM', 'latitud', 'longitud', 'GPS', '112'],
     body: [
       { h: 'Formatos de latitud/longitud' },
@@ -67,7 +67,7 @@ export const ART_TECNICAS = [
       { note: 'Longitud oeste = NEGATIVA en grados decimales. Casi toda España peninsular tiene longitud negativa. Confundir el signo te sitúa en China.' },
       { h: 'UTM' },
       { ul: [
-        'Coordenadas métricas en un huso. España peninsular ocupa los husos 29, 30 y 31; la provincia de Ávila está en el huso 30.',
+        'Coordenadas métricas en un huso. España peninsular ocupa los husos 29, 30 y 31 (Galicia y el oeste en el 29, el centro en el 30 y Cataluña y Baleares en el 31).',
         'Se expresan como: huso + banda, X (easting, 6 dígitos), Y (northing, 7 dígitos). Ejemplo de formato: 30T 357000 4502000.',
         'Datum: los mapas modernos del IGN usan ETRS89; los antiguos, ED50. La diferencia entre ambos puede superar los 200 m. Comprueba siempre el datum del mapa y del GPS.',
         'Ventaja de UTM: mides distancias directamente en metros sobre el mapa con una regla.',
@@ -148,7 +148,7 @@ export const ART_TECNICAS = [
       { h: 'Con las estrellas' },
       { ul: [
         'Estrella Polar = norte. Localízala prolongando cinco veces la distancia entre las dos "estrellas guarda" del Carro (Osa Mayor).',
-        'La altura de la Polar sobre el horizonte, en grados, equivale aproximadamente a tu latitud (≈ 40° en Ávila).',
+        'La altura de la Polar sobre el horizonte, en grados, equivale aproximadamente a tu latitud (entre 36° y 43° en la península).',
         'Casiopea (la "W") está al otro lado de la Polar respecto a la Osa Mayor: útil cuando el Carro queda bajo.',
         'Orión sale por el este y se pone por el oeste; su cinturón cruza casi el ecuador celeste.',
       ] },
@@ -303,7 +303,7 @@ export const ART_TECNICAS = [
         'Coloca los parches sobre el pecho desnudo y seco, según el dibujo.',
         'Nadie debe tocar a la persona durante el análisis ni durante la descarga.',
         'Reanuda las compresiones inmediatamente después de la descarga.',
-        'Ávila cuenta con espacios cardioprotegidos con DEA señalizados; localiza los más cercanos a tus lugares habituales antes de necesitarlos.',
+        'Muchos municipios tienen espacios cardioprotegidos con DEA señalizados; localiza los más cercanos a tus lugares habituales antes de necesitarlos.',
       ] },
       { h: 'Niños y bebés' },
       { ul: [

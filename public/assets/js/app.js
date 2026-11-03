@@ -13,6 +13,8 @@ import { clavesChecklist, mapaMigracion } from './checklist-claves.js';
 import { $, $$, el, esc, toast, topbar, renderBlocks, prBadge, fmtBytes, uid, limpiarVista, alSalir, borrarConDeshacer } from './ui.js';
 import { CALCS, mountTools } from './calc.js';
 import { compassView } from './compass.js';
+import * as ubi from './ubicacion.js';
+import { montarSelector } from './ubicacion-ui.js';
 
 const app = $('#app');
 const secMap = Object.fromEntries(SECCIONES.map((s) => [s.id, s]));
@@ -164,7 +166,7 @@ function vGrupo(id) {
   const g = GRUPOS[id];
   if (!g) return v404();
   return el(`<div>${topbar(g.t, 'Inicio')}<h1>${g.ic} ${esc(g.t)}</h1><p class="muted">${esc(g.desc)}</p>
-    <div class="list">${g.secs.map((sid) => secMap[sid]).filter(Boolean).map((s) => `<a class="row" href="${rutaSeccion(s.id)}">
+    <div class="list">${g.secs.map((sid) => secMap[sid]).filter((s) => s && ubi.esLocal(s.prov)).map((s) => `<a class="row" href="${rutaSeccion(s.id)}">
       <span class="ric" aria-hidden="true">${s.ic}</span><div class="rt"><b>${esc(s.t)}</b><span>${esc(s.desc)}</span></div><span class="chev" aria-hidden="true">›</span></a>`).join('')}</div></div>`);
 }
 
@@ -201,6 +203,7 @@ function vHome() {
       <div id="home-aviso" hidden></div>
     </section>
 
+    <div id="home-ubi"></div>
     <div id="home-prep" class="home-prep" hidden></div>
 
     ${PORTADA.map((b) => `<section class="home-bloque" aria-labelledby="h-${b.id}">
@@ -214,6 +217,13 @@ function vHome() {
     </div>
   </div>`);
   avisoNoticias(n.querySelector('#home-aviso'));
+  // Primera vez: dónde vives (para la evacuación, los riesgos y lo local).
+  ubi.guardada().catch(() => null).then((u) => {
+    if (u?.mun) return;
+    const caja = n.querySelector('#home-ubi');
+    montarSelector(caja, (x) => { if (x?.mun) setTimeout(() => { caja.replaceChildren(); route(); }, 600); },
+      { titulo: '📍 Primero: ¿dónde vives?', explicacion: 'Con tu provincia y tu ciudad, la app te dice por dónde salir en una evacuación y qué riesgos hay en tu zona. Se guarda solo en este móvil.', compacto: true });
+  });
   // Solo aparece si algo requiere atención (recursos offline, copia, protección).
   prep.montarAvisoPortada(n.querySelector('#home-prep'));
   return n;
@@ -506,7 +516,7 @@ async function vSeccion(id, sub) {
   }
   if (id === 'evacuacion') {
     const { evacuacionView } = await import('./evacuacion.js');
-    const w = el(`<div>${topbar(s.t, 'Salir de Ávila: España y fuera')}<h1>${s.ic} Plan de evacuación</h1></div>`);
+    const w = el(`<div>${topbar(s.t, 'Por dónde salir: España y fuera')}<h1>${s.ic} Plan de evacuación</h1></div>`);
     w.appendChild(await evacuacionView());
     return w;
   }
@@ -564,7 +574,7 @@ async function vSeccion(id, sub) {
 
   if (id === 'orientacion') extra.push('<div id="slot-compass"></div>');
   if (id === 'equipo') {
-    extra.push(`<h2>Checklists</h2><div class="list">${CHECKLISTS.map((c) => `
+    extra.push(`<h2>Checklists</h2><div class="list">${CHECKLISTS.filter((c) => ubi.esLocal(c.prov)).map((c) => `
       <a class="row" href="#/check/${c.id}"><span>☑</span><div class="rt"><b>${esc(c.t)}</b><span>${esc(c.desc)}</span></div><span class="chev">›</span></a>`).join('')}</div>`);
   }
   if (id === 'comunicaciones') extra.push('<div id="slot-frec"></div>');
@@ -633,7 +643,7 @@ async function frecuenciasPanel() {
         <div><label>Frecuencia</label><input id="uf-f" placeholder="446.00625"></div>
         <div><label>Unidad</label><select id="uf-u"><option>MHz</option><option>kHz</option></select></div>
       </div>
-      <label>Nombre</label><input id="uf-n" placeholder="Ej. RNE Ávila, canal familiar…">
+      <label>Nombre</label><input id="uf-n" placeholder="Ej. RNE, canal familiar…">
       <label>Uso</label><input id="uf-us" placeholder="Recepción / transmisión, para qué">
       <label>Zona</label><input id="uf-z" placeholder="Dónde se recibe bien">
       <label>Notas y fuente</label><textarea id="uf-no" placeholder="¿De dónde has obtenido este dato? Anótalo siempre."></textarea>
@@ -882,7 +892,7 @@ function vCursos() {
     ${topbar('Formación')}
     <h1>🎓 Formación</h1>
     <p class="muted">Diez cursos breves. Teoría, ejercicio práctico y autoevaluación. Todo funciona sin conexión.</p>
-    <div class="list">${CURSOS.map((c) => `
+    <div class="list">${CURSOS.filter((c) => ubi.esLocal(c.prov)).map((c) => `
       <a class="row" href="#/curso/${c.id}"><div class="rt"><b>${esc(c.n)} — ${esc(c.t)}</b><span>${esc(c.dur)} · ${esc(c.obj)}</span></div><span class="chev">›</span></a>`).join('')}</div>
   </div>`);
 }
@@ -1231,10 +1241,10 @@ function vManual() {
       ${articulosDeSeccion(s.id).map((a) => `<a class="row pr-${a.pr}" href="#/art/${a.id}"><div class="rt"><b>${esc(a.t)}</b><span>${esc(a.sum)}</span></div><span class="chev">›</span></a>`).join('')}
     </div></details>`).join('')}
     <details><summary>☑ Checklists</summary><div class="list">
-      ${CHECKLISTS.map((c) => `<a class="row" href="#/check/${c.id}"><div class="rt"><b>${esc(c.t)}</b><span>${esc(c.desc)}</span></div><span class="chev">›</span></a>`).join('')}
+      ${CHECKLISTS.filter((c) => ubi.esLocal(c.prov)).map((c) => `<a class="row" href="#/check/${c.id}"><div class="rt"><b>${esc(c.t)}</b><span>${esc(c.desc)}</span></div><span class="chev">›</span></a>`).join('')}
     </div></details>
     <details><summary>🎓 Cursos</summary><div class="list">
-      ${CURSOS.map((c) => `<a class="row" href="#/curso/${c.id}"><div class="rt"><b>${esc(c.n)} — ${esc(c.t)}</b></div><span class="chev">›</span></a>`).join('')}
+      ${CURSOS.filter((c) => ubi.esLocal(c.prov)).map((c) => `<a class="row" href="#/curso/${c.id}"><div class="rt"><b>${esc(c.n)} — ${esc(c.t)}</b></div><span class="chev">›</span></a>`).join('')}
     </div></details>
   </div>`);
 }
@@ -1346,9 +1356,12 @@ async function vConfig() {
       <li>${EMERGENCIAS.length} escenarios de emergencia con tarjetas rápidas</li>
       <li>${CHECKLISTS.length} checklists · ${CURSOS.length} cursos · ${Object.keys(CALCS).length} calculadoras</li>
       <li>${FRECUENCIAS.length} entradas en la base de frecuencias</li>
-      <li>Capa vectorial IGN: provincias, comunidades y municipios de Ávila</li>
+      <li>Capa vectorial IGN: provincias y comunidades de España, y los municipios de tu provincia</li>
       <li>Teselas ráster descargadas por ti: ${counts.tiles}</li>
     </ul></div>
+
+    <h2>Mi ubicación</h2>
+    <div id="cfg-ubi"></div>
 
     <h2>Apariencia</h2>
     <div class="card">
@@ -1403,6 +1416,7 @@ async function vConfig() {
   </div>`);
 
   // Persistencia
+  montarSelector(n.querySelector('#cfg-ubi'), () => {}, { titulo: '📍 Dónde vives' });
   navigator.storage?.persisted?.().then((p) => { n.querySelector('#cfg-persist').textContent = p ? 'concedido' : 'no concedido'; })
     .catch(() => { n.querySelector('#cfg-persist').textContent = 'no disponible'; });
 
@@ -1838,7 +1852,8 @@ async function route() {
 }
 
 window.addEventListener('hashchange', route);
-route();
+// La provincia se lee antes de pintar: decide qué contenido local se muestra.
+ubi.guardada().catch(() => null).finally(route);
 
 /* ============================ SERVICE WORKER ============================ */
 /* Actualización segura. El Service Worker solo llega a «instalado» si ha

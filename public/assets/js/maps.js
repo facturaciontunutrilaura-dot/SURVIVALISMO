@@ -4,7 +4,7 @@
    ARQUITECTURA (decisión técnica documentada en el README):
 
    1) CAPA BASE VECTORIAL SIEMPRE OFFLINE
-      GeoJSON de provincias, comunidades autónomas y municipios de Ávila,
+      GeoJSON de provincias, comunidades autónomas y municipios de tu provincia,
       derivado del Equipamiento Geográfico de Referencia Nacional del IGN
       (paquete es-atlas, MIT). Pesa ~390 KB y va en el precache del Service
       Worker: funciona sin Internet desde la primera carga, siempre.
@@ -335,13 +335,22 @@ export async function mapView() {
     overlays['Provincias (IGN)'] = capaProv;
   } catch (e) { /* la capa vectorial es opcional */ }
 
+  // Municipios: polígonos en Ávila (guía provincial); en el resto de
+  // provincias, el centro de cada término municipal (data/geo/municipios.json).
   try {
-    const mun = await loadGeo('avilaMun');
-    capaMun = Lf.geoJSON(mun, {
-      style: estiloMun,
-      onEachFeature: (f, l) => l.bindPopup(`<b>${esc(f.properties.nombre)}</b><br><span class="muted">Municipio de Ávila · INE ${esc(f.properties.ine)}</span>`),
-    });
-    overlays['Municipios de Ávila (IGN)'] = capaMun;
+    if (miProv?.cod === '05') {
+      const mun = await loadGeo('avilaMun');
+      capaMun = Lf.geoJSON(mun, {
+        style: estiloMun,
+        onEachFeature: (f, l) => l.bindPopup(`<b>${esc(f.properties.nombre)}</b><br><span class="muted">Municipio de Ávila · INE ${esc(f.properties.ine)}</span>`),
+      });
+      overlays['Municipios de Ávila (IGN)'] = capaMun;
+    } else if (miProv?.cod) {
+      const lista = await ubi.municipios(miProv.cod);
+      const grupo = Lf.layerGroup(lista.map((m) => Lf.circleMarker([m.lat, m.lon], { radius: 3, color: '#6c6644', weight: 1, fillOpacity: 0.6 })
+        .bindPopup(`<b>${esc(m.nombre)}</b><br><span class="muted">Centro del término municipal · INE ${esc(m.ine)}</span>`)));
+      overlays[`Municipios de ${miProv.nombre} (IGN)`] = grupo;
+    }
   } catch (e) { /* opcional */ }
 
   // --- Capas ráster offline (IGN) ---
@@ -718,7 +727,7 @@ export async function mapView() {
       <ul>
         <li>Provincias de España (IGN vía es-atlas)</li>
         <li>Comunidades autónomas (IGN vía es-atlas)</li>
-        <li>Municipios de la provincia de Ávila (IGN vía es-atlas, guía provincial)</li>
+        <li>Municipios de tu provincia (IGN vía es-atlas): polígonos en Ávila y el centro de cada término en el resto</li>
         <li>Tus puntos personales</li>
       </ul>
       <h4>Importar capa (GeoJSON o GPX)</h4>

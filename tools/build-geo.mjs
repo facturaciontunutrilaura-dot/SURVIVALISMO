@@ -100,6 +100,22 @@ const centroides = {
 };
 write('avila-centroides.geojson', centroides);
 
+// --- Índice de municipios de España (selector «Mi ubicación») -------------
+// { '05': [[ine, nombre, lon, lat], …], … } ordenado por nombre. El punto es
+// el centroide del término municipal: sirve para medir distancias a escala
+// de provincia (evacuación), nunca como dirección de nadie.
+{
+  const porProv = {};
+  for (const ft of all.features) {
+    const ine = String(ft.id ?? '');
+    if (!/^\d{5}$/.test(ine)) continue;
+    const [lon, lat] = centroid(ft.geometry).map((v) => Math.round(v * 1e3) / 1e3);
+    (porProv[ine.slice(0, 2)] ||= []).push([ine, ft.properties.name ?? ft.properties.nombre, lon, lat]);
+  }
+  for (const k of Object.keys(porProv)) porProv[k].sort((a, b) => a[1].localeCompare(b[1], 'es'));
+  write('municipios.json', porProv);
+}
+
 console.log('\nFuente: es-atlas (MIT) — derivado del Equipamiento Geográfico de');
 console.log('Referencia Nacional del Instituto Geográfico Nacional (IGN).');
 

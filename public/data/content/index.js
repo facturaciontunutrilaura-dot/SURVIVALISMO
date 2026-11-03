@@ -41,14 +41,14 @@ export const SECCIONES = [
   { id: 'audio', t: 'Audio', ic: '🎵', desc: 'Música y mensajes de voz sin conexión' },
   { id: 'bushcraft', t: 'Técnicas de campo', ic: '🌲', desc: 'Herramientas, nudos y campamento responsable' },
   { id: 'espana', t: 'España', ic: '🇪🇸', desc: 'Riesgos, sistema de emergencias e infraestructura' },
-  { id: 'avila', t: 'Guía de Ávila', ic: '📍', desc: 'Guía provincial detallada: territorio, riesgos y servicios' },
+  { id: 'avila', prov: '05', t: 'Guía de Ávila', ic: '📍', desc: 'Guía provincial detallada: territorio, riesgos y servicios' },
   { id: 'vehiculo', t: 'Vehículo', ic: '🚗', desc: 'Kit, invierno, nieve e inundación' },
   { id: 'mascotas', t: 'Mascotas', ic: '🐕', desc: 'Preparación y evacuación con animales' },
   { id: 'plan-familiar', t: 'Contactos y acuerdos', ic: '👨‍👩‍👧', desc: 'Contactos, puntos de encuentro y reunificación' },
   { id: 'calculadoras', t: 'Calculadoras', ic: '🧮', desc: 'Agua, comida, marcha, rumbo, unidades' },
   { id: 'noticias', t: 'Noticias de última hora', ic: '📰', cls: 'noticias', desc: 'España y el mundo: emergencias, catástrofes y conflictos, cada 30 min' },
   { id: 'alex', t: 'Pregúntale a Alex', ic: '💬', desc: 'Tu asistente de supervivencia, también sin conexión' },
-  { id: 'evacuacion', t: 'Plan de evacuación', ic: '🧭', cls: 'evacuacion', desc: 'Rutas para salir de Ávila: España, Portugal, Francia y por mar' },
+  { id: 'evacuacion', t: 'Plan de evacuación', ic: '🧭', cls: 'evacuacion', desc: 'Por dónde salir según lo que pase: España, Portugal, Francia y por mar' },
   { id: 'entrenamiento', t: 'Entrenamiento', ic: '💪', desc: 'En casa, sin material: de principiante a extremo' },
   { id: 'compra', t: 'Compra urgente', ic: '🛒', cls: 'colapso', desc: 'Lista de compra urgente, oculta hasta que la actives' },
   { id: 'cursos', t: 'Formación', ic: '🎓', desc: '10 cursos con teoría, ejercicios y test' },
@@ -76,7 +76,7 @@ export const GRUPOS = {
   campo: { t: 'Vida en el campo', ic: '🏕', desc: 'Refugio, fuego y técnicas de campo', secs: ['refugio', 'fuego', 'bushcraft'] },
   coche: { t: 'Coche y mascotas', ic: '🚗', desc: 'Kit del coche, nieve, inundación y animales', secs: ['vehiculo', 'mascotas'] },
   calma: { t: 'Calma y ánimo', ic: '🌿', desc: 'Psicología, respiración, juegos y audio', secs: ['psicologia', 'juegos', 'audio'] },
-  riesgos: { t: 'Riesgos en España y Ávila', ic: '📊', desc: 'Qué puede pasar, dónde y cómo evoluciona', secs: ['riesgos', 'espana', 'avila'] },
+  riesgos: { t: 'Riesgos en España y en tu zona', ic: '📊', desc: 'Qué puede pasar, dónde y cómo evoluciona', secs: ['riesgos', 'espana', 'avila'] },
   biblioteca: { t: 'Biblioteca', ic: '📚', desc: 'Tablas, referencias, índice completo y fuentes', secs: ['biblioteca', 'manual', 'fuentes'] },
 };
 export const PORTADA = [
@@ -256,7 +256,7 @@ export const INDICE = [
   },
   {
     tipo: 'evacuacion', id: 'plan-evacuacion', ruta: '#/sec/evacuacion', t: 'Plan de evacuación', sec: 'evacuacion',
-    pr: 'critico', sum: 'Qué hacer y por dónde salir de Ávila según el escenario: colapso, guerra, nuclear, apagón… De 72 horas a meses, con corredores a Portugal, Francia, Andorra y por mar.',
+    pr: 'critico', sum: 'Qué hacer y por dónde salir desde tu ciudad según el escenario: colapso, guerra, nuclear, apagón… De 72 horas a meses, con corredores a Portugal, Francia, Andorra y por mar.',
     texto: 'plan de evacuación evacuar huir salir del país frontera portugal francia andorra marruecos ceuta reino unido ferri corredor ruta carretera colapso guerra conflicto armado nuclear almaraz apagón refugio interior gredos tiétar escapar emigrar exilio',
   },
   {
