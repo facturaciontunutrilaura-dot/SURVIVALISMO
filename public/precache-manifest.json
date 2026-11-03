@@ -28,6 +28,7 @@
   "./assets/js/morse.js",
   "./assets/js/noticias.js",
   "./assets/js/preparacion.js",
+  "./assets/js/radio.js",
   "./assets/js/riesgos.js",
   "./assets/js/search.js",
   "./assets/js/store.js",

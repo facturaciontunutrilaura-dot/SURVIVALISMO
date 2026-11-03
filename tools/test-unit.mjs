@@ -263,7 +263,9 @@ test('mapas IGN: la CSP permite las teselas del IGN y nada más de terceros para
     // El audio offline se reproduce desde un blob: local. Sin media-src, la CSP
     // usa default-src 'self' y lo bloquea (fallo real detectado en la fase 5).
     const media = txt.match(/media-src([^;]*);/)?.[1] || '';
-    assert.ok(/'self'/.test(media) && /blob:/.test(media) && !/https?:/.test(media), `${f}: media-src debe ser 'self' blob: y nada externo`);
+    // Desde la v1.17 la radio en directo suena desde las emisoras: solo HTTPS,
+    // nunca HTTP (y el resto de recursos de terceros siguen bloqueados).
+    assert.ok(/'self'/.test(media) && /blob:/.test(media) && /(^|\s)https:(\s|$)/.test(media) && !/http:/.test(media), `${f}: media-src debe ser 'self' blob: https:`);
   }
 });
 
@@ -835,4 +837,40 @@ test('Alex v1.15: conversa por partes, recuerda el tema, pregunta si duda y no i
   // Sin tema previo, «cuéntame más» no se inventa un tema.
   const B = crearAlex();
   assert.notEqual(B.responder('cuéntame más').tipo, 'seguimiento');
+});
+
+test('radio: elige la emisión HTTPS que menos gasta y aguanta un directorio caído', async () => {
+  const R = await import('../netlify/functions/radios/core.mjs');
+  const ser = R.EMISORAS.find((e) => e.id === 'ser');
+  const lista = [
+    { name: 'Cadena SER', url_resolved: 'http://x.test/ser128.mp3', bitrate: 128, lastcheckok: 1, clickcount: 900 },
+    { name: 'Cadena SER', url_resolved: 'https://x.test/ser64.aac', bitrate: 64, lastcheckok: 1, clickcount: 500, codec: 'AAC' },
+    { name: 'Cadena SER', url_resolved: 'https://x.test/ser32.aac', bitrate: 32, lastcheckok: 1, clickcount: 50, codec: 'AAC+' },
+    { name: 'Cadena SER Valencia', url_resolved: 'https://x.test/ser.m3u8', bitrate: 16, lastcheckok: 1 },
+    { name: 'Radio Marca', url_resolved: 'https://x.test/marca.mp3', bitrate: 24, lastcheckok: 1 },
+  ];
+  const e = R.elegir(ser, lista);
+  assert.equal(e.url, 'https://x.test/ser32.aac', 'la de menos kbps, solo HTTPS y sin listas m3u8');
+  assert.equal(e.kbps, 32);
+  assert.equal(R.elegir(ser, [{ name: 'Cadena SER', url_resolved: 'http://solo-http.test/a.mp3', bitrate: 64, lastcheckok: 1 }]), null, 'nunca HTTP (la app es HTTPS)');
+  const cope = R.EMISORAS.find((x) => x.id === 'cope');
+  assert.equal(R.elegir(cope, [{ name: 'COPE Deportes', url_resolved: 'https://x.test/d.mp3', bitrate: 32 }]), null);
+  // Directorio caído: todas sin URL, con el motivo, y el resto no se rompe.
+  let llamadas = 0;
+  const caido = async () => { llamadas++; return { ok: false, status: 503 }; };
+  const d = await R.recopilar(caido, new Date('2026-11-03T10:00:00Z'));
+  assert.equal(d.emisoras.length, R.EMISORAS.length);
+  assert.ok(d.emisoras.every((x) => x.url === null && x.error === 'HTTP 503'));
+  assert.equal(llamadas, R.EMISORAS.length * R.SERVIDORES.length, 'prueba todos los servidores espejo');
+  // Directorio bueno.
+  const bueno = async (url) => ({ ok: true, status: 200, json: async () => (/Cadena%20SER/.test(url) ? lista : []) });
+  const d2 = await R.recopilar(bueno);
+  assert.equal(d2.emisoras.find((x) => x.id === 'ser').url, 'https://x.test/ser32.aac');
+  // Rutas y CSP
+  const red = fs.readFileSync(path.join(PUB, '_redirects'), 'utf8');
+  assert.ok(red.indexOf('/api/radios') > -1 && red.indexOf('/api/radios') < red.indexOf('/*    /index.html'));
+  const toml = fs.readFileSync(path.join(ROOT, 'netlify.toml'), 'utf8');
+  assert.match(toml, /media-src 'self' blob: https:;/);
+  const { mbHora } = await imp('assets/js/radio.js');
+  assert.equal(mbHora(32), 14); assert.equal(mbHora(64), 28);
 });

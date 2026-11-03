@@ -636,6 +636,20 @@ try {
     ok('Noticias: sin el servicio activado lo explica, sin romper nada', (await page.locator('.nt-item').count()) === 0);
     await page.unroute('**/api/noticias');
 
+    // Radio en directo: lista por grupos con el consumo; si la emisión falla, lo dice.
+    await page.route('**/api/radios', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ generado: new Date().toISOString(), emisoras: [
+      { id: 'r5', t: 'Radio 5 (RNE) · todo noticias', tipo: 'noticias', url: 'https://radio.test/r5.aac', kbps: 32 },
+      { id: 'ser', t: 'Cadena SER', tipo: 'noticias', url: 'https://radio.test/ser.aac', kbps: 64 },
+      { id: 'los40', t: 'LOS40', tipo: 'musica', url: 'https://radio.test/l40.aac', kbps: 48 },
+      { id: 'dial', t: 'Cadena Dial', tipo: 'musica', url: null, error: 'No encontrada' }] }) }));
+    await page.route('https://radio.test/**', (route) => route.abort());
+    await page.reload(); await page.waitForSelector('.rd-e');
+    ok('Radio: emisoras de noticias y de música, con lo que gastan por hora', (await page.locator('.rd-e').count()) === 3 && /14 MB por hora/.test(await page.textContent('.rd')) && /Noticias/.test(await page.textContent('.rd')) && /Música/.test(await page.textContent('.rd')));
+    await page.locator('.rd-e[data-rd="r5"]').click();
+    await page.waitForFunction(() => /no responde|No se ha podido/.test(document.querySelector('#rd-estado').textContent), null, { timeout: 8000 }).catch(() => {});
+    ok('Radio: si una emisión no responde, lo explica y propone otra', /Prueba otra emisora/.test(await page.textContent('#rd-estado')));
+    await page.unroute('**/api/radios');
+
     // Avisos en el móvil: la tarjeta explica el estado y activar no rompe nada,
     // aunque aquí no haya servicio push real (falla con un mensaje claro).
     await ctx.grantPermissions(['notifications']);
@@ -2456,7 +2470,8 @@ try {
   const relevantes = consoleErrors.filter((e) =>
     !/favicon|ERR_INTERNET_DISCONNECTED|ERR_TUNNEL_CONNECTION_FAILED|ERR_NAME_NOT_RESOLVED|Failed to fetch|ign\.es|ERR_FAILED/i.test(e)
     // El 404 del servicio de noticias es un caso probado a propósito (sin funciones en local).
-    && !/api\/(noticias|push)/.test(e)
+    && !/api\/(noticias|push|radios)/.test(e)
+    && !/radio\.test/.test(e)
     // Chromium de pruebas va en incógnito: ahí el navegador no admite push (probado a propósito).
     && !/Push API in incognito/.test(e)
   );
