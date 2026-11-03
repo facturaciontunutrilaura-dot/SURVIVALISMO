@@ -66,7 +66,9 @@ export function topbar(title, sub = '', backHref = '#/') {
 
 /* --------------------- Render de bloques de contenido --------------------- */
 export function renderBlocks(body = [], tools = {}) {
-  return body.map((b) => {
+  // Bloques con `soloProv` (p. ej. teléfonos de Ávila): solo para esa provincia.
+  // `noProv`: lo contrario (texto general que sobra donde hay datos locales).
+  return body.filter((b) => (!b.soloProv || b.soloProv === provinciaActual()) && (!b.noProv || b.noProv !== provinciaActual())).map((b) => {
     if (b.h) return `<h3>${esc(b.h)}</h3>`;
     if (b.p) return `<p>${esc(b.p)}</p>`;
     if (b.warn) return `<div class="blk-warn">${esc(b.warn)}</div>`;

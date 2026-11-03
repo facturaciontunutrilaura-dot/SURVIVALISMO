@@ -125,7 +125,7 @@ export const ART_RECURSOS = [
       { h: '2 · Desinfectar — Hervido (el método más fiable)' },
       { ul: [
         'Lleva el agua a ebullición viva y mantenla al menos 1 minuto.',
-        'Por encima de 1.000 m de altitud, mantén 3 minutos. Buena parte de la provincia de Ávila supera esa cota, incluida la propia ciudad (unos 1.130 m).',
+        'Por encima de 1.000 m de altitud, mantén 3 minutos.',
         'Deja enfriar tapada. Para mejorar el sabor, trasvasa entre dos recipientes para airearla o añade una pizca de sal por litro.',
       ] },
       { h: '2 · Desinfectar — Cloración con lejía' },

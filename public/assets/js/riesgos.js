@@ -13,6 +13,7 @@ import {
 import { SOURCE_MAP } from '../../data/content/sources.js';
 import { CCAA, ESTATAL, AVISO_TERRITORIOS } from '../../data/content/territorios.js';
 import * as ubi from './ubicacion.js';
+import { montarSelector } from './ubicacion-ui.js';
 
 const RIESGO_MAP = Object.fromEntries(RIESGOS.map((r) => [r.id, r]));
 
@@ -195,32 +196,6 @@ function fichaMiZona(r, prov) {
   return `<div class="mizona">${bloqueTerritorial(r.id, prov)}${aviso}${ficha(r, zonaBase)}</div>`;
 }
 
-function panelUbicacion(prov, modo) {
-  const opciones = ubi.PROVINCIAS_ORDENADAS
-    .map((p) => `<option value="${esc(p.cod)}"${prov && p.cod === prov.cod ? ' selected' : ''}>${esc(p.nombre)}</option>`)
-    .join('');
-  const cabecera = prov
-    ? `<div class="ubi-act"><b>${esc(prov.nombre)}</b><span class="muted">${esc(prov.ccaaNombre)}</span>
-       <span class="badge">${modo === 'gps' ? '📡 detectada' : '✍️ elegida a mano'}</span></div>`
-    : '<div class="blk-note">Todavía no has indicado dónde estás. Detéctalo o elige tu provincia.</div>';
-
-  return `<section class="card ubi" id="ubi">
-    <h3>📍 Dónde estás</h3>
-    ${cabecera}
-    <div class="fieldrow">
-      <button class="btn" id="ubi-gps" type="button"${ubi.HAY_GPS ? '' : ' disabled'}>📡 Usar mi ubicación</button>
-      <div><label for="ubi-sel">O elígela a mano</label>
-        <select id="ubi-sel"><option value="">— Provincia —</option>${opciones}</select></div>
-    </div>
-    <p class="muted" id="ubi-msg"></p>
-    <details><summary>Qué se guarda y qué no</summary><div>
-      <p>La posición se convierte en provincia <b>dentro del móvil</b>, comparándola con la cartografía del IGN que la aplicación ya lleva descargada. No se consulta ningún servicio, así que funciona en modo avión.</p>
-      <p><b>Nunca se guardan tus coordenadas.</b> Sólo se guarda la provincia. El almacén donde se escribe entra en la sincronización opcional, y una provincia basta para elegir el ámbito, mientras que unas coordenadas precisas serían un registro de dónde vives.</p>
-      <p class="muted">Cerca de un límite provincial la detección puede equivocarse por unos cientos de metros: corrígela a mano si hace falta.</p>
-    </div></details>
-  </section>`;
-}
-
 /* ------------------------------- Vista principal ------------------------------- */
 export async function riesgosView() {
   /* Versiones anteriores guardaban 'avila' como pestaña fija; ahora esa
@@ -275,30 +250,7 @@ export async function riesgosView() {
   function pintaPanel() {
     const w = n.querySelector('#ubi-wrap');
     if (zona !== 'mizona') { w.innerHTML = ''; return; }
-    w.innerHTML = panelUbicacion(miProv, miProv?.modo);
-
-    const msg = w.querySelector('#ubi-msg');
-    w.querySelector('#ubi-gps')?.addEventListener('click', async (e) => {
-      const b = e.currentTarget;
-      b.disabled = true; msg.textContent = 'Localizando…';
-      try {
-        const p = await ubi.localizar();
-        miProv = { ...(await ubi.guardar(p.cod, 'gps')), modo: 'gps' };
-        toast(`Ubicación: ${p.nombre}`);
-        pintaPanel(); pinta();
-      } catch (err) {
-        /* El navegador da mensajes crípticos; ubicacion.js ya los traduce.
-           Se muestran tal cual, sin envolverlos en un "ha ocurrido un error". */
-        msg.textContent = err.message;
-        b.disabled = false;
-      }
-    });
-    w.querySelector('#ubi-sel')?.addEventListener('change', async (e) => {
-      if (!e.target.value) return;
-      miProv = { ...(await ubi.guardar(e.target.value, 'manual')), modo: 'manual' };
-      toast(`Ubicación: ${miProv.nombre}`);
-      pintaPanel(); pinta();
-    });
+    montarSelector(w, (u) => { miProv = u; pinta(); }, { titulo: '📍 Dónde estás' });
   }
 
   async function pinta() {

@@ -119,14 +119,14 @@ export const FRECUENCIAS = [
   {
     id: 'fm-avila',
     grupo: 'Radiodifusión FM',
-    nombre: 'Emisoras FM de Ávila',
+    nombre: 'Emisoras FM de tu zona',
     rx: 'PENDIENTE DE VERIFICACIÓN',
     tx: '—', unidad: 'MHz',
     modo: 'FM (solo recepción)',
     pot: '—',
     licencia: 'Solo recepción',
     uso: 'Escucha de información pública. Verifica y anota tú mismo las frecuencias reales de tu zona.',
-    zona: 'Provincia de Ávila',
+    zona: 'Tu provincia',
     verificado: false,
     src: 'mineco-fm',
     notas: 'No se incluyen frecuencias FM concretas porque no se han podido verificar contra el registro oficial de estaciones de radiodifusión. Consulta el registro público de la Secretaría de Estado de Telecomunicaciones o sintoniza tu receptor y anota las emisoras que recibas con buena señal usando el formulario de esta sección.',
@@ -258,8 +258,9 @@ export const ART_COMUNICACIONES = [
           ],
         },
       },
-      { h: 'Provincia y ciudad de Ávila' },
+      { h: 'Provincia y ciudad de Ávila', soloProv: '05' },
       {
+        soloProv: '05',
         table: {
           head: ['Servicio', 'Dirección', 'Teléfono'],
           rows: [
@@ -269,7 +270,7 @@ export const ART_COMUNICACIONES = [
           ],
         },
       },
-      { note: 'Datos publicados por el Ayuntamiento de Ávila (consultado el 15/08/2026). Verifica antes de una emergencia: los teléfonos cambian.' },
+      { soloProv: '05', note: 'Datos publicados por el Ayuntamiento de Ávila (consultado el 15/08/2026). Verifica antes de una emergencia: los teléfonos cambian.' },
       { h: 'Cómo llamar al 112' },
       { ol: [
         'Di QUÉ ocurre en una frase.',

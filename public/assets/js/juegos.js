@@ -5,6 +5,7 @@
 import { el, esc, toast, alSalir } from './ui.js';
 import * as store from './store.js';
 import * as AJ from './ajedrez.js';
+import * as ubi from './ubicacion.js';
 import * as NUEVOS from './juegos-nuevos.js';
 import { MEMORY_CARTAS, QUIZ, QUIZ_CATEGORIAS, DIFICULTAD, RESPIRACIONES, GROUNDING, CALMA_AVISO } from '../../data/content/juegos.js';
 
@@ -460,7 +461,7 @@ export function memory() {
    3 · RETO DE SUPERVIVENCIA
    ======================================================================== */
 export function reto() {
-  const cats = Object.entries(QUIZ_CATEGORIAS);
+  const cats = Object.entries(QUIZ_CATEGORIAS).filter(([, v]) => ubi.esLocal(v.prov));
   const n = el(`<div class="card">
     <h3>🎯 Reto de supervivencia</h3>
     <p class="muted">${QUIZ.length} preguntas. Todas las respuestas correctas son coherentes con el manual de la aplicación, y cada una lleva su explicación.</p>
@@ -485,7 +486,7 @@ export function reto() {
   n.querySelector('#rt-go').addEventListener('click', () => {
     const cat = n.querySelector('#rt-cat').value;
     const num = +n.querySelector('#rt-num').value;
-    let pool = cat ? QUIZ.filter((q) => q.c === cat) : [...QUIZ];
+    let pool = cat ? QUIZ.filter((q) => q.c === cat) : QUIZ.filter((q) => ubi.esLocal(QUIZ_CATEGORIAS[q.c]?.prov));
     pool = pool.sort(() => Math.random() - 0.5);
     if (num > 0) pool = pool.slice(0, num);
     if (!pool.length) return toast('No hay preguntas en esa categoría');

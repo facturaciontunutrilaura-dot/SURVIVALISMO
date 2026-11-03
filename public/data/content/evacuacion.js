@@ -14,10 +14,35 @@
 
 export const ORIGEN = { ine: '05019', t: 'Ávila' };
 
+/* Modo GENERAL (v1.16): para quien no vive en Ávila. En vez de corredores
+   trazados a mano, destinos fijos (pasos fronterizos y puertos, por código
+   INE) ordenados por distancia desde el municipio elegido por la persona.
+   La distancia es una ESTIMACIÓN: línea recta × FACTOR_CARRETERA. */
+export const FACTOR_CARRETERA = 1.3;
+export const DESTINOS = [
+  { id: 'pt-tui', clase: 'portugal', ine: '36055', t: 'Portugal · Tui – Valença', via: 'Autovía hacia Vigo y Tui → A3 (Portugal)', contras: ['Paso principal del noroeste: se satura en una crisis.'] },
+  { id: 'pt-verin', clase: 'portugal', ine: '32085', t: 'Portugal · Verín – Chaves', via: 'A-52 → A-75 → A24 (Portugal)', contras: ['En invierno, niebla y hielo en Ourense.'] },
+  { id: 'pt-alcanices', clase: 'portugal', ine: '49003', t: 'Portugal · Alcañices – Quintanilha', via: 'Zamora → N-122 → IP4/A4 (Portugal)', pros: ['Paso secundario: menos colas.'], contras: ['N-122 de un carril por sentido.'] },
+  { id: 'pt-vilar', clase: 'portugal', ine: '37140', t: 'Portugal · Fuentes de Oñoro – Vilar Formoso', via: 'Salamanca → A-62 → A25 (Portugal)', contras: ['Paso principal del centro: se satura pronto.'] },
+  { id: 'pt-marvao', clase: 'portugal', ine: '10203', t: 'Portugal · Valencia de Alcántara – Marvão', via: 'Cáceres → N-521 → Portugal', pros: ['Paso secundario y tranquilo.'], contras: ['Cerca de la central nuclear de Almaraz: no usar en un accidente nuclear.'] },
+  { id: 'pt-caya', clase: 'portugal', ine: '06015', t: 'Portugal · Badajoz – Elvas (Caya)', via: 'A-5 → A6 (Portugal)', contras: ['Paso principal del sur-oeste: se satura en una crisis.'] },
+  { id: 'pt-ayamonte', clase: 'portugal', ine: '21010', t: 'Portugal · Ayamonte – Castro Marim', via: 'Huelva → A-49 → puente del Guadiana → A22 (Portugal)', contras: ['Un solo puente: cuello de botella.'] },
+  { id: 'fr-irun', clase: 'francia', ine: '20045', t: 'Francia · Irun – Hendaya', via: 'AP-8 / A-8 → A63 (Francia)', pros: ['Autovía todo el camino.'], contras: ['El paso con más tráfico del oeste: salir pronto.'] },
+  { id: 'fr-somport', clase: 'francia', ine: '22078', t: 'Francia · Somport (Canfranc)', via: 'Huesca → N-330 → túnel de Somport → N134 (Francia)', contras: ['Carretera de montaña: nieve en invierno.'] },
+  { id: 'fr-bossost', clase: 'francia', ine: '25059', t: 'Francia · Val d’Aran (Bossòst)', via: 'N-230 por el túnel de Vielha → N125 (Francia)', contras: ['Carretera de montaña larga y con nieve.'] },
+  { id: 'fr-puigcerda', clase: 'francia', ine: '17141', t: 'Francia · Puigcerdà – Bourg-Madame', via: 'C-16 por el túnel del Cadí → N20 (Francia)', contras: ['Montaña: nieve y hielo en invierno.'] },
+  { id: 'fr-jonquera', clase: 'francia', ine: '17086', t: 'Francia · La Jonquera – Le Perthus', via: 'AP-7 → A9 (Francia)', pros: ['Autovía todo el camino.'], contras: ['El paso con más tráfico del este: se colapsa pronto.'] },
+  { id: 'ad-seu', clase: 'andorra', ine: '25203', t: 'Andorra · La Seu d’Urgell', via: 'N-145 → CG-1 (Andorra)', contras: ['Fuera de la UE: control de aduanas.', 'País muy pequeño: capacidad limitada.'] },
+  { id: 'mar-santander', clase: 'mar', ine: '39075', t: 'Por mar · Santander → Reino Unido', via: 'Ferri a Portsmouth o Plymouth', contras: ['Pasaporte obligatorio. Plazas limitadas: reservar.'] },
+  { id: 'mar-bilbao', clase: 'mar', ine: '48020', t: 'Por mar · Bilbao → Reino Unido', via: 'Ferri a Portsmouth', contras: ['Pasaporte obligatorio. Plazas limitadas: reservar.'] },
+  { id: 'mar-algeciras', clase: 'mar', ine: '11004', t: 'Por mar · Algeciras → Ceuta o Tánger', via: 'Ferri por el Estrecho', contras: ['Marruecos exige pasaporte; a Ceuta basta el DNI.', 'Cerca de las bases de Rota y Morón: evitar en una guerra.'] },
+  { id: 'mar-barcelona', clase: 'mar', ine: '08019', t: 'Por mar · Barcelona → Italia', via: 'Ferri a Génova o Civitavecchia', contras: ['Gran ciudad y puerto: evitar en una guerra.'] },
+];
+
 /* Clases de corredor: a dónde lleva. */
 export const CLASES = {
   interior: { t: 'Refugio en el interior', ic: '🏞️', color: '#A1A265', d: 'Sin salir de España: zonas rurales con agua y baja densidad, a poca distancia.' },
-  portugal: { t: 'Salida a Portugal', ic: '🇵🇹', color: '#C08A52', d: 'La frontera más cercana: menos de 3 horas desde Ávila. UE y Schengen: basta el DNI.' },
+  portugal: { t: 'Salida a Portugal', ic: '🇵🇹', color: '#C08A52', d: 'UE y Schengen: basta el DNI.' },
   francia: { t: 'Salida a Francia', ic: '🇫🇷', color: '#7FA3B8', d: 'Por el Pirineo. UE y Schengen: basta el DNI. Trayectos largos.' },
   andorra: { t: 'Salida a Andorra', ic: '🇦🇩', color: '#B48FB8', d: 'Fuera de la UE: hay control de aduanas; el DNI es válido.' },
   mar: { t: 'Salida por mar', ic: '⛴️', color: '#E8715F', d: 'Ferris al Reino Unido o a África. Pasaporte obligatorio salvo a Ceuta.' },
@@ -163,7 +188,8 @@ export const RESPUESTAS = {
    `evitar`: corredores que no se deben usar en ese escenario. */
 export const ESCENARIOS = [
   {
-    id: 'colapso', prioridad: 1, ic: '🛒', t: 'Colapso social',
+    id: 'colapso', gen: { clases: ['interior', 'portugal', 'francia'], fases: [['Primeras 72 h', 'Quedarse en casa. Activar la compra urgente. Llenar el depósito y garrafas de agua. Decidir juntos el escenario de salida y la hora límite.'], ['Hasta 2 semanas', 'Si falta el agua más de 3 días, hay violencia en el barrio o no se puede calentar la casa: salir a una zona rural de interior con agua (río o fuentes), a poca distancia.'], ['Hasta 3 meses', 'Vida rural: agua tratada, huerta, leña y trueque. Integrarse con la gente del pueblo: la comunidad protege más que el aislamiento.'], ['Más de 3 meses', 'Si el colapso es nacional y aumenta la violencia: salir del país por la frontera más cercana que esté abierta.']], zonas: 'Evitar las grandes ciudades y las autovías de salida de las capitales.' },
+    prioridad: 1, ic: '🛒', t: 'Colapso social',
     resumen: 'Fallo prolongado del Estado: sin suministros, sin orden público y sin servicios. Es el escenario en el que más importa decidir a tiempo.',
     respuesta: ['C', 'I', 'S'],
     senales: ['Desabastecimiento que no se resuelve en días.', 'Cortes de luz, agua o comunicaciones sin fecha de vuelta.', 'Policía y servicios desbordados; saqueos.', 'Retirada de efectivo limitada; gasolineras sin combustible.'],
@@ -180,7 +206,8 @@ export const ESCENARIOS = [
     zonas: 'Evitar las grandes ciudades y las autovías de salida de Madrid.',
   },
   {
-    id: 'guerra', prioridad: 1, ic: '⚔️', t: 'Guerra o conflicto armado',
+    id: 'guerra', gen: { clases: ['portugal', 'mar', 'francia'], evitar: ['mar-algeciras', 'mar-barcelona'], fases: [['Primeras 72 h', 'Refugio ante las alertas. Mochila preparada, documentación (DNI y pasaporte), efectivo y depósito lleno. Seguir solo la información oficial.'], ['Hasta 2 semanas', 'Si el conflicto llega al territorio o hay ataques en tu zona: salir, alejándose de la amenaza y de los objetivos estratégicos. Mejor pasos fronterizos secundarios.'], ['Hasta 3 meses', 'Fuera del país: pedir protección temporal en la UE (Directiva 2001/55/CE, la que se aplicó a Ucrania en 2022) o asilo. Inscribirse en el consulado.'], ['Más de 3 meses', 'Establecerse en el país de acogida; valorar el regreso solo con información oficial.']] },
+    prioridad: 1, ic: '⚔️', t: 'Guerra o conflicto armado',
     resumen: 'Ataques aéreos o con misiles, sabotajes de infraestructuras, movilización o combates en territorio. La dirección de huida depende de dónde venga la amenaza.',
     respuesta: ['R', 'C', 'S'],
     senales: ['Declaración de estado de sitio o de guerra.', 'Alertas de ataque aéreo o sirenas.', 'Ataques a infraestructuras: electricidad, comunicaciones, combustible.', 'Orden de movilización.'],
@@ -198,7 +225,8 @@ export const ESCENARIOS = [
     nota: 'En una movilización general, las autoridades pueden restringir la salida del país a los hombres en edad militar (Ucrania lo hizo en 2022). Si llega a ocurrir, la salida tardía puede no ser posible para todos: decidir pronto.',
   },
   {
-    id: 'nuclear', prioridad: 2, ic: '☢️', t: 'Accidente nuclear o ataque nuclear',
+    id: 'nuclear', gen: { clases: ['portugal', 'francia', 'mar'], resumen: 'La primera respuesta es quedarse dentro: evacuar bajo la nube es peor. En el mapa verás las centrales y su zona de 30 km.', fases: [['Primeras 72 h', 'Interior sellado. Agua y comida envasadas. Radio a pilas.'], ['Hasta 2 semanas', 'Si se ordena evacuar: alejarse de la central, en perpendicular al viento y por la ruta oficial.'], ['Hasta 3 meses', 'No volver hasta que se autorice. Controles de contaminación.'], ['Más de 3 meses', 'Según las autoridades.']] },
+    prioridad: 2, ic: '☢️', t: 'Accidente nuclear o ataque nuclear',
     resumen: 'La central más cercana es Almaraz (Cáceres), a unos 130 km en línea recta. La primera respuesta es quedarse dentro: evacuar bajo la nube es peor.',
     respuesta: ['C', 'S'],
     senales: ['Aviso oficial de emergencia nuclear.', 'Explosión o alerta en una central.'],
@@ -215,7 +243,8 @@ export const ESCENARIOS = [
     zonas: 'Mantenerse fuera de los 30 km de cualquier central accidentada (zona de planificación del PLABEN).',
   },
   {
-    id: 'apagon', prioridad: 2, ic: '⚡', t: 'Apagón prolongado o ciberataque',
+    id: 'apagon', gen: { clases: ['interior', 'portugal'], fases: [['Primeras 72 h', 'Casa. Radio a pilas. No gastar combustible.'], ['Hasta 2 semanas', 'Si se prolonga: a una zona rural cercana, sin contar con repostar.'], ['Hasta 3 meses', 'Como en el colapso.'], ['Más de 3 meses', 'Como en el colapso.']] },
+    prioridad: 2, ic: '⚡', t: 'Apagón prolongado o ciberataque',
     resumen: 'Sin electricidad no funcionan las gasolineras, los datáfonos, los semáforos ni, a menudo, la cobertura. Solo se llega hasta donde llega el depósito.',
     respuesta: ['C', 'I'],
     senales: ['Apagón general de más de 24 h.', 'Fallo de comunicaciones y pagos.'],
@@ -232,7 +261,8 @@ export const ESCENARIOS = [
     zonas: 'No contar con repostar por el camino.',
   },
   {
-    id: 'desabastecimiento', prioridad: 2, ic: '📉', t: 'Crisis económica o desabastecimiento de meses',
+    id: 'desabastecimiento', gen: { clases: ['interior', 'portugal'] },
+    prioridad: 2, ic: '📉', t: 'Crisis económica o desabastecimiento de meses',
     resumen: 'Hiperinflación, paro masivo o desabastecimiento duradero sin violencia generalizada. Se vive mejor cerca de donde se producen los alimentos.',
     respuesta: ['C', 'I'],
     senales: ['Precios disparados durante meses.', 'Racionamiento.', 'Corralito bancario.'],
@@ -249,18 +279,20 @@ export const ESCENARIOS = [
     zonas: 'Lejos de las grandes ciudades, donde la escasez se nota antes.',
   },
   {
-    id: 'agua', prioridad: 3, ic: '🚱', t: 'Corte de agua o sequía extrema',
+    id: 'agua', gen: { clases: ['interior'], salir: 'A más de 72 h sin agua: a una zona con ríos y fuentes, y potabilizar siempre.', fases: [['Primeras 72 h', 'Agua almacenada: unos 4 l por persona y día para beber y cocinar.'], ['Hasta 2 semanas', 'Zona rural con río o fuentes: potabilizar siempre.'], ['Hasta 3 meses', 'Igual.'], ['Más de 3 meses', 'Según la evolución.']] },
+    prioridad: 3, ic: '🚱', t: 'Corte de agua o sequía extrema',
     resumen: 'Sin agua corriente, una casa en la ciudad es habitable unos pocos días.',
     respuesta: ['C', 'I'],
     senales: ['Corte sin fecha de vuelta.', 'Restricciones severas.'],
     quedarse: 'Con el agua almacenada y las cisternas municipales, si las hay.',
     salir: 'A más de 72 h sin agua: a una zona con ríos y fuentes (Tormes, Tiétar).',
-    fases: [['Primeras 72 h', 'Agua almacenada: 8–9 l al día para los dos.'], ['Hasta 2 semanas', 'Interior con río: potabilizar siempre.'], ['Hasta 3 meses', 'Igual.'], ['Más de 3 meses', 'Según la evolución.']],
+    fases: [['Primeras 72 h', 'Agua almacenada: unos 4 l por persona y día para beber y cocinar.'], ['Hasta 2 semanas', 'Interior con río: potabilizar siempre.'], ['Hasta 3 meses', 'Igual.'], ['Más de 3 meses', 'Según la evolución.']],
     corredores: ['int-gredos', 'int-tietar'],
     evitar: [],
   },
   {
-    id: 'incendio', prioridad: 3, ic: '🔥', t: 'Incendio forestal',
+    id: 'incendio', gen: { clases: [], resumen: 'En verano, las sierras y los valles forestales son zonas de riesgo muy alto. La ruta la deciden las autoridades.', salir: 'Solo por la ruta que indiquen las autoridades. Nunca hacia la sierra ni el monte en verano.' },
+    prioridad: 3, ic: '🔥', t: 'Incendio forestal',
     resumen: 'En verano, Gredos y el Tiétar son zonas de riesgo muy alto. En julio de 2026 hubo desalojos en la provincia.',
     respuesta: ['C', 'S'],
     senales: ['Humo y aviso de las autoridades.', 'Orden de desalojo.'],
@@ -272,7 +304,8 @@ export const ESCENARIOS = [
     zonas: 'Evitar las sierras y los valles forestales en verano.',
   },
   {
-    id: 'nevada', prioridad: 3, ic: '❄️', t: 'Nevada extrema u ola de frío',
+    id: 'nevada', gen: { clases: [], resumen: 'En zonas altas y de montaña, los puertos se cierran primero. Quedarse en casa es casi siempre lo más seguro.', salir: 'Solo si es imprescindible, por autovía y evitando los puertos de montaña.', fases: [['Primeras 72 h', 'Casa.'], ['Hasta 2 semanas', 'Casa; salir solo por autovía y con el estado de las carreteras consultado (DGT).'], ['Hasta 3 meses', '—'], ['Más de 3 meses', '—']] },
+    prioridad: 3, ic: '❄️', t: 'Nevada extrema u ola de frío',
     resumen: 'Ávila está a 1.130 m de altitud. Los puertos de montaña se cierran primero.',
     respuesta: ['C'],
     senales: ['Aviso rojo de AEMET.', 'Cortes de carreteras.'],
@@ -284,7 +317,8 @@ export const ESCENARIOS = [
     zonas: 'Evitar todos los puertos de montaña.',
   },
   {
-    id: 'pandemia', prioridad: 3, ic: '🦠', t: 'Pandemia grave',
+    id: 'pandemia', gen: { clases: ['interior'] },
+    prioridad: 3, ic: '🦠', t: 'Pandemia grave',
     resumen: 'Rara vez se evacua: las fronteras se cierran y los desplazamientos se restringen.',
     respuesta: ['C'],
     senales: ['Declaración de emergencia sanitaria.'],
@@ -295,8 +329,9 @@ export const ESCENARIOS = [
     evitar: [],
   },
   {
-    id: 'quimico', prioridad: 3, ic: '☣️', t: 'Accidente químico',
-    resumen: 'Por carretera o por ferrocarril: vuestro barrio está junto a la estación y la vía del tren. La respuesta es confinarse, no viajar.',
+    id: 'quimico', gen: { clases: [] },
+    prioridad: 3, ic: '☣️', t: 'Accidente químico',
+    resumen: 'Por carretera o por ferrocarril: si vives cerca de una estación, una vía de tren o un polígono industrial, el riesgo es mayor. La respuesta es confinarse, no viajar.',
     respuesta: ['C'],
     senales: ['Aviso oficial; olor o nube.'],
     quedarse: 'Interior sellado: puertas y ventanas cerradas, ventilación apagada.',

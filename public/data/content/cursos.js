@@ -30,7 +30,7 @@ export const CURSOS = [
     teoria: [
       'Mínimo vital 3 l/persona/día; planificación realista con higiene 5–10 l.',
       'Tratar el agua son dos pasos distintos: clarificar (quitar turbidez) y desinfectar (matar microorganismos).',
-      'Hervir 1 minuto es el método más fiable; 3 minutos por encima de 1.000 m de altitud, lo que aplica a gran parte de la provincia de Ávila.',
+      'Hervir 1 minuto es el método más fiable; 3 minutos por encima de 1.000 m de altitud.',
       'Cloración de emergencia: lejía sin perfume ni aditivos, 2 gotas por litro de agua clara, esperar 30 minutos.',
       'Ningún método casero elimina contaminación química o metales pesados.',
     ],
@@ -166,7 +166,7 @@ export const CURSOS = [
     ],
   },
   {
-    id: 'c09',
+    id: 'c09', prov: '05',
     n: 'CURSO 09',
     t: 'Ávila',
     dur: '30 min',
