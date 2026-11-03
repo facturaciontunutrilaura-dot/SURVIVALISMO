@@ -792,3 +792,47 @@ test('juegos nuevos: damas españolas, sudoku de solución única y Morse', asyn
   const ese = X.MOCHILA_OBJETOS.filter((o) => o.esencial);
   assert.ok(ese.reduce((s, o) => s + o.kg, 0) <= X.MOCHILA_MAX_KG, 'todo lo esencial cabe en la mochila');
 });
+
+test('Alex v1.15: conversa por partes, recuerda el tema, pregunta si duda y no inventa', async () => {
+  const { crearAlex, coincide } = await imp('assets/js/alex-motor.js');
+  assert.ok(coincide(' hay un incendio en mi edificio ', 'incendio+edificio') && !coincide(' hay un incendio ', 'incendio+edificio'));
+  const A = crearAlex();
+  // Preguntas que antes se iban a otra ficha.
+  const casos = {
+    'qué hago si hay un incendio en mi edificio': 'Incendio en vivienda',
+    'qué hago si me pierdo en el monte': 'Qué hacer si te pierdes: protocolo STOP',
+    'que comer si no hay supermercados': 'Desabastecimiento de alimentos',
+    'cómo hablo con mi familia si no hay cobertura': 'Plan de comunicación cuando falla la red',
+    'cómo cocino sin luz': 'Conservar y cocinar sin electricidad',
+    '¿qué hago si se va la luz varios días?': 'Apagón eléctrico',
+    'quiero prepararme para un colapso': 'Preparación por niveles: de 24 horas a autonomía prolongada',
+    'cómo purifico agua del río': 'Potabilizar agua: hervir, cloro y filtros',
+  };
+  for (const [q, t] of Object.entries(casos)) assert.equal(A.responder(q).titulo, t, q);
+  assert.equal(A.responder('hay un incendio en mi edificio').urgente, true);
+  // Respuesta completa: pasos, lo que no hay que hacer, aviso y siguientes preguntas.
+  const apagon = A.responder('se ha ido la luz');
+  assert.ok(apagon.pasos.length >= 3 && apagon.no.length >= 1 && apagon.siguientes.includes('Cuéntame más') && apagon.apertura);
+  // «Cuéntame más» sigue con el mismo tema, por partes, hasta el final.
+  let m = A.responder('cuéntame más');
+  assert.equal(m.tipo, 'seguimiento'); assert.equal(m.titulo, 'Apagón eléctrico'); assert.ok(m.seccion.items.length);
+  const primera = m.seccion.t;
+  m = A.responder('sigue');
+  assert.ok(m.tipo === 'fin-tema' || m.seccion.t !== primera, 'no repite la misma parte');
+  for (let k = 0; k < 6 && m.tipo !== 'fin-tema'; k++) m = A.responder('más');
+  assert.equal(m.tipo, 'fin-tema');
+  assert.equal(A.responder('¿qué no debo hacer?').seccion.t, 'Lo que no debes hacer');
+  // «¿y si…?» usa el tema anterior cuando la frase sola no basta.
+  A.responder('hace mucho frío en casa y no hay calefacción');
+  const frio = A.responder('mucho frío en casa');
+  assert.ok(frio.ojo.length && /monóxido/i.test(frio.ojo[0]), 'el aviso de seguridad de la ficha aparece');
+  // Miedo: lo reconoce antes de responder y ofrece el modo calma.
+  const miedo = A.responder('tengo miedo de que haya una guerra');
+  assert.equal(miedo.titulo, 'Conflicto armado'); assert.ok(miedo.empatia);
+  // Lo que no tiene ficha, no se inventa.
+  assert.equal(A.responder('qué hago si viene un tsunami').tipo, 'sin-ficha');
+  assert.equal(A.responder('receta de paella').tipo, 'fuera');
+  // Sin tema previo, «cuéntame más» no se inventa un tema.
+  const B = crearAlex();
+  assert.notEqual(B.responder('cuéntame más').tipo, 'seguimiento');
+});

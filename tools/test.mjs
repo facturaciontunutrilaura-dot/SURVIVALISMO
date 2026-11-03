@@ -677,6 +677,11 @@ try {
     m = await pregunta('receta de paella');
     ok('Alex: fuera de tema lo dice y no inventa', /Solo puedo ayudarte/.test(await m.textContent()));
     ok('Alex: la conversación es accesible (registro con anuncio)', (await page.getAttribute('#al-log', 'role')) === 'log');
+    m = await pregunta('se ha ido la luz');
+    ok('Alex v1.15: responde por partes y ofrece seguir («Cuéntame más»)', (await m.locator('.steps li').count()) >= 3 && (await m.locator('[data-preg="Cuéntame más"]').count()) === 1 && (await m.locator('.al-no li').count()) >= 1);
+    { const antes = await page.locator('.al-msg.alex').count(); await m.locator('[data-preg="Cuéntame más"]').click(); await page.waitForFunction((k) => document.querySelectorAll('.al-msg.alex').length > k, antes); }
+    m = page.locator('.al-msg.alex').last();
+    ok('Alex v1.15: «Cuéntame más» sigue con el mismo tema', /Sigo con/.test(await m.textContent()) && /Apagón/.test(await m.textContent()) && (await m.locator('.al-lista li').count()) >= 1);
   }
 
   /* ----------------------- 9 bis d. Entrenamiento en casa ----------------------- */
