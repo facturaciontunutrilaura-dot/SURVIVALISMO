@@ -13,6 +13,7 @@ import * as store from './store.js';
 import * as DA from './damas.js';
 import * as SU from './sudoku.js';
 import * as MO from './morse.js';
+import { contextoAudio } from './sonido.js';
 import {
   SIN_PANTALLA, SIN_PANTALLA_AVISO, MOCHILA_OBJETOS, MOCHILA_MAX_KG,
   DESPENSA_UTIL, DESPENSA_PELIGRO, DESPENSA_CONSEJOS,
@@ -489,10 +490,11 @@ export function morse() {
 
   function tono(on) {
     try {
-      audio ||= new (window.AudioContext || window.webkitAudioContext)();
+      // Apagar no necesita contexto (así no se crea fuera de un toque).
       if (!on) { parar?.(); parar = null; return; }
+      audio = contextoAudio();
       const o = audio.createOscillator(), g = audio.createGain();
-      o.frequency.value = 650; g.gain.value = 0.15;
+      o.frequency.value = 650; g.gain.value = 0.6;
       o.connect(g).connect(audio.destination); o.start();
       parar = () => { try { o.stop(); } catch {} };
     } catch { /* sin audio: solo luz */ }
@@ -566,7 +568,7 @@ export function morse() {
   });
   luz.addEventListener('click', callar);
   mostrar('sos');
-  n.destruir = () => { callar(); try { audio?.close(); } catch {} };
+  n.destruir = callar;
   return n;
 }
 

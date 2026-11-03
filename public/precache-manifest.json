@@ -34,6 +34,7 @@
   "./assets/js/radio.js",
   "./assets/js/riesgos.js",
   "./assets/js/search.js",
+  "./assets/js/sonido.js",
   "./assets/js/store.js",
   "./assets/js/sudoku.js",
   "./assets/js/sync.js",
