@@ -95,28 +95,19 @@ function linterna() {
   </div>`);
   const luz = n.querySelector('#li-luz');
   let lock = null;
+  // Sin la API de pantalla completa: la capa fija ya cubre toda la pantalla
+  // (y en la app instalada no hay barras del navegador). Esa API podía dejar
+  // el navegador «a pantalla completa» sin nada visible y sin responder.
   const encender = async (rojo) => {
     luz.classList.toggle('rojo', rojo); luz.hidden = false; luz.focus();
     try { lock = await navigator.wakeLock?.request('screen'); } catch { lock = null; }
-    try { await luz.requestFullscreen?.(); } catch { /* opcional */ }
   };
-  // Primero se sale de pantalla completa y luego se oculta: si se oculta el
-  // elemento que está a pantalla completa, el navegador puede quedarse en ese
-  // modo sin nada visible y los toques no llegan a la app.
-  const apagar = async () => {
-    try { lock?.release(); } catch {}
-    lock = null;
-    if (document.fullscreenElement) { try { await document.exitFullscreen(); } catch { /* sigue */ } }
-    luz.hidden = true;
-  };
-  // Si se sale de pantalla completa con el botón «atrás» del móvil, se apaga también.
-  const alCambiar = () => { if (!document.fullscreenElement && !luz.hidden) apagar(); };
-  document.addEventListener('fullscreenchange', alCambiar);
+  const apagar = () => { luz.hidden = true; try { lock?.release(); } catch {} lock = null; };
   n.querySelector('#li-on').addEventListener('click', () => encender(false));
   n.querySelector('#li-rojo').addEventListener('click', () => encender(true));
   luz.addEventListener('click', apagar);
   luz.addEventListener('keydown', (e) => { if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') apagar(); });
-  n.destruir = () => { document.removeEventListener('fullscreenchange', alCambiar); apagar(); };
+  n.destruir = apagar;
   return n;
 }
 
