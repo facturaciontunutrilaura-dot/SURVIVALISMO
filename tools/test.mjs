@@ -812,6 +812,49 @@ try {
     await page.evaluate(async () => { const st = await import('./assets/js/store.js'); for (const k of ['evac.autonomia', 'evac.escenario']) await st.del('kv', k); });
   }
 
+  /* ---------------- 9 bis z. Herramientas SOS y despensa (v1.18) ---------------- */
+  console.log('\n▸ Herramientas SOS y despensa');
+  {
+    await page.evaluate(async () => { const st = await import('./assets/js/store.js'); await st.put('contactos', { id: 'ct-prueba', n: 'Ana (hermana)', t: '600 11 22 33', r: 'externo' }); });
+    await page.goto(BASE + '#/sec/herramientas'); await page.reload(); await page.waitForSelector('#ms-txt');
+    ok('Herramientas: seis pestañas (Estoy bien, silbato, linterna, señales, diario y tarjeta)', (await page.locator('[data-hr]').count()) === 6);
+    const sms = await page.getAttribute('.ms-c a[href^="sms:"]', 'href');
+    ok('Estoy bien: SMS a un toque con el número y el texto ya escritos', /^sms:\+34600112233/.test(sms) && /Estoy%20bien/.test(sms), sms);
+    await page.click('[data-est="voy"]');
+    ok('Estoy bien: cambiar el estado cambia el mensaje', /punto de encuentro/.test(await page.inputValue('#ms-txt')));
+    await page.click('[data-hr="dia"]'); await page.waitForSelector('#dr-txt');
+    await page.fill('#dr-txt', 'Prueba de diario'); await page.click('#dr-add');
+    await page.waitForFunction(() => /Prueba de diario/.test(document.querySelector('#dr-lista')?.textContent || ''), null, { timeout: 5000 }).catch(() => {});
+    ok('Diario: apunta con la hora y se guarda', /Prueba de diario/.test(await page.textContent('#dr-lista')) && !!(await page.evaluate(async () => (await (await import('./assets/js/store.js')).get('kv', 'diario.emergencia'))?.v?.length)));
+    await page.click('[data-hr="lin"]'); await page.click('#li-on');
+    ok('Linterna: pantalla en blanco que se apaga al tocarla', await page.locator('#li-luz').isVisible());
+    await page.locator('#li-luz').click({ force: true });
+    ok('Linterna: se apaga', await page.locator('#li-luz').isHidden());
+    await page.click('[data-hr="sen"]');
+    ok('Señales: explica el espejo y las señales tierra-aire', /espejo/i.test(await page.textContent('#hr-body')) && /asistencia médica/.test(await page.textContent('#hr-body')));
+    await page.click('[data-hr="tar"]');
+    const descarga = page.waitForEvent('download', { timeout: 5000 }).catch(() => null);
+    await page.fill('#tj-n', 'Prueba'); await page.click('#tj-pdf');
+    const dl = await descarga;
+    ok('Tarjeta de emergencia: se descarga en PDF', !!dl && /\.pdf$/.test(dl.suggestedFilename()));
+    // SOS enlaza con «Estoy bien»
+    await page.goto(BASE + '#/emergencia'); await page.waitForSelector('.btn-112');
+    ok('SOS: botón para avisar a la familia', (await page.locator('a[href="#/sec/herramientas/mensajes"]').count()) === 1);
+    // Calculadora de despensa
+    await page.goto(BASE + '#/sec/despensa-calc'); await page.waitForSelector('#dp-agua');
+    await page.fill('#dp-agua', '6'); await page.fill('#dp-arroz', '5');
+    ok('Despensa: calcula los días de autonomía y lo que se acaba antes', /días? de autonomía/.test(await page.textContent('#dp-res')) && /agua|comida/.test(await page.textContent('#dp-res')));
+    // Recordatorio de caducidad en la portada
+    await page.evaluate(async () => { const st = await import('./assets/js/store.js'); const d = new Date(Date.now() + 5 * 86400000).toISOString().slice(0, 10); await st.put('checks', { id: 'bob::i:prueba-caducidad', estado: 'tengo', fecha: d }); });
+    await page.goto(BASE + '#/'); await page.reload(); await page.waitForSelector('.home-recordar', { timeout: 8000 }).catch(() => {});
+    ok('Portada: recuerda lo que caduca pronto', /caduca en 5 d/.test(await page.textContent('#app')));
+    await page.evaluate(async () => { const st = await import('./assets/js/store.js'); await st.del('checks', 'bob::i:prueba-caducidad'); await st.del('contactos', 'ct-prueba'); for (const k of ['diario.emergencia', 'despensa.inventario', 'revision.mochila']) await st.del('kv', k); });
+    // Ahorro de batería
+    await page.evaluate(async () => (await import('./assets/js/store.js')).setSetting('theme', 'ahorro'));
+    ok('Ahorro de batería: fondo negro puro', (await page.evaluate(() => getComputedStyle(document.body).backgroundColor)) === 'rgb(0, 0, 0)');
+    await page.evaluate(async () => (await import('./assets/js/store.js')).setSetting('theme', 'auto'));
+  }
+
   /* ---------------------- 9 ter. NUEVO: Riesgos 2036 ---------------------- */
   console.log('\n▸ Riesgos 2026–2036');
   await page.goto(BASE + '#/sec/riesgos');

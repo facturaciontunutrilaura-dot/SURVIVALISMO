@@ -49,6 +49,8 @@ export const SECCIONES = [
   { id: 'noticias', t: 'Noticias de última hora', ic: '📰', cls: 'noticias', desc: 'España y el mundo: emergencias, catástrofes y conflictos, cada 30 min' },
   { id: 'alex', t: 'Pregúntale a Alex', ic: '💬', desc: 'Tu asistente de supervivencia, también sin conexión' },
   { id: 'evacuacion', t: 'Plan de evacuación', ic: '🧭', cls: 'evacuacion', desc: 'Por dónde salir según lo que pase: España, Portugal, Francia y por mar' },
+  { id: 'herramientas', t: 'Herramientas SOS', ic: '🔦', desc: 'Avisar «Estoy bien» por SMS, silbato, linterna, señales, diario y tarjeta' },
+  { id: 'despensa-calc', t: 'Calculadora de despensa', ic: '🥫', desc: 'Para cuántos días os llega lo que tenéis en casa' },
   { id: 'entrenamiento', t: 'Entrenamiento', ic: '💪', desc: 'En casa, sin material: de principiante a extremo' },
   { id: 'compra', t: 'Compra urgente', ic: '🛒', cls: 'colapso', desc: 'Lista de compra urgente, oculta hasta que la actives' },
   { id: 'cursos', t: 'Formación', ic: '🎓', desc: '10 cursos con teoría, ejercicios y test' },
@@ -69,7 +71,7 @@ export const SECCIONES = [
    (desde Mi plan familiar). Toda otra sección aparece exactamente una vez
    (lo comprueba tools/test-unit.mjs). */
 export const GRUPOS = {
-  mochila: { t: 'Mochila y despensa', ic: '🎒', desc: 'Equipo, compra urgente y calculadoras de agua y comida', secs: ['equipo', 'compra', 'calculadoras'] },
+  mochila: { t: 'Mochila y despensa', ic: '🎒', desc: 'Equipo, compra urgente y calculadoras de agua y comida', secs: ['equipo', 'compra', 'despensa-calc', 'calculadoras'] },
   casa: { t: 'En casa durante la crisis', ic: '🏠', desc: 'Váter sin agua, frío, calor, luz, refugio y reparaciones', secs: ['en-casa', 'bricolaje'] },
   'agua-comida': { t: 'Agua y comida', ic: '💧', desc: 'Potabilizar, conservar, cocinar sin luz y huerto', secs: ['agua', 'alimentacion', 'huerto'] },
   orientacion: { t: 'Orientación y mapas', ic: '🗺', desc: 'Mapas sin conexión, brújula y coordenadas', secs: ['mapa', 'orientacion'] },
@@ -81,7 +83,7 @@ export const GRUPOS = {
 };
 export const PORTADA = [
   { id: 'preparate', t: 'Prepárate', puertas: ['familia', 'g:mochila', 'evacuacion', 'entrenamiento'] },
-  { id: 'pasando', t: 'Si está pasando', puertas: ['g:casa', 'primeros-auxilios', 'g:agua-comida', 'comunicaciones', 'defensa'] },
+  { id: 'pasando', t: 'Si está pasando', puertas: ['herramientas', 'g:casa', 'primeros-auxilios', 'g:agua-comida', 'comunicaciones', 'defensa'] },
   { id: 'salir', t: 'Si tienes que salir', puertas: ['g:orientacion', 'g:campo', 'g:coche'] },
   { id: 'calma', t: 'Calma y ánimo', puertas: ['g:calma'] },
   { id: 'aprende', t: 'Aprende más', puertas: ['g:riesgos', 'cursos', 'g:biblioteca'] },

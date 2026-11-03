@@ -9,13 +9,13 @@
    para partir las líneas.
    ========================================================================= */
 
-const A4 = { w: 595.28, h: 841.89 };
+export const A4 = { w: 595.28, h: 841.89 };
 const M = 36;                       // margen
 const ANCHO = A4.w - 2 * M;
 
 /* Colores de la app (los mismos tokens que app.css). */
 const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255);
-const C = {
+export const C = {
   bg: hex('#1B1F14'), bg2: hex('#232819'), panel: hex('#2F3724'), line: hex('#59583E'),
   txt: hex('#E6DCCB'), dim: hex('#C0A988'), olive: hex('#565E35'), olive3: hex('#A1A265'),
   sand: hex('#BAA37A'), red: hex('#C06044'), rojo: hex('#B3261E'),
@@ -49,7 +49,7 @@ export function limpiar(s) {
 }
 
 /** Cadena PDF literal: escapa ( ) \ y escribe los bytes > 126 en octal. */
-function lit(s) {
+export function lit(s) {
   let out = '(';
   for (const ch of s) {
     const c = W1252[ch] ?? ch.codePointAt(0);
@@ -69,7 +69,7 @@ export function medirHelvetica(t, negrita, tam) {
 }
 
 /** Parte un texto en líneas que caben en `ancho` puntos. */
-function partir(texto, ancho, medir, negrita, tam) {
+export function partir(texto, ancho, medir, negrita, tam) {
   const palabras = limpiar(texto).split(' ');
   const lineas = [];
   let l = '';
@@ -201,7 +201,7 @@ export function pdfCompra(r, op) {
 const miles = (x) => Math.round(x).toLocaleString('es-ES');
 
 /** Ensambla el archivo PDF (objetos, tabla xref y trailer). */
-function escribir(contenidos, titulo) {
+export function escribir(contenidos, titulo) {
   const objs = [];
   const add = (s) => { objs.push(s); return objs.length; };
   const cat = add(null), pags = add(null);

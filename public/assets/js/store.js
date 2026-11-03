@@ -113,7 +113,7 @@ function tx(store, mode = 'readonly') {
 /* Datos PROPIOS del usuario (lo que perdería si el navegador borrase el
    almacenamiento). No cuentan ajustes, estadísticas de juegos ni teselas.
    Se usa para el aviso de copia de seguridad y para pedir protección. */
-const KV_PROPIO = /^(familia\.|plan\.|ubicacion$|riesgos\.|compra\.hogar$|entreno\.historial$)/;
+const KV_PROPIO = /^(familia\.|plan\.|ubicacion$|riesgos\.|compra\.hogar$|entreno\.historial$|diario\.|despensa\.|revision\.)/;
 export function esDatoPropio(store, id) {
   return ['contactos', 'puntos', 'checks', 'frecs', 'radiolog', 'geo'].includes(store) || (store === 'kv' && KV_PROPIO.test(String(id)));
 }
@@ -246,7 +246,7 @@ const DEFAULTS = {
 let _ajustesSesion = null;
 /* Hasta la v1.13 los temas eran «dark» (el único, por defecto) y «night».
    «dark» pasa a «auto»: claro de día y oscuro de noche, según el móvil. */
-const TEMAS = ['auto', 'claro', 'oscuro', 'night'];
+const TEMAS = ['auto', 'claro', 'oscuro', 'night', 'ahorro'];
 const migrar = (s) => (TEMAS.includes(s.theme) ? s : { ...s, theme: 'auto' });
 export function settings() {
   try { return migrar({ ...DEFAULTS, ...JSON.parse(localStorage.getItem(LS) || '{}') }); }
@@ -279,7 +279,7 @@ function pintarBarra() {
   // index.html trae dos (claro/oscuro por media query) para el arranque; luego manda el ajuste.
   document.querySelectorAll('meta[name="theme-color"]').forEach((m) => {
     m.removeAttribute('media');
-    m.setAttribute('content', t === 'night' ? '#080C11' : oscuro ? '#141B24' : '#F4F2EE');
+    m.setAttribute('content', t === 'ahorro' ? '#000000' : t === 'night' ? '#080C11' : oscuro ? '#141B24' : '#F4F2EE');
   });
 }
 oscuroSistema?.addEventListener?.('change', pintarBarra);
