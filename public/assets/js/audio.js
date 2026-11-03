@@ -61,7 +61,11 @@ export async function audioView() {
 
     <div class="card">
       <h3>➕ Añadir audio</h3>
-      <input type="file" id="au-file" accept="audio/*" multiple aria-label="Elegir archivos de audio para guardar en el dispositivo">
+      <!-- Sin «accept="audio/*"»: en iPhone, la app Archivos deja en gris muchos MP3 y M4A
+           con ese filtro y no se pueden elegir. Se acepta cualquier archivo y se
+           comprueba el formato al guardarlo (TIPOS_OK / EXT_OK). -->
+      <input type="file" id="au-file" multiple aria-label="Elegir archivos de audio para guardar en el dispositivo">
+      <p class="muted">Formatos: MP3, M4A, AAC, WAV, OGG, OPUS, FLAC y WEBM. Las canciones de Apple Music o Spotify no se pueden añadir: están protegidas y solo suenan en su app.</p>
       <label>Categoría</label>
       <select id="au-cat">${CATEGORIAS.map((c) => `<option value="${c.id}">${c.ic} ${esc(c.t)}</option>`).join('')}</select>
       <div id="au-prog" class="muted"></div>

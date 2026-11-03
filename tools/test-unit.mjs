@@ -905,3 +905,10 @@ test('herramientas SOS: SMS a un toque, días de despensa y caducidades', async 
   const { esDatoPropio } = await import('../public/assets/js/store.js');
   assert.ok(esDatoPropio('kv', 'diario.emergencia') && esDatoPropio('kv', 'despensa.inventario') && esDatoPropio('kv', 'revision.mochila'));
 });
+
+test('audio: el selector no filtra por tipo (en iPhone el filtro deja los MP3 en gris)', () => {
+  const src = fs.readFileSync(path.join(PUB, 'assets/js/audio.js'), 'utf8');
+  const input = src.match(/<input type="file" id="au-file"[^>]*>/)[0];
+  assert.ok(!/accept=/.test(input), input);
+  assert.match(src, /TIPOS_OK\.test\(f\.type\) && !EXT_OK\.test\(f\.name\)/, 'el formato se sigue comprobando al guardar');
+});
