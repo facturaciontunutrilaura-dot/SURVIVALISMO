@@ -7,6 +7,7 @@
 import { el, esc, alSalir } from './ui.js';
 import * as store from './store.js';
 import * as avisos from './avisos.js';
+import { radioView } from './radio.js';
 
 const CADA = 30 * 60 * 1000;
 const kv = async (id, def) => (await store.get('kv', id).catch(() => null))?.v ?? def;
@@ -28,6 +29,7 @@ export async function noticiasView() {
   const n = el(`<div>
     <p class="muted">Noticias importantes de España y del mundo relacionadas con emergencias, catástrofes, conflictos y suministros. Se actualizan cada 30 minutos; sin conexión verás las últimas guardadas.</p>
     <div class="blk-note">Contrasta siempre con fuentes oficiales y no difundas bulos. Ante una emergencia, sigue las instrucciones del 112, Protección Civil y los avisos ES-Alert de tu móvil.</div>
+    <div id="nt-radio"></div>
     <section class="card nt-avisos" aria-labelledby="nt-av-t">
       <h3 id="nt-av-t">🔔 Avisos graves en el móvil</h3>
       <p class="muted">Solo ante algo muy grave: guerra que escala en Europa, alerta nuclear, aviso rojo de la AEMET, gran apagón, estado de alarma, terremoto fuerte cerca… Como mucho 4 al día. No se envía ningún dato tuyo.</p>
@@ -133,6 +135,7 @@ export async function noticiasView() {
     pintarAvisos(msg);
   });
 
+  radioView().then((r) => n.querySelector('#nt-radio')?.replaceWith(r)).catch(() => {});
   pintar();
   pintarAvisos();
   actualizar();

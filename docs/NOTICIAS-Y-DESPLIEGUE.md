@@ -85,3 +85,13 @@ sw.js muestra el aviso; al tocarlo abre la pestaña Noticias
 - **Claves VAPID:** se generan solas la primera vez y se guardan en el almacén. **No hay que configurar nada.** Si algún día se quieren fijar, se crean las variables de entorno `VAPID_PUBLIC`, `VAPID_PRIVATE` y `VAPID_SUBJECT`. Ojo: si cambian las claves, cada móvil tiene que volver a activar los avisos.
 - **iPhone:** solo con la app instalada en la pantalla de inicio y con iOS 16.4 o posterior.
 - **Previsualizaciones:** la función programada solo se ejecuta en la web publicada. En una previsualización se puede activar y probar el aviso local, pero no llegan avisos reales.
+
+## Radio en directo (v1.17)
+- **Dónde está:** en la pestaña Noticias, tarjeta «📻 Radio en directo». Hay 6 emisoras de noticias (RNE, Radio 5, SER, COPE, Onda Cero y esRadio) y 6 de música (LOS40, Cadena 100, Europa FM, Cadena Dial, Rock FM y Kiss FM).
+- **De dónde salen las emisiones:** `/api/radios` (`netlify/functions/radios`) las pide al directorio abierto **Radio Browser**, con varios servidores espejo. De cada emisora elige la emisión **HTTPS de menos kbps** (24 como mínimo) y descarta las listas m3u8 y pls.
+  - La respuesta se guarda 24 h en la CDN y la app guarda la última lista en `kv radios.cache`.
+  - Las direcciones cambian a menudo, por eso no se escriben a mano.
+- **Consumo:** la app muestra los kbps y los MB por hora. Por ejemplo, 32 kbps son unos 14 MB por hora.
+- **CSP:** `media-src 'self' blob: https:`, para que suenen las emisoras. Solo HTTPS; el resto de recursos de terceros sigue bloqueado.
+- **Sin internet:** la app lo dice y recomienda una radio FM a pilas.
+- **Antes de vender la app:** las emisiones son de cada emisora. Conviene revisar sus condiciones de uso o pedir permiso para incluirlas en una app de pago.
