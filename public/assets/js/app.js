@@ -161,6 +161,30 @@ async function avisoNoticias(caja) {
   caja.hidden = false;
 }
 
+/* Recordatorios en la portada (v1.18): lo que caduca en 30 días y la
+   revisión de la mochila cada 6 meses. Solo si hay algo que recordar. */
+async function recordatorios(caja) {
+  const { caducidades, tocaRevision } = await import('./herramientas-core.js');
+  const checks = await store.all('checks').catch(() => []);
+  const nombres = {};
+  for (const c of CHECKLISTS) { const k = clavesChecklist(c); c.grupos.forEach((g, gi) => g.items.forEach((it, ii) => { nombres[k[gi][ii]] = `${typeof it === 'string' ? it : it.t} (${c.t})`; })); }
+  const cad = caducidades(checks, nombres).slice(0, 5);
+  const ultima = (await store.get('kv', 'revision.mochila').catch(() => null))?.v;
+  const revisar = checks.length > 0 && tocaRevision(ultima);
+  if ((!cad.length && !revisar) || !caja.isConnected) { caja.hidden = true; return; }
+  caja.className = 'card home-recordar';
+  caja.innerHTML = `<h3>⏰ Recordatorios</h3>
+    ${cad.length ? `<ul class="rc-lista">${cad.map((x) => `<li><a href="#/check/${esc(x.lista)}">${esc(x.t)}</a>: ${x.dias < 0 ? `<b>caducó hace ${-x.dias} d</b>` : x.dias === 0 ? '<b>caduca hoy</b>' : `caduca en ${x.dias} d`}</li>`).join('')}</ul>` : ''}
+    ${revisar ? `<p>${ultima ? 'Han pasado más de 6 meses desde que revisaste la mochila y la despensa.' : 'Revisa la mochila y la despensa cada 6 meses: pilas, agua, comida, medicinas y ropa de temporada.'}</p>
+      <div class="btnrow"><a class="btn sm ghost" href="#/check/bob">Revisar la mochila</a><button class="btn sm" type="button" id="rc-hecho">✓ Revisada hoy</button></div>` : ''}`;
+  caja.hidden = false;
+  caja.querySelector('#rc-hecho')?.addEventListener('click', async () => {
+    await store.put('kv', { id: 'revision.mochila', v: Date.now() });
+    toast('Anotado: te lo recordaré dentro de 6 meses');
+    recordatorios(caja);
+  });
+}
+
 /* Pantalla de grupo (#/grupo/<id>): reúne varias secciones de la portada. */
 function vGrupo(id) {
   const g = GRUPOS[id];
@@ -205,6 +229,7 @@ function vHome() {
 
     <div id="home-ubi"></div>
     <div id="home-prep" class="home-prep" hidden></div>
+    <div id="home-recordar" hidden></div>
 
     ${PORTADA.map((b) => `<section class="home-bloque" aria-labelledby="h-${b.id}">
       <h2 id="h-${b.id}">${esc(b.t)}</h2>
@@ -217,6 +242,7 @@ function vHome() {
     </div>
   </div>`);
   avisoNoticias(n.querySelector('#home-aviso'));
+  recordatorios(n.querySelector('#home-recordar'));
   // Primera vez: dónde vives (para la evacuación, los riesgos y lo local).
   ubi.guardada().catch(() => null).then((u) => {
     if (u?.mun) return;
@@ -322,6 +348,7 @@ function vEmergenciaLista() {
         <summary><span aria-hidden="true">🩺</span> Mis datos vitales</summary>
         <div class="dv-cuerpo" aria-live="polite"><p class="muted">Cargando…</p></div>
       </details>
+      <a class="btn ghost wide sm" href="#/sec/herramientas/mensajes"><span aria-hidden="true">💬</span> Avisar a la familia: «Estoy bien»</a>
     </section>
 
     <section aria-labelledby="sos-h-med">
@@ -530,6 +557,18 @@ async function vSeccion(id, sub) {
     const { alexView } = await import('./alex.js');
     const w = el(`<div>${topbar(s.t, 'También sin conexión')}<h1>${s.ic} Pregúntale a Alex</h1></div>`);
     w.appendChild(alexView());
+    return w;
+  }
+  if (id === 'herramientas') {
+    const { herramientasView } = await import('./herramientas.js');
+    const w = el(`<div>${topbar(s.t, 'Avisar, pedir ayuda y apuntar')}<h1>${s.ic} Herramientas SOS</h1></div>`);
+    w.appendChild(await herramientasView(sub));
+    return w;
+  }
+  if (id === 'despensa-calc') {
+    const { despensaView } = await import('./despensa.js');
+    const w = el(`<div>${topbar(s.t, 'Días de autonomía', '#/grupo/mochila')}<h1>${s.ic} Calculadora de despensa</h1></div>`);
+    w.appendChild(await despensaView());
     return w;
   }
   if (id === 'entrenamiento') {
@@ -1371,6 +1410,7 @@ async function vConfig() {
         <option value="claro"${s.theme === 'claro' ? ' selected' : ''}>Refugio (claro)</option>
         <option value="oscuro"${s.theme === 'oscuro' ? ' selected' : ''}>Noche serena (oscuro)</option>
         <option value="night"${s.theme === 'night' ? ' selected' : ''}>🌙 Modo noche (baja luminosidad)</option>
+        <option value="ahorro"${s.theme === 'ahorro' ? ' selected' : ''}>🔋 Ahorro de batería (negro puro, sin animaciones)</option>
       </select>
       <label>Contraste</label>
       <select id="cfg-contrast">

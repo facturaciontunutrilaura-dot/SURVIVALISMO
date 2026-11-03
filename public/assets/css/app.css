@@ -1403,3 +1403,38 @@ html[data-theme='night'] .dam-c.osc { background: #443D2E; }
 .rd-e[aria-pressed='true'] { border-color: var(--olive3); background: var(--ok-bg); color: var(--ok-fg); }
 .rd-e[aria-pressed='true'] small { color: var(--ok-fg); }
 .rd-pie { margin-top: 8px; font-size: .75rem; }
+
+/* AHORRO DE BATERÍA (v1.18): negro puro (en pantallas OLED apaga los
+   píxeles) y sin animaciones ni transiciones. */
+html[data-theme='ahorro'] {
+  --bg: #000000; --bg2: #000000; --panel: #0A0A0A; --panel2: #141414; --line: #2A2A2A; --line2: #3A3A3A;
+  --txt: #D8D8D8; --dim: #A8A8A8; --dim2: #9C9C9C; --olive: #1F3A30; --olive2: #2E5546; --olive3: #8FC2AE; --sand: #C9C9C9;
+  --field: #000000; --on-accent: #F0F0F0; --on-accent3: #000000; --overlay: rgba(0, 0, 0, .9); --map-bg: #000000; --sombra: transparent;
+  --danger-bg: #2A0E0A; --danger-fg: #F2C4BA; --danger-fg2: #D9A397; --sosmed-bg: #1A0806; --sosmed-line: #4A1E17; --sosmed-fg: #F2D6CF; --sosmed-sm: #D9B2A8; --sosmed-act: #2A0E0A;
+  --sos-bg1: #1A0806; --sos-bg2: #0F0503; --sos-nm: #F2D6CF; --sos-ds: #D9B2A8;
+  color-scheme: dark;
+}
+html[data-theme='ahorro'] *, html[data-theme='ahorro'] *::before, html[data-theme='ahorro'] *::after { animation: none !important; transition: none !important; box-shadow: none !important; }
+html[data-theme='ahorro'] img { filter: brightness(0.75); }
+
+/* Herramientas SOS y despensa (v1.18) */
+.hr-tabs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.ms-estados { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 8px 0; }
+.ms-pos { display: flex; gap: 8px; align-items: center; font-weight: 400; }
+.ms-pos input { width: auto; min-height: 0; }
+.ms-lista { display: grid; gap: 6px; margin-top: 8px; }
+.ms-c { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 6px 0; border-top: 1px solid var(--line); }
+.ms-c b { flex: 1 1 140px; }
+.li-luz { position: fixed; inset: 0; z-index: 300; background: #FFFFFF; cursor: pointer; }
+.li-luz.rojo { background: #FF2A1A; }
+.li-luz[hidden] { display: none; }
+.dr-rapidos { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.dr-lista { padding-left: 1.4em; }
+.dr-lista time { font-weight: 700; color: var(--olive3); margin-right: 4px; }
+.dp-fila { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 0; border-top: 1px solid var(--line); }
+.dp-fila label { margin: 0; font-weight: 400; flex: 1; }
+.dp-in { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; color: var(--dim); font-size: .9rem; }
+.dp-in input { width: 90px; text-align: right; }
+.dp-grande { font-size: 1.4rem; margin: 0 0 6px; }
+.dp-aviso { color: var(--err-txt); font-weight: 600; }
+.rc-lista { margin: 4px 0 8px; padding-left: 1.2em; }

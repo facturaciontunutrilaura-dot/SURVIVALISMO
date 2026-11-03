@@ -874,3 +874,34 @@ test('radio: elige la emisión HTTPS que menos gasta y aguanta un directorio ca�
   const { mbHora } = await imp('assets/js/radio.js');
   assert.equal(mbHora(32), 14); assert.equal(mbHora(64), 28);
 });
+
+test('herramientas SOS: SMS a un toque, días de despensa y caducidades', async () => {
+  const H = await imp('assets/js/herramientas-core.js');
+  assert.equal(H.telefono('600 11 22 33'), '+34600112233');
+  assert.equal(H.telefono('+44 7700 900123'), '+447700900123');
+  assert.equal(H.telefono('hola'), '');
+  const t = H.textoMensaje({ estado: 'voy', lugar: 'Sevilla', punto: 'Plaza Mayor', hora: new Date('2026-11-03T14:32:00') });
+  assert.match(t, /^Voy hacia el punto de encuentro\. Estoy en Sevilla\. Punto de encuentro: Plaza Mayor\./);
+  assert.ok(!/posición/.test(t), 'sin GPS si no se pide');
+  assert.match(H.textoMensaje({ estado: 'bien', pos: { lat: 40.65612, lon: -4.69501 } }), /40\.65612, -4\.69501/);
+  assert.equal(H.enlaceSms(['600112233', '611 22 33 44'], 'Estoy bien.'), 'sms:+34600112233,+34611223344?body=Estoy%20bien.');
+  assert.equal(H.enlaceSms(['600112233'], 'Hola', true), 'sms:+34600112233&body=Hola');
+  assert.match(H.enlaceSms(['600112233', '611223344'], 'Hola', true), /^sms:\/open\?addresses=\+34600112233,\+34611223344&body=Hola$/);
+  assert.equal(H.enlaceWhatsapp('600112233', 'Hola'), 'https://wa.me/34600112233?text=Hola');
+  // Despensa: 2 personas a 2.000 kcal y 3 l/día. 10 kg de arroz = 36.000 kcal → 9 días; 12 l de agua → 2 días.
+  const d = H.diasDespensa({ arroz: '10', agua: '12' }, 4000, 6);
+  assert.equal(d.dComida, 9); assert.equal(d.dAgua, 2); assert.equal(d.dias, 2); assert.equal(d.limita, 'agua');
+  assert.equal(H.diasDespensa({}, 4000, 6).dias, 0);
+  // Caducidades: dentro de 30 días o vencidas, ordenadas.
+  const hoy = new Date('2026-11-03T10:00:00');
+  const c = H.caducidades([{ id: 'bob::i:agua', fecha: '2026-11-10' }, { id: 'bob::i:pilas', fecha: '2026-10-30' }, { id: 'bob::i:comida', fecha: '2027-05-01' }, { id: 'x' }], { 'bob::i:agua': 'Agua' }, hoy);
+  assert.deepEqual(c.map((x) => [x.id, x.dias]), [['bob::i:pilas', -4], ['bob::i:agua', 7]]);
+  assert.equal(c[1].t, 'Agua'); assert.equal(c[1].lista, 'bob');
+  assert.ok(H.tocaRevision(null) && H.tocaRevision(Date.now() - 200 * 86400000) && !H.tocaRevision(Date.now() - 10 * 86400000));
+  // La tarjeta de emergencia es un PDF válido.
+  const { pdfTarjeta } = await import('../public/assets/js/herramientas.js').catch(() => ({}));
+  if (pdfTarjeta) { const b = pdfTarjeta({ nombre: 'Prueba', medico: 'Alergia a penicilina', cerca: 'Portal', contactos: 'Ana: 600' }); assert.equal(String.fromCharCode(...b.slice(0, 5)), '%PDF-'); }
+  // El diario y la despensa son datos propios (entran en las copias).
+  const { esDatoPropio } = await import('../public/assets/js/store.js');
+  assert.ok(esDatoPropio('kv', 'diario.emergencia') && esDatoPropio('kv', 'despensa.inventario') && esDatoPropio('kv', 'revision.mochila'));
+});
