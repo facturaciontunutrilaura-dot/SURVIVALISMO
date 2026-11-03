@@ -520,6 +520,34 @@ try {
   await page.click('#ca-stop');
   ok('Modo calma incluye grounding', (await page.locator('#ca-gr details').count()) >= 4);
 
+  // Juegos nuevos (v1.15)
+  ok('Juegos: agrupados en «Con el móvil», «Aprender jugando» y «Sin pantalla»', (await page.locator('#jg-tabs [role=tablist]').count()) === 3 && (await page.locator('#jg-tabs [role=tab]').count()) === 11);
+  await page.click('#jg-tabs [data-t="des"]'); await page.click('#dsp-go'); await page.waitForTimeout(1200);
+  {
+    const bx = await page.locator('#dsp-c').boundingBox();
+    for (let k = 0; k < 4; k++) { await page.mouse.move(bx.x + 5, bx.y + bx.height * (0.3 + k * 0.1)); await page.mouse.down(); await page.mouse.move(bx.x + bx.width - 5, bx.y + bx.height * (0.3 + k * 0.1), { steps: 10 }); await page.mouse.up(); }
+    ok('Salva la despensa: arranca y cuenta puntos y vidas', /puntos/.test(await page.textContent('#dsp-pts')) && (await page.locator('#dsp-capa').isHidden()) && /❤️/.test(await page.textContent('#dsp-vidas')));
+  }
+  await page.click('#jg-tabs [data-t="dam"]'); await page.waitForSelector('.dam-c.mov');
+  await page.locator('.dam-c.mov').first().click(); await page.locator('.dam-c.dest').first().click();
+  await page.waitForFunction(() => /Turno de las blancas/.test(document.querySelector('#dam-estado').textContent), null, { timeout: 5000 }).catch(() => {});
+  ok('Damas: mueves y la máquina contesta', /Turno de las blancas/.test(await page.textContent('#dam-estado')) && (await page.locator('.dam-c .dam-f').count()) === 24);
+  await page.click('#jg-tabs [data-t="sud"]'); await page.waitForSelector('.su-c.fija');
+  const libre = page.locator('.su-c:not(.fija)').first(); await libre.click(); await page.click('.su-pad [data-n="5"]');
+  ok('Sudoku: se puede rellenar una casilla y se guarda la partida', /5/.test(await page.locator('.su-c.sel').textContent()) && !!(await page.evaluate(async () => (await (await import('./assets/js/store.js')).get('kv', 'sudoku.partida'))?.v)));
+  await page.click('#jg-tabs [data-t="moc"]'); await page.click('#mo-go');
+  await page.click('[data-id="agua"]'); await page.click('[data-id="portatil"]'); await page.click('#mo-fin');
+  await page.waitForSelector('#mo-res h3');
+  ok('Mochila en 60 s: nota, lo que faltó y lo que sobró', /Nota: \d+ \/ 10/.test(await page.textContent('#mo-res')) && /Te faltó/.test(await page.textContent('#mo-res')) && /portátil/i.test(await page.textContent('#mo-res')));
+  await page.click('#jg-tabs [data-t="mor"]'); await page.click('[data-m="prac"]');
+  await page.locator('[data-op]').first().click();
+  ok('Morse: práctica con respuesta y marcador', /de 1/.test(await page.textContent('#mo-res-p')));
+  await page.click('[data-m="sos"]'); await page.click('[data-acc="sos-luz"]');
+  ok('Morse: SOS con luz a pantalla completa', await page.waitForSelector('#mo-luz', { state: 'visible', timeout: 3000 }).then(() => true, () => false));
+  await page.click('#mo-luz'); ok('Morse: la luz se apaga al tocarla', await page.locator('#mo-luz').isHidden());
+  await page.click('#jg-tabs [data-t="sin"]');
+  ok('Juegos sin pantalla: baraja, papel, palabras y niños', (await page.locator('.sp-grupo').count()) === 4 && /Brisca/.test(await page.textContent('#jg-body')) && /Hundir la flota/.test(await page.textContent('#jg-body')));
+
   /* ------------------- 9 bis b. Compra de colapso (botón rojo) ------------------- */
   console.log('\n▸ Compra de colapso');
   {
@@ -649,6 +677,11 @@ try {
     m = await pregunta('receta de paella');
     ok('Alex: fuera de tema lo dice y no inventa', /Solo puedo ayudarte/.test(await m.textContent()));
     ok('Alex: la conversación es accesible (registro con anuncio)', (await page.getAttribute('#al-log', 'role')) === 'log');
+    m = await pregunta('se ha ido la luz');
+    ok('Alex v1.15: responde por partes y ofrece seguir («Cuéntame más»)', (await m.locator('.steps li').count()) >= 3 && (await m.locator('[data-preg="Cuéntame más"]').count()) === 1 && (await m.locator('.al-no li').count()) >= 1);
+    { const antes = await page.locator('.al-msg.alex').count(); await m.locator('[data-preg="Cuéntame más"]').click(); await page.waitForFunction((k) => document.querySelectorAll('.al-msg.alex').length > k, antes); }
+    m = page.locator('.al-msg.alex').last();
+    ok('Alex v1.15: «Cuéntame más» sigue con el mismo tema', /Sigo con/.test(await m.textContent()) && /Apagón/.test(await m.textContent()) && (await m.locator('.al-lista li').count()) >= 1);
   }
 
   /* ----------------------- 9 bis d. Entrenamiento en casa ----------------------- */

@@ -786,11 +786,11 @@ body.emg #app { padding-bottom: 170px; }
 /* Pestañas en rejilla (Juegos): 2×2 en móvil, una fila en pantallas anchas. */
 .tabs.tabs-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; overflow: visible; }
 .tabs.tabs-grid button { min-height: 48px; white-space: normal; line-height: 1.15; }
-#jg-tabs button:last-child:nth-child(odd) { grid-column: 1 / -1; }
+.jg-tabs .tabs-grid button:last-child:nth-child(odd) { grid-column: 1 / -1; }
 @media (min-width: 600px) {
   .tabs.tabs-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  #jg-tabs { grid-template-columns: repeat(5, minmax(0, 1fr)); }
-  #jg-tabs button:last-child:nth-child(odd) { grid-column: auto; }
+  .jg-tabs .tabs-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .jg-tabs .tabs-grid button:last-child:nth-child(odd) { grid-column: auto; }
 }
 .tabs.tabs-sos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; overflow: visible; }
 .tabs.tabs-sos button { min-height: 50px; padding: 6px 4px; white-space: normal; line-height: 1.15; font-size: .8rem; letter-spacing: .01em; }
@@ -1311,3 +1311,83 @@ html:has(> body.emg) { scroll-padding-bottom: calc(170px + env(safe-area-inset-b
   background: var(--amber-bg); border: 1px solid var(--amber); border-radius: var(--r); color: var(--txt); font-size: .92rem; line-height: 1.35;
 }
 .q-alex { margin: 10px 0 4px; }
+
+/* --------------------------- Juegos v1.15 --------------------------- */
+.jg-tabs { margin-bottom: 12px; }
+.jg-grupo { margin: 10px 0 6px; font-weight: 700; color: var(--sand); font-size: .92rem; }
+.jg-tabs .tabs { margin-bottom: 4px; }
+/* Tres columnas también en móvil: así el juego (y el modo calma) se ve sin bajar. */
+.jg-tabs .tabs-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
+.jg-tabs .tabs-grid button { min-height: 44px; padding: 4px 3px; font-size: .74rem; letter-spacing: 0; }
+.jg-tabs .tabs-grid button:last-child:nth-child(odd) { grid-column: auto; }
+.jg-grupo { margin: 6px 0 4px; font-size: .85rem; }
+/* Salva la despensa */
+.dsp-marcador { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 6px 0; font-weight: 700; }
+.dsp-zona { position: relative; }
+.dsp-canvas { display: block; width: 100%; height: min(62vh, 460px); border-radius: var(--r); border: 1px solid var(--line); touch-action: none; user-select: none; -webkit-user-select: none; }
+.dsp-capa { position: absolute; inset: 0; display: grid; place-items: center; background: color-mix(in srgb, var(--bg) 55%, transparent); border-radius: var(--r); }
+.dsp-capa[hidden] { display: none; }
+.dsp-res { margin-top: 12px; }
+.dsp-res h4 { margin: 10px 0 4px; }
+.dsp-lista { columns: 2; }
+/* Damas */
+.dam { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); max-width: 440px; margin: 0 auto; border: 2px solid var(--line2); border-radius: 8px; overflow: hidden; touch-action: manipulation; }
+.dam-c { aspect-ratio: 1; min-width: 0; padding: 0; margin: 0; border: 0; border-radius: 0; display: grid; place-items: center; }
+.dam-c.cla { background: #E7DCC4; }
+.dam-c.osc { background: #8A7A5C; cursor: pointer; }
+.dam-c.mov { box-shadow: inset 0 0 0 3px #E3B867; }
+.dam-c.sel { box-shadow: inset 0 0 0 4px #E3B867; }
+.dam-c.dest::after { content: ''; width: 30%; height: 30%; border-radius: 50%; background: rgba(20, 24, 12, .45); }
+.dam-c:focus-visible { outline: 3px solid #1B1F14; outline-offset: -4px; }
+.dam-f { width: 78%; height: 78%; border-radius: 50%; display: grid; place-items: center; font-size: clamp(.9rem, 4.5vw, 1.4rem); line-height: 1; pointer-events: none; }
+.dam-f.w { background: #FBF8F1; color: #8A6A1E; box-shadow: inset 0 -3px 0 #CFC6B2, 0 1px 2px rgba(0,0,0,.4); }
+.dam-f.b { background: #2A2A2E; color: #E3B867; box-shadow: inset 0 -3px 0 #111, 0 1px 2px rgba(0,0,0,.4); }
+.dam-estado { min-height: 1.6em; font-weight: 600; }
+html[data-theme='night'] .dam-c.cla { background: #6E6550; }
+html[data-theme='night'] .dam-c.osc { background: #443D2E; }
+/* Sudoku */
+.su { display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); max-width: 440px; margin: 0 auto 10px; border: 2px solid var(--txt); border-radius: 6px; overflow: hidden; }
+.su-c { aspect-ratio: 1; min-width: 0; padding: 0; border: 0; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); border-radius: 0;
+  background: var(--panel); color: var(--olive3); font: 600 clamp(1rem, 5vw, 1.35rem) var(--ft); cursor: pointer; }
+.su-c.fija { color: var(--txt); font-weight: 800; }
+.su-c.bd { border-right: 2px solid var(--txt); }
+.su-c.bb { border-bottom: 2px solid var(--txt); }
+.su-c.igual { background: var(--panel2); }
+.su-c.sel { background: var(--ok-bg); outline: 2px solid var(--olive3); outline-offset: -2px; }
+.su-c.mal { color: var(--err-txt); background: var(--danger-bg); }
+.su-pad { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; max-width: 440px; margin: 0 auto; }
+.su-pad .btn { min-height: 48px; padding: 0; font-size: 1.15rem; }
+/* Mochila en 60 s */
+.mo-barra { display: flex; align-items: center; gap: 12px; margin: 8px 0 10px; position: sticky; top: calc(62px + env(safe-area-inset-top)); z-index: 5; background: var(--panel); padding: 6px 0; }
+.mo-reloj { font: 800 1.8rem/1 var(--ft); min-width: 2.2em; text-align: center; color: var(--olive3); font-variant-numeric: tabular-nums; }
+.mo-reloj.poco { color: var(--err-txt); }
+.mo-peso { flex: 1; min-width: 0; font-size: .85rem; color: var(--dim); }
+.mo-objs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+@media (min-width: 620px) { .mo-objs { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.mo-o { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: 8px; align-items: center; text-align: left; min-height: 56px; padding: 8px 10px;
+  background: var(--bg2); color: var(--txt); border: 1px solid var(--line2); border-radius: var(--r); font: inherit; font-size: .88rem; cursor: pointer; }
+.mo-o .ic { grid-row: 1 / span 2; font-size: 1.4rem; }
+.mo-o small { color: var(--dim); font-size: .75rem; }
+.mo-o[aria-pressed='true'] { background: var(--ok-bg); border-color: var(--green); color: var(--ok-fg); }
+.mo-o[aria-pressed='true'] small { color: var(--ok-fg); }
+.mo-o:disabled { cursor: default; opacity: .75; }
+/* Morse */
+.mo-codigo { font-size: 1.6rem; letter-spacing: .12em; text-align: center; margin: 12px 0; word-break: break-word; }
+.mo-ops { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.mo-ops .btn { font-size: 1.3rem; }
+.mo-tabla { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+@media (min-width: 620px) { .mo-tabla { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+.mo-t { display: flex; flex-direction: column; align-items: center; gap: 2px; min-height: 52px; padding: 6px 2px; background: var(--bg2); color: var(--txt); border: 1px solid var(--line); border-radius: var(--r); font: inherit; cursor: pointer; }
+.mo-t span { font-size: .8rem; color: var(--dim); }
+.mo-luz { position: fixed; inset: 0; z-index: 300; background: #FFFFFF; cursor: pointer; }
+.mo-luz[hidden] { display: none; }
+/* Juegos sin pantalla */
+.sp-grupo { margin: 14px 0; }
+.sp-grupo h3 { margin-bottom: 6px; }
+.sp-juego summary { font-family: var(--ft); }
+.sp-juego ol { margin: 0; }
+
+/* Alex v1.15: respuestas por partes */
+.al-lista { margin: 4px 0 10px; padding-left: 1.2em; }
+.al-lista li { margin-bottom: 4px; }
+.al-no li::marker { content: '✕  '; color: var(--err-txt); }
