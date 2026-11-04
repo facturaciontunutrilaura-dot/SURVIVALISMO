@@ -13,7 +13,7 @@
        guarda ella misma en IndexedDB.
    ========================================================================= */
 
-const VERSION = '1.18.1';
+const VERSION = '1.18.2';
 const STATIC = `survival-static-v${VERSION}`;
 const RUNTIME = `survival-runtime-v${VERSION}`;
 
