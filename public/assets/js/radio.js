@@ -14,6 +14,16 @@ const setKv = (id, v) => store.put('kv', { id, v }).catch(() => {});
 /** Megas por hora con una emisión de `kbps`. */
 export const mbHora = (kbps) => (kbps ? Math.round((kbps * 3600) / 8 / 1024) : null);
 
+/**
+ * Une la lista nueva con la guardada: si una emisora llega sin emisión (el
+ * directorio falló esa vez), se conserva la última que funcionaba en vez de
+ * hacerla desaparecer.
+ */
+export function unirConGuardadas(nuevas = [], guardadas = []) {
+  const prev = new Map((guardadas || []).filter((e) => e?.url).map((e) => [e.id, e]));
+  return nuevas.map((e) => (e.url || !prev.has(e.id) ? e : { ...prev.get(e.id), t: e.t, tipo: e.tipo }));
+}
+
 let audio = null;          // un solo reproductor para toda la app
 let sonando = null;        // id de la emisora que suena
 
@@ -56,7 +66,8 @@ export async function radioView() {
       if (!r.ok) throw new Error(`El servicio de radios no responde (${r.status}).`);
       const j = await r.json();
       if (!Array.isArray(j?.emisoras)) throw new Error('Respuesta no válida.');
-      datos = j; setKv('radios.cache', j); estado.textContent = '';
+      datos = { ...j, emisoras: unirConGuardadas(j.emisoras, datos?.emisoras) };
+      setKv('radios.cache', datos); estado.textContent = '';
     } catch (e) {
       estado.textContent = datos ? 'Sin conexión con el directorio: se muestran las emisoras guardadas.' : (navigator.onLine ? e.message : 'Sin conexión: la radio por internet necesita datos.');
     }

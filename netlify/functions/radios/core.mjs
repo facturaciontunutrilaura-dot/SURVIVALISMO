@@ -40,25 +40,43 @@ export function elegir(e, lista = []) {
   return { id: e.id, t: e.t, tipo: e.tipo, url: s.url_resolved || s.url, kbps: s.bitrate || null, codec: s.codec || '', web: s.homepage || '' };
 }
 
-async function buscar(fetchFn, e) {
+/* Cada emisora se busca en los espejos hasta encontrar una emisión válida:
+   un espejo que responde con la lista vacía o desfasada no basta para darla
+   por perdida (pasó el 3-11-2026: la lista se quedó sin las de música).
+   Se buscan pocas a la vez para no saturar el directorio, y con un tiempo
+   total máximo para que la función no se corte. */
+const A_LA_VEZ = 4;
+const TIEMPO_TOTAL = 8000;
+
+async function buscar(fetchFn, e, i, limite) {
   const q = `/json/stations/search?name=${encodeURIComponent(e.buscar)}&countrycode=ES&hidebroken=true&order=clickcount&reverse=true&limit=25`;
+  // Cada emisora empieza por un espejo distinto: así se reparte la carga.
+  const orden = SERVIDORES.map((_, k) => SERVIDORES[(i + k) % SERVIDORES.length]);
   let ultimo = null;
-  for (const base of SERVIDORES) {
+  for (const base of orden) {
+    if (Date.now() > limite) { ultimo ||= 'Sin tiempo'; break; }
     try {
-      const r = await fetchFn(base + q, { headers: { 'User-Agent': AGENTE }, signal: AbortSignal.timeout?.(6000) });
+      const r = await fetchFn(base + q, { headers: { 'User-Agent': AGENTE }, signal: AbortSignal.timeout?.(4000) });
       if (!r.ok) { ultimo = `HTTP ${r.status}`; continue; }
-      return { lista: await r.json() };
+      const s = elegir(e, await r.json());
+      if (s) return s;
+      ultimo = 'No encontrada';
     } catch (err) { ultimo = String(err?.message || err); }
   }
-  return { lista: [], error: ultimo };
+  return { id: e.id, t: e.t, tipo: e.tipo, url: null, error: ultimo || 'No encontrada' };
 }
 
 /** Lista de emisoras con su mejor emisión. Las que no se encuentran se indican. */
 export async function recopilar(fetchFn = fetch, ahora = new Date()) {
-  const res = await Promise.all(EMISORAS.map(async (e) => {
-    const { lista, error } = await buscar(fetchFn, e);
-    const s = elegir(e, lista);
-    return s || { id: e.id, t: e.t, tipo: e.tipo, url: null, error: error || 'No encontrada' };
-  }));
+  const limite = Date.now() + TIEMPO_TOTAL;
+  const res = new Array(EMISORAS.length);
+  let sig = 0;
+  const trabajador = async () => {
+    while (sig < EMISORAS.length) { const i = sig++; res[i] = await buscar(fetchFn, EMISORAS[i], i, limite); }
+  };
+  await Promise.all(Array.from({ length: A_LA_VEZ }, trabajador));
   return { generado: ahora.toISOString(), fuente: 'Radio Browser (radio-browser.info)', emisoras: res };
 }
+
+/** true si alguna emisora se ha quedado sin emisión (entonces se guarda poco tiempo). */
+export const incompleta = (d) => (d?.emisoras || []).some((x) => !x.url);

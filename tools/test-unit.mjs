@@ -866,6 +866,22 @@ test('radio: elige la emisión HTTPS que menos gasta y aguanta un directorio ca�
   const bueno = async (url) => ({ ok: true, status: 200, json: async () => (/Cadena%20SER/.test(url) ? lista : []) });
   const d2 = await R.recopilar(bueno);
   assert.equal(d2.emisoras.find((x) => x.id === 'ser').url, 'https://x.test/ser32.aac');
+  assert.equal(R.incompleta(d), true);
+  // Un espejo que responde con la lista vacía no basta: se prueba el siguiente.
+  const vistos = [];
+  const desfasado = async (url) => { vistos.push(url); return { ok: true, status: 200, json: async () => (/^https:\/\/de1\./.test(url) || !/Cadena%20SER/.test(url) ? [] : lista) }; };
+  const d3 = await R.recopilar(desfasado);
+  assert.equal(d3.emisoras.find((x) => x.id === 'ser').url, 'https://x.test/ser32.aac', 'encontrada en otro espejo');
+  assert.equal(d3.emisoras.find((x) => x.id === 'los40').error, 'No encontrada');
+  assert.ok(new Set(vistos.map((u) => u.split('/json')[0])).size === R.SERVIDORES.length, 'reparte entre espejos');
+  // En el móvil: si una emisora llega sin emisión, se conserva la que funcionaba.
+  const { unirConGuardadas } = await imp('assets/js/radio.js');
+  const u = unirConGuardadas(
+    [{ id: 'ser', t: 'Cadena SER', tipo: 'noticias', url: 'https://n/ser' }, { id: 'los40', t: 'LOS40', tipo: 'musica', url: null, error: 'HTTP 503' }, { id: 'dial', t: 'Cadena Dial', tipo: 'musica', url: null }],
+    [{ id: 'ser', url: 'https://v/ser' }, { id: 'los40', t: 'LOS40', tipo: 'musica', url: 'https://v/l40', kbps: 48 }]);
+  assert.equal(u[0].url, 'https://n/ser', 'la nueva manda');
+  assert.equal(u[1].url, 'https://v/l40', 'la guardada sustituye a la que falta');
+  assert.equal(u[2].url, null);
   // Rutas y CSP
   const red = fs.readFileSync(path.join(PUB, '_redirects'), 'utf8');
   assert.ok(red.indexOf('/api/radios') > -1 && red.indexOf('/api/radios') < red.indexOf('/*    /index.html'));
