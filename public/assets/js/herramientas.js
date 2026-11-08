@@ -186,6 +186,13 @@ export function pdfTarjeta(d) {
     filaB('SI NO FUNCIONAN LOS MÓVILES', d.sinmovil);
     texto('EMERGENCIAS 112 · Violencia de género 016 · Conducta suicida 024', xb + 10, y0 + 10, 7, true, C.rojo);
   });
+  // Código QR con los mismos datos: se lee con la cámara de cualquier móvil.
+  if (d.qrOps) {
+    texto('CÓDIGO QR DE EMERGENCIA', x0, 352, 10, true);
+    texto('Recórtalo y pégalo en la tarjeta, la mochila o el móvil. Se lee con la cámara de cualquier móvil, sin internet ni apps.', x0, 340, 8, false, [0.3, 0.3, 0.3]);
+    ops.push(d.qrOps);
+    marco(x0 - 6, 144, 182, 182, [0.4, 0.4, 0.4]);
+  }
   return escribir([ops.join('\n')], 'Tarjeta de emergencia');
 }
 
@@ -193,13 +200,26 @@ async function tarjeta() {
   const n = el(`<div>
     <p>Una tarjeta del tamaño de una cartera con lo esencial: quién eres, información médica, a quién avisar y vuestros puntos de encuentro. Se rellena con lo que ya tienes en <a href="#/sec/plan-familiar">Contactos y acuerdos</a>.</p>
     <label for="tj-n">Nombre de la persona</label><input id="tj-n" placeholder="Nombre y apellidos">
-    <button class="btn wide" type="button" id="tj-pdf" style="margin-top:10px">📄 Descargar la tarjeta en PDF</button>
-    <p class="muted">Haz una por persona y llévala siempre encima. Si cambia algo, vuelve a generarla.</p>
+    <button class="btn wide" type="button" id="tj-pdf" style="margin-top:10px">📄 Descargar la tarjeta en PDF (con código QR)</button>
+    <button class="btn wide ghost" type="button" id="tj-qr" style="margin-top:8px">🔳 Ver el código QR en pantalla</button>
+    <div id="tj-qr-caja" class="qr-caja" hidden></div>
+    <p class="muted">Haz una por persona y llévala siempre encima. Si cambia algo, vuelve a generarla. El código QR lleva el nombre, la información médica, a quién avisar y el punto de encuentro: un sanitario o voluntario lo lee con la cámara de su móvil, sin internet. Cualquiera que lo escanee lo verá: pon solo lo necesario.</p>
   </div>`);
-  n.querySelector('#tj-pdf').addEventListener('click', async () => {
+  async function datosTarjeta() {
     const [medico, cerca, lejos, sinmovil, u, cs] = await Promise.all([kv('plan.medico', ''), kv('plan.cerca', ''), kv('plan.lejos', ''), kv('plan.sinmovil', ''), ubi.guardada().catch(() => null), store.all('contactos').catch(() => [])]);
     const contactos = cs.filter((c) => c.t).slice(0, 2).map((c) => `${c.n}: ${c.t}`).join(' · ');
-    const bytes = pdfTarjeta({ nombre: n.querySelector('#tj-n').value.trim(), lugar: u ? ubi.nombreUbicacion(u) : '', medico, cerca, lejos, sinmovil, contactos });
+    return { nombre: n.querySelector('#tj-n').value.trim(), lugar: u ? ubi.nombreUbicacion(u) : '', medico, cerca, lejos, sinmovil, contactos };
+  }
+  n.querySelector('#tj-qr').addEventListener('click', async () => {
+    const X = await import('./herramientas-extra.js');
+    const caja = n.querySelector('#tj-qr-caja');
+    caja.innerHTML = `${X.svgQR(X.textoQR(await datosTarjeta()), 'Código QR con tus datos de emergencia')}<p class="muted">Enséñalo o haz una captura de pantalla para tenerlo como fondo de la pantalla de bloqueo.</p>`;
+    caja.hidden = false;
+  });
+  n.querySelector('#tj-pdf').addEventListener('click', async () => {
+    const d = await datosTarjeta();
+    try { const X = await import('./herramientas-extra.js'); d.qrOps = X.opsQR(X.textoQR(d), 36, 150, 170); } catch { /* sin QR, la tarjeta sale igual */ }
+    const bytes = pdfTarjeta(d);
     const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
     const a = document.createElement('a');
     a.href = url; a.download = 'tarjeta-emergencia.pdf'; document.body.appendChild(a); a.click(); a.remove();
@@ -212,7 +232,9 @@ async function tarjeta() {
 /* ------------------------------- Vista ------------------------------- */
 const PESTANAS = [
   ['msg', '💬 Estoy bien', mensajes], ['sil', '📯 Silbato', silbato], ['lin', '🔦 Linterna', linterna],
-  ['sen', '🆘 Señales', senales], ['dia', '📝 Diario', diario], ['tar', '🪪 Tarjeta', tarjeta],
+  ['sen', '🆘 Señales', senales], ['dia', '📝 Diario', diario], ['tar', '🪪 Tarjeta y QR', tarjeta],
+  ['wk', '📻 Walkie', async () => (await import('./herramientas-extra.js')).walkie()],
+  ['bat', '🔋 Batería', async () => (await import('./herramientas-extra.js')).bateria()],
 ];
 
 export async function herramientasView(inicial) {
@@ -230,6 +252,6 @@ export async function herramientasView(inicial) {
   }
   n.querySelectorAll('[data-hr]').forEach((b) => b.addEventListener('click', () => pinta(b.dataset.hr)));
   alSalir(destruir);
-  await pinta({ mensajes: 'msg', silbato: 'sil', linterna: 'lin', senales: 'sen', diario: 'dia', tarjeta: 'tar' }[inicial] || 'msg');
+  await pinta({ mensajes: 'msg', silbato: 'sil', linterna: 'lin', senales: 'sen', diario: 'dia', tarjeta: 'tar', walkie: 'wk', bateria: 'bat' }[inicial] || 'msg');
   return n;
 }

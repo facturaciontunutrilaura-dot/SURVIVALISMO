@@ -62,7 +62,7 @@ try {
     && /Prepárate/.test(await page.textContent('#h-preparate')) && /Si está pasando/.test(await page.textContent('#h-pasando')) && /Si tienes que salir/.test(await page.textContent('#h-salir')) && /Aprende más/.test(await page.textContent('#h-aprende')));
   ok('Portada: Ajustes en la cabecera', (await page.locator('.brand a[href="#/sec/config"]').count()) === 1);
   await page.goto(BASE + '#/grupo/orientacion'); await page.waitForSelector('.list .row');
-  ok('Grupo: «Orientación y mapas» lleva al mapa y a orientación', (await page.locator('.list a[href="#/mapa"]').count()) === 1 && (await page.locator('.list a[href="#/sec/orientacion"]').count()) === 1);
+  ok('Grupo: «Volver a casa y mapas» lleva al mapa y a orientación', (await page.locator('.list a[href="#/mapa"]').count()) === 1 && (await page.locator('.list a[href="#/sec/orientacion"]').count()) === 1);
   await page.goto(BASE + '#/'); await page.waitForSelector('.tile.sos');
   ok('Portada: SOS, 112 y buscador en la primera pantalla', await page.evaluate(() => ['.tile.sos', '.home-112', '.home-buscar'].every((s) => document.querySelector(s).getBoundingClientRect().bottom <= innerHeight)));
   ok('Portada: el 112 es una llamada directa', (await page.getAttribute('.home-112', 'href')) === 'tel:112');
@@ -821,7 +821,7 @@ try {
   {
     await page.evaluate(async () => { const st = await import('./assets/js/store.js'); await st.put('contactos', { id: 'ct-prueba', n: 'Ana (hermana)', t: '600 11 22 33', r: 'externo' }); });
     await page.goto(BASE + '#/sec/herramientas'); await page.reload(); await page.waitForSelector('#ms-txt');
-    ok('Herramientas: seis pestañas (Estoy bien, silbato, linterna, señales, diario y tarjeta)', (await page.locator('[data-hr]').count()) === 6);
+    ok('Herramientas: ocho pestañas (Estoy bien, silbato, linterna, señales, diario, tarjeta, walkie y batería)', (await page.locator('[data-hr]').count()) === 8);
     const sms = await page.getAttribute('.ms-c a[href^="sms:"]', 'href');
     ok('Estoy bien: SMS a un toque con el número y el texto ya escritos', /^sms:\+34600112233/.test(sms) && /Estoy%20bien/.test(sms), sms);
     await page.click('[data-est="voy"]');
@@ -842,6 +842,25 @@ try {
     await page.fill('#tj-n', 'Prueba'); await page.click('#tj-pdf');
     const dl = await descarga;
     ok('Tarjeta de emergencia: se descarga en PDF', !!dl && /\.pdf$/.test(dl.suggestedFilename()));
+    await page.click('#tj-qr'); await page.waitForSelector('#tj-qr-caja .qr-svg', { timeout: 5000 }).catch(() => {});
+    ok('Tarjeta: código QR en pantalla con los datos', (await page.locator('#tj-qr-caja .qr-svg path').count()) === 1 && (await page.getAttribute('#tj-qr-caja .qr-svg path', 'd')).length > 200);
+    // Walkie: plan de canales y PDF
+    await page.click('[data-hr="wk"]'); await page.waitForSelector('#wk-c');
+    ok('Walkie: 16 canales con su frecuencia y 38 subtonos', (await page.locator('#wk-c option').count()) === 16 && /446,0?\.?00625|446\.00625/.test(await page.textContent('#wk-c')) && (await page.locator('#wk-s option').count()) === 39);
+    await page.selectOption('#wk-c', '5'); await page.fill('#wk-pn', 'Prueba'); await page.fill('#wk-pi', 'Águila'); await page.click('#wk-padd');
+    ok('Walkie: guarda canal y personas en el móvil', /Águila/.test(await page.textContent('#wk-pers')) && (await page.evaluate(async () => (await (await import('./assets/js/store.js')).get('kv', 'walkie.plan'))?.v?.canal)) === 5);
+    const dlWk = page.waitForEvent('download', { timeout: 5000 }).catch(() => null);
+    await page.click('#wk-pdf');
+    ok('Walkie: plan imprimible en PDF', !!(await dlWk));
+    // Batería: ahorro máximo y vuelta atrás
+    await page.click('[data-hr="bat"]'); await page.waitForSelector('#bt-app');
+    await page.click('#bt-app');
+    await page.waitForFunction(() => getComputedStyle(document.body).backgroundColor === 'rgb(0, 0, 0)', null, { timeout: 5000 }).catch(() => {});
+    ok('Batería: ahorro máximo pone la app en negro puro', (await page.evaluate(() => getComputedStyle(document.body).backgroundColor)) === 'rgb(0, 0, 0)');
+    await page.click('#bt-app');
+    await page.waitForFunction(() => getComputedStyle(document.body).backgroundColor !== 'rgb(0, 0, 0)', null, { timeout: 5000 }).catch(() => {});
+    ok('Batería: se puede volver al aspecto de antes', (await page.evaluate(() => getComputedStyle(document.body).backgroundColor)) !== 'rgb(0, 0, 0)' && /Modo supervivencia/.test(await page.textContent('#hr-body')));
+    await page.evaluate(async () => { const st = await import('./assets/js/store.js'); await st.del('kv', 'walkie.plan'); await st.del('kv', 'ahorro.temaAnterior'); });
     // SOS enlaza con «Estoy bien»
     await page.goto(BASE + '#/emergencia'); await page.waitForSelector('.btn-112');
     ok('SOS: botón para avisar a la familia', (await page.locator('a[href="#/sec/herramientas/mensajes"]').count()) === 1);
@@ -880,6 +899,31 @@ try {
     await page.reload(); await page.waitForSelector('#ef-total');
     ok('Mi efectivo: se guarda en el móvil (sigue al recargar, discreto)', /●●●●/.test(await page.textContent('#ef-total')) && (await page.locator('.ef-mov').count()) === 2);
     await page.evaluate(async () => (await import('./assets/js/store.js')).del('kv', 'efectivo.datos'));
+    // Volver a casa (con GPS simulado en un contexto aparte)
+    {
+      const cg = await browser.newContext({ ...devices['Pixel 7'], serviceWorkers: 'block', permissions: ['geolocation'], geolocation: { latitude: 40.4168, longitude: -3.7038, accuracy: 10 } });
+      const pg = await cg.newPage();
+      await pg.goto(BASE + '#/sec/volver'); await pg.waitForSelector('#vc-donde');
+      ok('Volver a casa: sin casa guardada, lo explica', /no has guardado dónde está tu casa/.test(await pg.textContent('#vc-casa')));
+      await pg.click('#vc-donde'); await pg.waitForSelector('.vc-coord', { timeout: 8000 }).catch(() => {});
+      ok('Estoy perdido: coordenadas para dictar al 112 y enviar por SMS', /40\.41680, -3\.70380/.test(await pg.textContent('.vc-coord')) && /40° 25′/.test(await pg.textContent('#vc-pos')) && (await pg.locator('#vc-pos a[href^="sms:"]').count()) === 1);
+      await pg.evaluate(async () => (await import('./assets/js/store.js')).put('puntos', { id: 'casa-prueba', nombre: 'Casa', tipo: 'casa', lat: 40.4258, lon: -3.6920, ts: Date.now() }));
+      await pg.reload(); await pg.waitForSelector('#vc-donde'); await pg.click('#vc-donde');
+      await pg.waitForSelector('.vc-flecha', { timeout: 8000 }).catch(() => {});
+      ok('Estoy perdido: flecha, distancia, dirección y tiempo andando hasta casa', (await pg.locator('.vc-flecha').count()) === 1 && /1,4 km/.test(await pg.textContent('#vc-casa')) && /noreste/.test(await pg.textContent('#vc-casa')) && /min/.test(await pg.textContent('#vc-casa')));
+      ok('Estoy perdido: batería o cómo verla', /Batería/.test(await pg.textContent('#vc-bat')));
+      // Grabar una ruta
+      await pg.click('[data-vc="rutas"]'); await pg.waitForSelector('#vr-ini');
+      await pg.fill('#vr-nom', 'Del trabajo a casa'); await pg.click('#vr-ini');
+      for (const [la, lo] of [[40.4168, -3.7038], [40.4178, -3.7028], [40.4190, -3.7015], [40.4205, -3.7000]]) { await cg.setGeolocation({ latitude: la, longitude: lo, accuracy: 10 }); await pg.waitForTimeout(250); }
+      await pg.click('[data-marcar="agua"]');
+      await pg.click('#vr-fin');
+      await pg.waitForFunction(() => /guardada/.test(document.querySelector('#vr-est')?.textContent || ''), null, { timeout: 5000 }).catch(() => {});
+      ok('Mis rutas: graba la ruta con el GPS y la guarda', /guardada/.test(await pg.textContent('#vr-est')) && /Del trabajo a casa/.test(await pg.textContent('#vr-lista')));
+      ok('Mis rutas: muestra el agua marcada por el camino', /💧 Agua/.test(await pg.textContent('#vr-lista')));
+      ok('Mis rutas: la ruta queda como capa del Mapa', await pg.evaluate(async () => (await (await import('./assets/js/store.js')).all('geo')).some((g) => g.volver && g.data.features[0].geometry.coordinates.length >= 3)));
+      await cg.close();
+    }
     // Recordatorio de caducidad en la portada
     await page.evaluate(async () => { const st = await import('./assets/js/store.js'); const d = new Date(Date.now() + 5 * 86400000).toISOString().slice(0, 10); await st.put('checks', { id: 'bob::i:prueba-caducidad', estado: 'tengo', fecha: d }); });
     await page.goto(BASE + '#/'); await page.reload(); await page.waitForSelector('.home-recordar', { timeout: 8000 }).catch(() => {});
