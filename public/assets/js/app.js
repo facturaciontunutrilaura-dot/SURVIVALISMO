@@ -569,6 +569,12 @@ async function vSeccion(id, sub) {
     w.appendChild(await herramientasView(sub));
     return w;
   }
+  if (id === 'volver') {
+    const { volverView } = await import('./volver.js');
+    const w = el(`<div>${topbar(s.t, 'También sin internet')}<h1>${s.ic} Volver a casa</h1></div>`);
+    w.appendChild(await volverView(sub));
+    return w;
+  }
   if (id === 'efectivo') {
     const { efectivoView } = await import('./efectivo.js');
     const w = el(`<div>${topbar(s.t, 'Solo en este móvil')}<h1>${s.ic} Mi efectivo</h1></div>`);

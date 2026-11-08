@@ -45,3 +45,18 @@ Sección `#/sec/efectivo` (portada → «Si está pasando»). Lleva la cuenta de
 ## Radio desde Atajos (v1.19)
 
 Cada emisora tiene un botón «📋 Atajos» que copia la dirección de su emisión para usarla en la app Atajos de iPhone con la acción «Abrir URLs». Una app web no puede exponer acciones propias a Atajos ni a Siri: eso requeriría una app de la App Store.
+
+## Volver a casa (v1.20)
+
+Sección `#/sec/volver` (portada → «Si tienes que salir» → «Volver a casa y mapas»).
+
+- **Estoy perdido:** la posición se lee solo al pulsar «¿Dónde estoy?» (una lectura, no seguimiento). Muestra coordenadas decimales y en grados/minutos/segundos, copiar y SMS. Casa = el punto más reciente de tipo `casa` del store `puntos` (el mismo del Mapa); se puede guardar desde aquí. Flecha con rumbo y distancia en línea recta y tiempo andando a 4,5 km/h; con «Activar la brújula» la flecha gira con el móvil (mismo criterio que `compass.js`). Batería con `navigator.getBattery` cuando existe (no en iPhone).
+- **Mis rutas:** graba con `watchPosition` (descarta lecturas con más de 40 m de error o a menos de 15 m de la anterior) y guarda la ruta en el store `geo` con `volver: true`, así aparece como capa en el Mapa. «Hay agua aquí» y «Refugio aquí» guardan puntos en `puntos`. Muestra los puntos útiles a menos de 300 m de cada ruta.
+- Las coordenadas de casa y de las rutas se guardan **solo en el móvil** (y en las copias de seguridad, como el resto de puntos y capas), y solo cuando el usuario lo pide.
+- Lógica pura en `volver-core.js`.
+
+## Tarjeta con QR, walkies y batería (v1.20)
+
+- **QR:** `herramientas-extra.js` (`textoQR`, `svgQR`, `opsQR`) con la librería `public/assets/vendor/qrcode/qrcode.mjs` (qrcode-generator 1.4.4, MIT, adaptada a módulo ES y UTF-8). El QR es texto plano con lo que el usuario ha escrito; se ve en pantalla y va en el PDF de la tarjeta.
+- **Walkie:** guía PMR446 y plan de canales en `kv 'walkie.plan'` (entra en las copias), con PDF imprimible.
+- **Batería:** «Ahorro máximo» pone el tema `ahorro` (guarda el anterior en `kv 'ahorro.temaAnterior'` para volver) y para la radio. Guía de ahorro para iPhone y Android y un atajo de iPhone «Modo supervivencia». Una app web no puede cambiar los ajustes del móvil.

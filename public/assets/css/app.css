@@ -1479,3 +1479,16 @@ html[data-theme='ahorro'] img { filter: brightness(0.75); }
 .consent { display: flex; gap: 10px; align-items: flex-start; font-weight: 400; margin: 0 0 10px; padding: 10px; border: 1px solid var(--line2); border-radius: var(--r); background: var(--bg2); cursor: pointer; }
 .consent input { width: 22px; height: 22px; min-height: 0; flex: none; margin-top: 2px; accent-color: var(--olive3); }
 .home-legal p { margin: 0 0 .6em; }
+
+/* Volver a casa, walkies, batería y QR (v1.20) */
+.vc-tabs { grid-template-columns: 1fr 1fr; }
+.vc-coord { font-size: 1.3rem; font-weight: 800; font-variant-numeric: tabular-nums; margin: 4px 0; }
+.vc-flecha-card { text-align: center; }
+.vc-flecha { font-size: 5rem; line-height: 1; margin: 8px auto; width: 1.2em; transition: transform .3s ease-out; color: var(--olive3); }
+.vr-ruta { border-top: 1px solid var(--line); padding: 8px 0; }
+.vr-cerca { margin: 4px 0; }
+.wk-pers, .wk-claves { padding-left: 1.2em; }
+.wk-pers li { margin: 4px 0; }
+.qr-caja { margin-top: 12px; text-align: center; }
+.qr-svg { width: min(100%, 300px); height: auto; background: #fff; padding: 8px; border-radius: 8px; }
+@media (prefers-reduced-motion: reduce) { .vc-flecha { transition: none; } }
