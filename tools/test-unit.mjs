@@ -930,6 +930,46 @@ test('mi efectivo: importes, recuento, saldo por bolsillo, días que dura y PDF'
   assert.ok(esDatoPropio('kv', 'efectivo.datos'));
 });
 
+test('volver a casa: rumbo, distancia, coordenadas, ruta y QR/walkie', async () => {
+  const V = await imp('assets/js/volver-core.js');
+  const madrid = { lat: 40.4168, lon: -3.7038 }, norte = { lat: 40.5068, lon: -3.7038 }, este = { lat: 40.4168, lon: -3.6038 };
+  assert.ok(Math.abs(V.metros(madrid, norte) - 10008) < 20);
+  assert.ok(V.rumbo(madrid, norte) < 0.5 || V.rumbo(madrid, norte) > 359.5);
+  assert.ok(Math.abs(V.rumbo(madrid, este) - 90) < 1);
+  assert.equal(V.haciaDonde(44), 'noreste'); assert.equal(V.haciaDonde(359), 'norte'); assert.equal(V.haciaDonde(200), 'sur');
+  assert.equal(V.distanciaTexto(343), '340 m'); assert.equal(V.distanciaTexto(1430), '1,4 km'); assert.equal(V.distanciaTexto(25400), '25 km');
+  assert.equal(V.tiempoAndando(4500), '1 h'); assert.equal(V.tiempoAndando(1500), '20 min'); assert.equal(V.tiempoAndando(10000), '2 h 13 min');
+  assert.equal(V.gms(40.6566, -4.6812), '40° 39′ 23.8″ N, 4° 40′ 52.3″ O');
+  assert.equal(V.coordenadasTexto(madrid), '40.41680, -3.70380');
+  assert.equal(V.aceptarPunto(null, { ...madrid, acc: 10 }), true);
+  assert.equal(V.aceptarPunto(madrid, { lat: 40.41685, lon: -3.7038, acc: 5 }), false, 'menos de 15 m: ruido');
+  assert.equal(V.aceptarPunto(madrid, { ...norte, acc: 200 }), false, 'GPS impreciso');
+  const ruta = [madrid, { lat: 40.4178, lon: -3.7028 }, { lat: 40.419, lon: -3.7015 }];
+  const geo = V.rutaGeojson(ruta, 'Prueba');
+  assert.equal(geo.features[0].geometry.type, 'LineString');
+  assert.deepEqual(V.puntosDeRuta(geo).length, 3);
+  const cerca = V.cercaDeRuta([{ nombre: 'Fuente', tipo: 'agua', lat: 40.4179, lon: -3.7029 }, { nombre: 'Lejos', tipo: 'agua', lat: 40.5, lon: -3.7 }], ruta);
+  assert.deepEqual(cerca.map((p) => p.nombre), ['Fuente']);
+  assert.equal(V.horasBateria(0.6), 5); assert.equal(V.horasBateria(0.6, true), null); assert.equal(V.horasBateria(null), null);
+  // QR y walkie
+  const X = await imp('assets/js/herramientas-extra.js');
+  const t = X.textoQR({ nombre: 'Ana Pérez', medico: 'Alérgica a la penicilina', contactos: 'Luis: 600112233' });
+  assert.match(t, /^EMERGENCIA/); assert.match(t, /penicilina/); assert.match(t, /112$/);
+  const m = X.matrizQR(t);
+  assert.ok(m.length >= 21 && (m.length - 17) % 4 === 0, 'tamaño de QR válido');
+  // Patrón de posición (esquina superior izquierda): borde negro 7×7 con hueco blanco.
+  assert.ok(m[0].slice(0, 7).every(Boolean) && !m[1][1] && m[3][3]);
+  assert.match(X.svgQR('hola'), /^<svg class="qr-svg"/);
+  assert.equal(X.frecuenciaPMR(1), '446.00625'); assert.equal(X.frecuenciaPMR(8), '446.09375'); assert.equal(X.frecuenciaPMR(16), '446.19375');
+  const pdf = Buffer.from(X.pdfWalkie({ ...X.PLAN_INICIAL, personas: [{ nombre: 'Ana', indicativo: 'Águila' }] })).toString('latin1');
+  assert.match(pdf, /^%PDF-1\.4/); assert.match(pdf, /446\.03125/);
+  const { pdfTarjeta } = await imp('assets/js/herramientas.js');
+  const tj = Buffer.from(pdfTarjeta({ nombre: 'Ana', qrOps: X.opsQR(t, 36, 150, 170) })).toString('latin1');
+  assert.match(tj, /DIGO QR DE EMERGENCIA/); assert.ok((tj.match(/ re f/g) || []).length > 200, 'el QR se dibuja en el PDF');
+  const { esDatoPropio } = await imp('assets/js/store.js');
+  assert.ok(esDatoPropio('kv', 'walkie.plan'));
+});
+
 test('herramientas SOS: SMS a un toque, días de despensa y caducidades', async () => {
   const H = await imp('assets/js/herramientas-core.js');
   assert.equal(H.telefono('600 11 22 33'), '+34600112233');
