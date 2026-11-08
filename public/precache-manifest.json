@@ -74,6 +74,7 @@
   "./data/content/index.js",
   "./data/content/juegos-extra.js",
   "./data/content/juegos.js",
+  "./data/content/legal.js",
   "./data/content/riesgos.js",
   "./data/content/sinonimos.js",
   "./data/content/sources.js",

@@ -1475,6 +1475,11 @@ html[data-theme='ahorro'] img { filter: brightness(0.75); }
 .rd-fila .rd-e { flex: 1; }
 .rd-copiar { flex: 0 0 auto; }
 
+/* Legal: casilla de consentimiento y aviso de primera vez */
+.consent { display: flex; gap: 10px; align-items: flex-start; font-weight: 400; margin: 0 0 10px; padding: 10px; border: 1px solid var(--line2); border-radius: var(--r); background: var(--bg2); cursor: pointer; }
+.consent input { width: 22px; height: 22px; min-height: 0; flex: none; margin-top: 2px; accent-color: var(--olive3); }
+.home-legal p { margin: 0 0 .6em; }
+
 /* Volver a casa, walkies, batería y QR (v1.20) */
 .vc-tabs { grid-template-columns: 1fr 1fr; }
 .vc-coord { font-size: 1.3rem; font-weight: 800; font-variant-numeric: tabular-nums; margin: 4px 0; }

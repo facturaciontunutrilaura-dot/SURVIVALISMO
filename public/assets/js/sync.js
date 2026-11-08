@@ -112,7 +112,19 @@ export async function refrescar() {
 }
 
 export function salir() {
-  setCfg({ access_token: null, refresh_token: null, user_id: null, email: null, expira: null });
+  // Cerrar sesión es también retirar el consentimiento: para volver a
+  // sincronizar hay que darlo otra vez.
+  setCfg({ access_token: null, refresh_token: null, user_id: null, email: null, expira: null, consentimiento: null });
+}
+
+/* CONSENTIMIENTO. La copia sincronizada incluye información médica (dato de
+   salud, art. 9 RGPD), así que no se envía nada sin un consentimiento
+   explícito registrado con fecha. Lo da el usuario en el panel de Ajustes. */
+export function consentido() {
+  return Boolean(cfg().consentimiento);
+}
+export function darConsentimiento() {
+  return setCfg({ consentimiento: new Date().toISOString() });
 }
 
 /* ------------------------------ Sincronización ------------------------------ */
@@ -145,6 +157,7 @@ async function cambiosLocales(desde) {
 export async function sincronizar({ onPaso } = {}) {
   if (!configurado()) throw new Error('Sincronización no configurada');
   if (!sesionActiva()) throw new Error('No has iniciado sesión');
+  if (!consentido()) throw new Error('Falta tu consentimiento para sincronizar: márcalo en Ajustes → Sincronización');
   if (!navigator.onLine) throw new Error('Sin conexión: la app sigue funcionando, la sincronización no');
 
   const c = cfg();
@@ -207,7 +220,7 @@ export async function sincronizar({ onPaso } = {}) {
  *  Nunca lanza: si falla, la app sigue funcionando sin enterarse. */
 export async function autoSync() {
   try {
-    if (!cfg().auto || !configurado() || !sesionActiva() || !navigator.onLine) return null;
+    if (!cfg().auto || !configurado() || !sesionActiva() || !consentido() || !navigator.onLine) return null;
     const r = await sincronizar();
     window.dispatchEvent(new CustomEvent('sync:ok', { detail: r }));
     return r;

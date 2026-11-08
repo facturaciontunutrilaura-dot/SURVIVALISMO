@@ -7,6 +7,7 @@ import {
   SOS_SANITARIAS, SOS_SANITARIAS_MAP, GRUPOS_EMERGENCIA,
   FRECUENCIAS, SOURCES, SOURCE_MAP, DISCLAIMER,
 } from '../../data/content/index.js';
+import { TITULAR, FECHA_LEGAL, AVISO_INICIAL, AVISO_LEGAL, PRIVACIDAD, CONSENTIMIENTO_SYNC, faltanDatosTitular } from '../../data/content/legal.js';
 import * as store from './store.js';
 import * as prep from './preparacion.js';
 import { clavesChecklist, mapaMigracion } from './checklist-claves.js';
@@ -227,6 +228,7 @@ function vHome() {
       <div id="home-aviso" hidden></div>
     </section>
 
+    <div id="home-legal"></div>
     <div id="home-ubi"></div>
     <div id="home-prep" class="home-prep" hidden></div>
     <div id="home-recordar" hidden></div>
@@ -238,10 +240,12 @@ function vHome() {
 
     <div class="card home-pie">
       <p class="muted" style="margin:0">${esc(DISCLAIMER)}</p>
+      <div class="btnrow"><a class="btn sm ghost" href="#/legal/aviso">Aviso legal</a><a class="btn sm ghost" href="#/legal/privacidad">Privacidad</a><a class="btn sm ghost" href="#/sec/fuentes">Fuentes</a></div>
       <p class="muted" style="margin:.6em 0 0">Contenido actualizado el ${esc(FECHA_CONTENIDO)} · v${esc(VERSION)} · ${store.syncActiva() ? 'Tus datos se guardan en este dispositivo y se sincronizan con tu servidor.' : 'Tus datos se guardan en este dispositivo.'}</p>
     </div>
   </div>`);
   avisoNoticias(n.querySelector('#home-aviso'));
+  avisoInicial(n.querySelector('#home-legal'));
   recordatorios(n.querySelector('#home-recordar'));
   // Primera vez: dónde vives (para la evacuación, los riesgos y lo local).
   ubi.guardada().catch(() => null).then((u) => {
@@ -1316,12 +1320,9 @@ function vFuentes() {
       <p class="muted mono" style="margin:0">Consultado: ${esc(s.fecha)}<br><a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.url)}</a></p>
     </div>`).join('')}
     <div class="card">
-      <h3>Nota sobre el perfil de Instagram solicitado</h3>
-      <p class="muted">No fue posible analizar el perfil <span class="mono">@finalworldpreppers</span>: Instagram bloquea el acceso automatizado mediante su archivo robots.txt. Por ese motivo, el contenido de esta aplicación se ha construido a partir de fuentes oficiales españolas y de literatura técnica de supervivencia, y no reproduce material de ese perfil. Todo el texto es original.</p>
-    </div>
-    <div class="card">
       <h3>Aviso</h3>
       <p class="muted">${esc(DISCLAIMER)}</p>
+      <div class="btnrow"><a class="btn sm ghost" href="#/legal/aviso">Aviso legal completo</a><a class="btn sm ghost" href="#/legal/privacidad">Política de privacidad</a></div>
     </div>
   </div>`);
 }
@@ -1332,9 +1333,12 @@ function textoPrivacidad() {
   const comun = `<p class="muted">No usa analítica, publicidad ni cookies de terceros. Además de la sincronización (si la activas), la app solo se conecta a Internet para:</p>
     <ul class="muted">
       <li>ver o descargar mapas del IGN: el servidor del IGN recibe qué zona del mapa se pide, no tu nombre ni tus datos;</li>
-      <li>comprobar si hay una versión nueva, en el servidor donde está publicada la app.</li>
+      <li>comprobar si hay una versión nueva y consultar las noticias y la lista de emisoras, en el servidor donde está publicada la app;</li>
+      <li>escuchar la radio: tu móvil se conecta al servidor de la emisora que eliges;</li>
+      <li>los avisos graves, solo si los activas: el servidor guarda la dirección técnica de tu navegador (sin nombre ni datos personales) para poder enviártelos.</li>
     </ul>
-    <p class="muted">Tu posición GPS se usa en el dispositivo y no se envía a ningún sitio.</p>`;
+    <p class="muted">Tu posición GPS se usa en el dispositivo y no se envía a ningún sitio.</p>
+    <div class="btnrow"><a class="btn sm ghost" href="#/legal/privacidad">Política de privacidad completa</a><a class="btn sm ghost" href="#/legal/aviso">Aviso legal</a></div>`;
   if (!store.syncActiva()) {
     return `<p><b>La sincronización no está activada:</b> tus datos (plan familiar, contactos, información médica, puntos, checklists…) se guardan en este dispositivo y no se envían a ningún servidor.</p>${comun}`;
   }
@@ -1619,8 +1623,13 @@ async function montarSync(box) {
       <details id="sy-d3" ${S.configurado() && !S.sesionActiva() ? 'open' : ''}><summary>3 · Iniciar sesión</summary><div>
         ${S.sesionActiva()
           ? `<div class="blk-ok">Sesión iniciada como <b>${esc(c.email || c.user_id)}</b></div>
+             ${c.consentimiento ? '' : `<div class="blk-warn">La sincronización está en pausa hasta que des tu consentimiento: envía datos de salud.</div>
+             <label class="consent"><input type="checkbox" id="sy-consent"> <span>${esc(CONSENTIMIENTO_SYNC)}</span></label>
+             <div class="btnrow"><a class="btn sm ghost" href="#/legal/privacidad">Leer la política de privacidad</a></div>`}
              <button class="btn ghost wide sm" id="sy-out" type="button">Cerrar sesión</button>`
-          : `<label>Correo</label><input id="sy-mail" type="email" inputmode="email" autocomplete="username">
+          : `<label class="consent"><input type="checkbox" id="sy-consent" ${c.consentimiento ? 'checked' : ''}> <span>${esc(CONSENTIMIENTO_SYNC)}</span></label>
+             <div class="btnrow"><a class="btn sm ghost" href="#/legal/privacidad">Leer la política de privacidad</a></div>
+             <label>Correo</label><input id="sy-mail" type="email" inputmode="email" autocomplete="username">
              <label>Contraseña</label><input id="sy-pass" type="password" autocomplete="current-password">
              <div class="btnrow" style="margin-top:8px">
                <button class="btn sm" id="sy-in" type="button">Entrar</button>
@@ -1723,11 +1732,18 @@ async function montarSync(box) {
       const mail = box.querySelector('#sy-mail').value.trim();
       const pass = box.querySelector('#sy-pass').value;
       if (!mail || !pass) return toast('Correo y contraseña');
+      if (!box.querySelector('#sy-consent')?.checked) return toast('Antes, marca la casilla de consentimiento');
+      S.darConsentimiento();
       try { await fn(mail, pass); toast('Sesión iniciada'); pinta(); }
       catch (e) { toast('Error: ' + e.message); }
     };
     box.querySelector('#sy-in')?.addEventListener('click', () => login(S.entrar));
     box.querySelector('#sy-up')?.addEventListener('click', () => login(S.registrar));
+    box.querySelector('#sy-consent')?.addEventListener('change', (e) => {
+      // Con sesión iniciada, la casilla da o retira el consentimiento al momento.
+      if (!S.sesionActiva()) return;
+      if (e.target.checked) { S.darConsentimiento(); toast('Consentimiento registrado'); pinta(); }
+    });
     box.querySelector('#sy-out')?.addEventListener('click', () => { S.salir(); toast('Sesión cerrada'); pinta(); });
     box.querySelector('#sy-auto')?.addEventListener('change', (e) => { S.setCfg({ auto: e.target.checked }); });
     box.querySelector('#sy-now')?.addEventListener('click', async () => {
@@ -1792,6 +1808,69 @@ function salidaSegura() {
       <a class="btn ghost" href="#/">Volver al inicio</a>
     </div>`;
 }
+/* ------------------------------ LEGAL ------------------------------ */
+const LS_LEGAL = 'survival.legal';
+
+/* Aviso de primera vez en la portada. No bloquea nada: el SOS y el 112 quedan
+   por encima y se puede usar la app sin pulsar «Entendido». Vuelve a salir si
+   cambia FECHA_LEGAL. */
+function avisoInicial(caja) {
+  if (lsGet(LS_LEGAL) === FECHA_LEGAL) return;
+  caja.replaceChildren(el(`<div class="card home-legal" role="note">
+    <h3 style="margin-top:0">Antes de empezar</h3>
+    ${AVISO_INICIAL.map((t) => `<p class="muted">${esc(t)}</p>`).join('')}
+    <div class="btnrow">
+      <button class="btn sm" type="button" data-entendido>Entendido</button>
+      <a class="btn sm ghost" href="#/legal/aviso">Aviso legal</a>
+      <a class="btn sm ghost" href="#/legal/privacidad">Privacidad</a>
+    </div>
+  </div>`));
+  caja.querySelector('[data-entendido]').addEventListener('click', () => {
+    try { localStorage.setItem(LS_LEGAL, FECHA_LEGAL); } catch { /* sin almacenamiento: se volverá a mostrar */ }
+    caja.replaceChildren();
+  });
+}
+
+function textoLegal(t) {
+  const nombre = TITULAR.nombre.trim() || 'el titular de la app';
+  const email = TITULAR.email.trim() || 'la dirección de contacto del titular';
+  return esc(t.replaceAll('{titular}', nombre).replaceAll('{email}', email));
+}
+
+function bloquesLegales(bloques) {
+  return bloques.map((b) => `<h2>${esc(b.h)}</h2><div class="card">
+    ${(b.p || []).map((t) => `<p>${textoLegal(t)}</p>`).join('')}
+    ${b.li ? `<ul>${b.li.map((t) => `<li>${textoLegal(t)}</li>`).join('')}</ul>` : ''}
+    ${(b.p2 || []).map((t) => `<p>${textoLegal(t)}</p>`).join('')}
+  </div>`).join('');
+}
+
+function vLegal(cual) {
+  const priv = cual === 'privacidad';
+  const faltan = faltanDatosTitular();
+  const t = TITULAR;
+  const titular = `<h2>Titular</h2><div class="card">
+    ${faltan.length ? `<div class="blk-warn">Faltan los datos del titular de la app (${esc(faltan.join(', '))}). Hay que completarlos en <span class="mono">data/content/legal.js</span> antes de publicarla.</div>` : ''}
+    <div class="kv">
+      <div>Titular</div><div>${esc(t.nombre || '—')}</div>
+      <div>NIF</div><div>${esc(t.nif || '—')}</div>
+      <div>Domicilio</div><div>${esc(t.domicilio || '—')}</div>
+      <div>Correo</div><div>${t.email ? `<a href="mailto:${esc(t.email)}">${esc(t.email)}</a>` : '—'}</div>
+      ${t.registro ? `<div>Registro</div><div>${esc(t.registro)}</div>` : ''}
+      ${t.web ? `<div>Web</div><div>${esc(t.web)}</div>` : ''}
+    </div>
+  </div>`;
+  return el(`<div class="legal">
+    ${topbar(priv ? 'Privacidad' : 'Aviso legal')}
+    <h1>${priv ? '🔒 Política de privacidad' : '⚖️ Aviso legal y condiciones de uso'}</h1>
+    <p class="muted">Última actualización: ${esc(FECHA_LEGAL)}</p>
+    <div class="btnrow">${priv ? '<a class="btn sm ghost" href="#/legal/aviso">Ver aviso legal</a>' : '<a class="btn sm ghost" href="#/legal/privacidad">Ver política de privacidad</a>'}</div>
+    ${titular}
+    ${bloquesLegales(priv ? PRIVACIDAD : AVISO_LEGAL)}
+    ${priv ? `<h2>Estado en este dispositivo</h2><div class="card privacidad">${textoPrivacidad()}</div>` : ''}
+  </div>`);
+}
+
 function v404() {
   return el(`<div>${topbar('No encontrado')}<h1>No encontrado</h1>
     <p class="lead">Esta dirección no existe en la app. Puede ser un enlace antiguo o mal copiado.</p>
@@ -1857,6 +1936,7 @@ async function route() {
     else if (a === 'check') out = await vChecklist(b);
     else if (a === 'curso') out = await vCurso(b);
     else if (a === 'buscar') out = await vBuscar(params.get('q') || '');
+    else if (a === 'legal') out = vLegal(b);
     else if (a === 'mapa') {
       const { mapView } = await import('./maps.js');
       const wrap = el(`<div>${topbar('Mapa offline', 'Vectorial IGN + teselas descargadas')}</div>`);
