@@ -1438,3 +1438,39 @@ html[data-theme='ahorro'] img { filter: brightness(0.75); }
 .dp-grande { font-size: 1.4rem; margin: 0 0 6px; }
 .dp-aviso { color: var(--err-txt); font-weight: 600; }
 .rc-lista { margin: 4px 0 8px; padding-left: 1.2em; }
+
+/* Mi efectivo (v1.19) */
+.ef-saldo { text-align: center; }
+.ef-grande { display: block; width: 100%; background: none; border: 0; color: var(--txt); font: inherit; font-size: 2.4rem; font-weight: 800; letter-spacing: -.02em; padding: 4px 0; cursor: pointer; min-height: 0; }
+.ef-grande.neg { color: var(--err-txt); }
+.ef-pres-t { margin: 8px 0 4px; }
+.ef-barra { height: 10px; border-radius: 6px; background: var(--line); overflow: hidden; }
+.ef-barra span { display: block; height: 100%; background: var(--olive3); }
+.ef-barra.pasa span { background: var(--err-txt); }
+.ef-ayuda { margin: 10px 0 6px; }
+.ef-cats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.ef-cat { min-height: 64px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); color: var(--txt); font: inherit; font-weight: 700; cursor: pointer; }
+.ef-cat span { font-size: 1.5rem; }
+.ef-ing { width: 100%; margin-top: 8px; }
+.ef-fila { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.ef-fila input { flex: 1 1 140px; }
+.ef-check { display: flex; gap: 8px; align-items: center; font-weight: 400; margin: 10px 0; }
+.ef-check input { width: auto; min-height: 0; }
+.ef-bol { border-top: 1px solid var(--line); padding: 4px 0; }
+.ef-bol summary { display: flex; justify-content: space-between; gap: 8px; cursor: pointer; padding: 8px 0; }
+.ef-sub { font-weight: 700; margin: 8px 0 4px; }
+.ef-den { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 6px; }
+.ef-den-f { display: flex; align-items: center; justify-content: space-between; gap: 6px; font-weight: 400; margin: 0; }
+.ef-den-f input { width: 64px; text-align: right; }
+.ef-suma { margin: 8px 0; }
+.ef-nuevo { margin-top: 10px; }
+.ef-movs { list-style: none; padding: 0; margin: 8px 0 0; }
+.ef-mov { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-top: 1px solid var(--line); }
+.ef-mov-ic { font-size: 1.3rem; }
+.ef-mov-t { flex: 1; min-width: 0; }
+.ef-mov-t small { display: block; color: var(--dim); }
+.ef-mov-imp { font-weight: 700; white-space: nowrap; }
+.ef-mov.ingreso .ef-mov-imp { color: var(--olive3); }
+.rd-fila { display: flex; gap: 6px; align-items: stretch; }
+.rd-fila .rd-e { flex: 1; }
+.rd-copiar { flex: 0 0 auto; }

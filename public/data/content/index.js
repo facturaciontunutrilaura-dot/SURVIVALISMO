@@ -16,7 +16,7 @@ import { QUIZ, QUIZ_CATEGORIAS, RESPIRACIONES, GROUNDING } from './juegos.js';
 import { RIESGOS, NIVELES, CATEGORIAS_RIESGO } from './riesgos.js';
 import { SITUACIONES } from './familia.js';
 
-export const VERSION = '1.18.2';
+export const VERSION = '1.19.0';
 export const FECHA_CONTENIDO = FECHA_CONSULTA;
 
 export const SECCIONES = [
@@ -50,6 +50,7 @@ export const SECCIONES = [
   { id: 'alex', t: 'Pregúntale a Alex', ic: '💬', desc: 'Tu asistente de supervivencia, también sin conexión' },
   { id: 'evacuacion', t: 'Plan de evacuación', ic: '🧭', cls: 'evacuacion', desc: 'Por dónde salir según lo que pase: España, Portugal, Francia y por mar' },
   { id: 'herramientas', t: 'Herramientas SOS', ic: '🔦', desc: 'Avisar «Estoy bien» por SMS, silbato, linterna, señales, diario y tarjeta' },
+  { id: 'efectivo', t: 'Mi efectivo', ic: '💶', desc: 'Cuánto dinero en efectivo te queda y para cuántos días' },
   { id: 'despensa-calc', t: 'Calculadora de despensa', ic: '🥫', desc: 'Para cuántos días os llega lo que tenéis en casa' },
   { id: 'entrenamiento', t: 'Entrenamiento', ic: '💪', desc: 'En casa, sin material: de principiante a extremo' },
   { id: 'compra', t: 'Compra urgente', ic: '🛒', cls: 'colapso', desc: 'Lista de compra urgente, oculta hasta que la actives' },
@@ -83,7 +84,7 @@ export const GRUPOS = {
 };
 export const PORTADA = [
   { id: 'preparate', t: 'Prepárate', puertas: ['familia', 'g:mochila', 'evacuacion', 'entrenamiento'] },
-  { id: 'pasando', t: 'Si está pasando', puertas: ['herramientas', 'g:casa', 'primeros-auxilios', 'g:agua-comida', 'comunicaciones', 'defensa'] },
+  { id: 'pasando', t: 'Si está pasando', puertas: ['herramientas', 'efectivo', 'g:casa', 'primeros-auxilios', 'g:agua-comida', 'comunicaciones', 'defensa'] },
   { id: 'salir', t: 'Si tienes que salir', puertas: ['g:orientacion', 'g:campo', 'g:coche'] },
   { id: 'calma', t: 'Calma y ánimo', puertas: ['g:calma'] },
   { id: 'aprende', t: 'Aprende más', puertas: ['g:riesgos', 'cursos', 'g:biblioteca'] },

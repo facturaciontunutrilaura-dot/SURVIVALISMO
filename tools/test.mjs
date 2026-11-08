@@ -649,6 +649,9 @@ try {
     await page.locator('.rd-e[data-rd="r5"]').click();
     await page.waitForFunction(() => /no responde|No se ha podido/.test(document.querySelector('#rd-estado').textContent), null, { timeout: 8000 }).catch(() => {});
     ok('Radio: si una emisión no responde, lo explica y propone otra', /Prueba otra emisora/.test(await page.textContent('#rd-estado')));
+    await page.locator('[data-copiar="ser"]').click();
+    await page.waitForFunction(() => /copiada|radio\.test\/ser/.test(document.querySelector('#rd-estado').textContent), null, { timeout: 5000 }).catch(() => {});
+    ok('Radio: botón «Atajos» copia la dirección de cada emisora', (await page.locator('[data-copiar]').count()) === 3 && /copiada|radio\.test\/ser/.test(await page.textContent('#rd-estado')));
     await page.unroute('**/api/radios');
 
     // Avisos en el móvil: la tarjeta explica el estado y activar no rompe nada,
@@ -846,6 +849,37 @@ try {
     await page.goto(BASE + '#/sec/despensa-calc'); await page.waitForSelector('#dp-agua');
     await page.fill('#dp-agua', '6'); await page.fill('#dp-arroz', '5');
     ok('Despensa: calcula los días de autonomía y lo que se acaba antes', /días? de autonomía/.test(await page.textContent('#dp-res')) && /agua|comida/.test(await page.textContent('#dp-res')));
+    // Mi efectivo
+    await page.goto(BASE + '#/sec/efectivo'); await page.waitForSelector('#ef-total');
+    ok('Mi efectivo: empieza en 0 con tres bolsillos', /0,00 €/.test(await page.textContent('#ef-total')) && (await page.locator('.ef-bol').count()) === 3);
+    await page.locator('.ef-bol[data-bol="casa"] summary').click();
+    await page.fill('.ef-bol[data-bol="casa"] [data-den="5000"]', '2');
+    await page.fill('.ef-bol[data-bol="casa"] [data-den="200"]', '3');
+    ok('Mi efectivo: la suma del recuento se ve al escribir', /106,00 €/.test(await page.textContent('.ef-bol[data-bol="casa"] [data-suma]')));
+    await page.click('.ef-bol[data-bol="casa"] [data-contar]');
+    ok('Mi efectivo: guardar el recuento pone el saldo', /106,00 €/.test(await page.textContent('#ef-total')));
+    await page.click('[data-cat="comida"]');
+    ok('Mi efectivo: sin importe pide escribirlo', /Escribe primero el importe/.test(await page.textContent('#ef-msg')));
+    await page.selectOption('#ef-bol', 'casa');
+    await page.fill('#ef-imp', '12,50'); await page.fill('#ef-nota', 'pan'); await page.click('[data-cat="comida"]');
+    ok('Mi efectivo: un gasto en dos toques baja el saldo y queda en la lista', /93,50 €/.test(await page.textContent('#ef-total')) && /pan/.test(await page.textContent('#ef-movs')) && /Te dura unos/.test(await page.textContent('#ef-dura')));
+    await page.fill('#ef-imp', '20'); await page.click('.ef-ing');
+    ok('Mi efectivo: una entrada sube el saldo', /113,50 €/.test(await page.textContent('#ef-total')));
+    await page.fill('#ef-pd', '10'); await page.click('#ef-pd-ok');
+    ok('Mi efectivo: presupuesto diario con aviso si te pasas', /te has pasado/.test(await page.textContent('#ef-pres')));
+    await page.fill('#ef-nb', 'Lo de Bob'); await page.click('#ef-nb-ok');
+    ok('Mi efectivo: añadir un bolsillo para una persona', (await page.locator('.ef-bol').count()) === 4 && /Lo de Bob/.test(await page.textContent('#ef-bols')));
+    await page.check('#ef-disc');
+    ok('Mi efectivo: modo discreto oculta las cantidades', /●●●●/.test(await page.textContent('#ef-total')) && !/113,50/.test(await page.textContent('#app')));
+    await page.click('#ef-total');
+    ok('Mi efectivo: en modo discreto, tocar el saldo lo enseña', /113,50 €/.test(await page.textContent('#ef-total')));
+    const dlEf = page.waitForEvent('download', { timeout: 5000 }).catch(() => null);
+    await page.click('#ef-pdf');
+    const dle = await dlEf;
+    ok('Mi efectivo: resumen en PDF', !!dle && /\.pdf$/.test(dle.suggestedFilename()));
+    await page.reload(); await page.waitForSelector('#ef-total');
+    ok('Mi efectivo: se guarda en el móvil (sigue al recargar, discreto)', /●●●●/.test(await page.textContent('#ef-total')) && (await page.locator('.ef-mov').count()) === 2);
+    await page.evaluate(async () => (await import('./assets/js/store.js')).del('kv', 'efectivo.datos'));
     // Recordatorio de caducidad en la portada
     await page.evaluate(async () => { const st = await import('./assets/js/store.js'); const d = new Date(Date.now() + 5 * 86400000).toISOString().slice(0, 10); await st.put('checks', { id: 'bob::i:prueba-caducidad', estado: 'tengo', fecha: d }); });
     await page.goto(BASE + '#/'); await page.reload(); await page.waitForSelector('.home-recordar', { timeout: 8000 }).catch(() => {});

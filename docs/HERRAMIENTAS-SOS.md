@@ -31,3 +31,17 @@ Tarjeta en la portada que solo aparece si hay algo que recordar:
 Nuevo tema en Ajustes → Tema: `ahorro`.
 - Negro puro, sin animaciones, transiciones ni sombras.
 - En las pantallas OLED apaga los píxeles negros.
+
+## Mi efectivo (v1.19)
+
+Sección `#/sec/efectivo` (portada → «Si está pasando»). Lleva la cuenta del dinero en efectivo si fallan bancos y tarjetas.
+
+- Datos: `kv 'efectivo.datos'` = `{ bolsillos: [{id,t,base,baseTs,conteo}], movs: [{id,ts,tipo,imp,cat,bol,nota}], presupuesto, discreto }`. Importes en **céntimos**.
+- Saldo de un bolsillo = último recuento (`base`) + entradas − gastos posteriores a ese recuento. Volver a contar manda.
+- «Te dura X días» = saldo ÷ gasto medio de los últimos 7 días (o de los días que lleva apuntando); sin gastos, usa el presupuesto diario.
+- Solo en el móvil; entra en las copias (`KV_PROPIO` incluye `efectivo.`). PDF generado en el dispositivo (`pdfEfectivo`).
+- Lógica pura en `efectivo-core.js` (pruebas en `tools/test-unit.mjs`).
+
+## Radio desde Atajos (v1.19)
+
+Cada emisora tiene un botón «📋 Atajos» que copia la dirección de su emisión para usarla en la app Atajos de iPhone con la acción «Abrir URLs». Una app web no puede exponer acciones propias a Atajos ni a Siri: eso requeriría una app de la App Store.
