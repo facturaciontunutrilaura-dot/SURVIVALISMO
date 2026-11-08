@@ -61,6 +61,26 @@ try {
   ok('Portada: SOS y búsqueda + cinco bloques (Prepárate · Si está pasando · Si tienes que salir · Calma · Aprende más)', (await page.locator('.home-bloque').count()) === 6
     && /Prepárate/.test(await page.textContent('#h-preparate')) && /Si está pasando/.test(await page.textContent('#h-pasando')) && /Si tienes que salir/.test(await page.textContent('#h-salir')) && /Aprende más/.test(await page.textContent('#h-aprende')));
   ok('Portada: Ajustes en la cabecera', (await page.locator('.brand a[href="#/sec/config"]').count()) === 1);
+  // Legal: aviso de primera vez que no tapa el SOS, y pantallas de aviso legal y privacidad.
+  ok('Legal: la portada muestra el aviso inicial, debajo del SOS', await page.locator('#home-legal .home-legal').isVisible()
+    && await page.evaluate(() => document.querySelector('.home-sos').compareDocumentPosition(document.querySelector('#home-legal')) & Node.DOCUMENT_POSITION_FOLLOWING));
+  await page.click('#home-legal [data-entendido]');
+  ok('Legal: «Entendido» quita el aviso inicial', (await page.locator('#home-legal .home-legal').count()) === 0);
+  await page.reload(); await page.waitForSelector('.tile.sos');
+  ok('Legal: el aviso inicial no vuelve tras aceptarlo', (await page.locator('#home-legal .home-legal').count()) === 0);
+  ok('Legal: la portada enlaza aviso legal y privacidad', (await page.locator('.home-pie a[href="#/legal/aviso"]').count()) === 1 && (await page.locator('.home-pie a[href="#/legal/privacidad"]').count()) === 1);
+  await page.goto(BASE + '#/legal/aviso'); await page.waitForSelector('.legal h1');
+  ok('Legal: aviso legal con titular, riesgos y ley aplicable', /Titular/.test(await page.textContent('.legal')) && /Actividades con riesgo/.test(await page.textContent('.legal')) && /legislación española/.test(await page.textContent('.legal')));
+  await page.goto(BASE + '#/legal/privacidad'); await page.waitForSelector('.legal h1');
+  ok('Legal: privacidad con responsable, derechos y AEPD', /Responsable/.test(await page.textContent('.legal')) && /aepd\.es/.test(await page.textContent('.legal')));
+  await page.goto(BASE + '#/sec/fuentes'); await page.waitForSelector('h1');
+  ok('Fuentes: sin referencias a perfiles de terceros', !/Instagram/.test(await page.textContent('#app')));
+  await page.goto(BASE + '#/sec/config'); await page.waitForSelector('#cfg-sync', { state: 'attached' });
+  await page.evaluate(() => localStorage.setItem('survival.sync', JSON.stringify({ url: 'https://x.supabase.co', anon: 'sb_publishable_x' })));
+  await page.goto(BASE + '#/'); await page.goto(BASE + '#/sec/config'); await page.waitForSelector('#sy-consent', { state: 'attached' });
+  ok('Sync: la casilla de consentimiento empieza sin marcar', !(await page.locator('#sy-consent').isChecked()));
+  await page.evaluate(() => localStorage.removeItem('survival.sync'));
+  await page.goto(BASE + '#/');
   await page.goto(BASE + '#/grupo/orientacion'); await page.waitForSelector('.list .row');
   ok('Grupo: «Orientación y mapas» lleva al mapa y a orientación', (await page.locator('.list a[href="#/mapa"]').count()) === 1 && (await page.locator('.list a[href="#/sec/orientacion"]').count()) === 1);
   await page.goto(BASE + '#/'); await page.waitForSelector('.tile.sos');
@@ -1545,7 +1565,7 @@ try {
     await cx.route('https://www.ign.es/**', (r) => r.abort());
     const px = await cx.newPage();
     const fallos = [];
-    for (const r of ['#/', '#/emergencia', '#/emergencia/sanitaria/hemorragia', '#/buscar?q=sangra', '#/check/nivel2', '#/sec/familia', '#/sec/config', '#/mapa', '#/sec/juegos/calma', '#/esto-no-existe']) {
+    for (const r of ['#/', '#/emergencia', '#/emergencia/sanitaria/hemorragia', '#/buscar?q=sangra', '#/check/nivel2', '#/sec/familia', '#/sec/config', '#/legal/aviso', '#/legal/privacidad', '#/mapa', '#/sec/juegos/calma', '#/esto-no-existe']) {
       await px.goto(BASE + '#/'); await px.goto(BASE + r); await px.waitForTimeout(r === '#/mapa' ? 1200 : 600);
       const f = await px.evaluate(() => {
         const W = innerWidth, out = [];
@@ -2525,7 +2545,7 @@ try {
       });
       ok(`Tema ${tema}/${cont}: navegación, 112 y avisos siguen en pantalla`, pos.nav && pos.bar && pos.toast, JSON.stringify(pos));
       const malos = [];
-      for (const r of ['/', '/emergencia', '/emergencia/incendio-forestal', '/check/nivel2', '/sec/familia', '/sec/plan-familiar', '/sec/calculadoras', '/sec/config', '/sec/primeros-auxilios', '/sec/juegos/ajedrez', '/sec/evacuacion', '/sec/entrenamiento', '/sec/alex', '/sec/huerto', '/art/casa-frio', '/art/huerto-patatas', '/sec/bricolaje', '/sec/defensa', '/art/def-familia', '/sec/noticias', '/grupo/mochila', '/sec/riesgos']) {
+      for (const r of ['/', '/emergencia', '/emergencia/incendio-forestal', '/check/nivel2', '/sec/familia', '/sec/plan-familiar', '/sec/calculadoras', '/sec/config', '/sec/primeros-auxilios', '/sec/juegos/ajedrez', '/sec/evacuacion', '/sec/entrenamiento', '/sec/alex', '/sec/huerto', '/art/casa-frio', '/art/huerto-patatas', '/sec/bricolaje', '/sec/defensa', '/art/def-familia', '/sec/noticias', '/grupo/mochila', '/sec/riesgos', '/legal/aviso', '/legal/privacidad']) {
         await pt.goto(BASE + '#' + r); await pt.waitForTimeout(250);
         malos.push(...(await contraste(pt)).map((m) => r + ' ' + m));
       }

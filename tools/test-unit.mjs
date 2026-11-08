@@ -967,3 +967,25 @@ test('audio: el selector no filtra por tipo (en iPhone el filtro deja los MP3 en
   assert.ok(!/accept=/.test(input), input);
   assert.match(src, /TIPOS_OK\.test\(f\.type\) && !EXT_OK\.test\(f\.name\)/, 'el formato se sigue comprobando al guardar');
 });
+
+/* ------------------------------ LEGAL ------------------------------ */
+test('legal: aviso legal y privacidad completos y coherentes con la app', async () => {
+  const L = await import('../public/data/content/legal.js');
+  assert.match(L.FECHA_LEGAL, /^\d{4}-\d{2}-\d{2}$/);
+  for (const bloques of [L.AVISO_LEGAL, L.PRIVACIDAD]) {
+    for (const b of bloques) {
+      assert.ok(b.h && (b.p?.length || b.li?.length), `bloque vacío: ${b.h}`);
+      // Se pintan con esc(): no deben llevar HTML.
+      for (const t of [...(b.p || []), ...(b.li || []), ...(b.p2 || [])]) assert.doesNotMatch(t, /<[a-z]/i, t);
+    }
+  }
+  const priv = JSON.stringify(L.PRIVACIDAD);
+  // Cada conexión real de la app tiene que estar explicada.
+  for (const clave of ['Supabase', 'Instituto Geográfico Nacional', 'emisora', 'avisos', 'Netlify', 'AEPD', 'art. 9']) {
+    assert.ok(priv.includes(clave) || priv.toLowerCase().includes(clave.toLowerCase()), `falta en privacidad: ${clave}`);
+  }
+  assert.match(L.CONSENTIMIENTO_SYNC, /información médica/);
+  assert.deepEqual(L.faltanDatosTitular({ nombre: 'X', nif: 'Y', domicilio: 'Z', email: 'a@b.es' }), []);
+  const faltan = L.faltanDatosTitular();
+  if (faltan.length) console.log(`  ⚠ Recordatorio: faltan datos del titular en data/content/legal.js (${faltan.join(', ')}). Rellénalos antes de publicar.`);
+});

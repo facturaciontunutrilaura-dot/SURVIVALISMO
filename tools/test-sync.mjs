@@ -105,7 +105,7 @@ async function dispositivo(nombre) {
   page.on('pageerror', (e) => console.log(`  ⚠ ${nombre}: ${e.message}`));
   await page.goto(BASE, { waitUntil: 'networkidle' });
   await page.evaluate((u) => {
-    localStorage.setItem('survival.sync', JSON.stringify({ url: u, anon: 'anon-key', auto: false }));
+    localStorage.setItem('survival.sync', JSON.stringify({ url: u, anon: 'anon-key', auto: false, consentimiento: '2026-11-08T00:00:00Z' }));
   }, SUPA);
   return { ctx, page, nombre };
 }
@@ -193,6 +193,15 @@ try {
     try { await S.sincronizar(); return null; } catch (e) { return e.message; }
   });
   ok('SIN RED: la sincronización falla con un mensaje claro y sin romper nada', /Sin conexión/.test(err || ''), err);
+  const sinConsent = await A.page.evaluate(async () => {
+    const S = await import('./assets/js/sync.js');
+    const previo = S.cfg().consentimiento;
+    S.setCfg({ consentimiento: null });
+    const msg = await S.sincronizar().then(() => null).catch((e) => e.message);
+    S.setCfg({ consentimiento: previo });
+    return msg;
+  });
+  ok('RGPD: sin consentimiento explícito no se envía nada', /consentimiento/i.test(sinConsent || ''), sinConsent);
   await escribe(A, 'kv', { id: 'familia.nodos', v: [{ id: 'n1', nombre: 'Casa', rol: 'base', ic: '🏠' }] });
   await A.page.goto(BASE + '#/sec/familia', { waitUntil: 'domcontentloaded' });
   await A.page.waitForSelector('#fa-estado .row', { timeout: 10000 });

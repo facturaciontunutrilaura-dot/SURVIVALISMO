@@ -2,7 +2,7 @@
 
 *Herramientas de preparación y emergencia offline.* (Nombre técnico del proyecto y del paquete: `survival-offline`.)
 
-**Manual de campo offline de supervivencia, autoprotección, preparación ante emergencias y bushcraft para España. Incluye además una guía provincial detallada de Ávila.**
+**Manual de campo offline de supervivencia, autoprotección, preparación ante emergencias y bushcraft para toda España.** Cada usuario indica su provincia y municipio: la app le muestra el marco estatal y el de su comunidad autónoma. Para la provincia de Ávila hay además una guía detallada, que solo ven quienes viven allí.
 
 Aplicación web progresiva (PWA) sin dependencias externas en tiempo de ejecución. Se instala una vez con Internet y, a partir de ese momento, funciona íntegramente sin conexión: contenido, buscador, brújula, mapas vectoriales, checklists, calculadoras, cursos y plan familiar.
 
@@ -581,10 +581,6 @@ navegador puede concederlo o no. Por eso existe la exportación de datos.
 **iOS.** Safari limita la instalación PWA y puede recuperar espacio de sitios no
 visitados en semanas. Añadir la app a la pantalla de inicio reduce ese riesgo.
 
-**Instagram `@finalworldpreppers`.** No fue posible analizarlo: Instagram bloquea
-el acceso automatizado mediante `robots.txt`. El contenido se construyó a partir
-de fuentes oficiales españolas y literatura técnica; **todo el texto es original**
-y no reproduce material de ese perfil. Queda constancia en `📑 Fuentes`.
 
 ---
 
@@ -880,9 +876,14 @@ el papel no se queda sin batería.
 ## 10. Seguridad, privacidad y alcance del contenido
 
 - **Local-first.** Los datos se guardan en el dispositivo. Las conexiones
-  que hace la app son tres:
+  que hace la app son estas:
   - mapas del IGN al verlos o descargarlos. El IGN recibe qué zona se pide;
-  - comprobar si hay versión nueva;
+  - comprobar si hay versión nueva, y pedir noticias (`/api/noticias`) y la
+    lista de emisoras (`/api/radios`) al servidor de la app;
+  - escuchar la radio: el móvil se conecta al servidor de cada emisora;
+  - los **avisos push**, solo si el usuario los activa: el servidor guarda la
+    suscripción técnica del navegador (endpoint y claves, sin datos
+    personales) en Netlify Blobs;
   - la **sincronización**, solo si el usuario la activa. Envía al servidor de
     Supabase que él configura el plan familiar (incluida la información
     médica), contactos, puntos, checklists, frecuencias, registro de radio,
@@ -907,11 +908,43 @@ el papel no se queda sin batería.
 - **La app no sustituye a Protección Civil ni al 112.** Cuando existan
   instrucciones oficiales, esas mandan.
 
+### 10.1 Aviso legal, privacidad y RGPD
+
+Todo el texto legal está en `public/data/content/legal.js` y se ve en la app en
+`#/legal/aviso` y `#/legal/privacidad` (enlaces en la portada, en Ajustes y en
+Fuentes).
+
+**Antes de publicar o vender la app, rellena `TITULAR`** (nombre o razón social,
+NIF, domicilio y correo). La LSSI (art. 10) obliga a mostrarlos y el RGPD
+(art. 13) a identificar al responsable. Mientras falten, la pantalla legal lo
+avisa en rojo y `npm run test:unit` lo recuerda. Pon también la variable de
+entorno `VAPID_SUBJECT=mailto:<correo del titular>` en Netlify para los avisos.
+
+- **Aviso inicial.** La primera vez, la portada muestra un aviso breve debajo
+  del SOS (nunca lo tapa ni bloquea la app). Vuelve a salir si cambia
+  `FECHA_LEGAL`.
+- **Consentimiento para sincronizar.** La copia sincronizada incluye información
+  médica (dato de salud, art. 9 RGPD). `sync.js` no envía nada sin un
+  consentimiento explícito registrado con fecha (`cfg().consentimiento`), que el
+  usuario da con una casilla en Ajustes. Cerrar sesión lo retira.
+- **Quién es responsable de qué.** Los datos del dispositivo y del proyecto de
+  Supabase que configura cada usuario no los recibe el titular. El titular sí es
+  responsable de las suscripciones push y de los registros del alojamiento
+  (Netlify como encargado). **Si el titular ofrece a sus usuarios un servidor de
+  sincronización propio**, pasa a ser responsable también de esos datos de
+  salud: habría que revisar la política, firmar el contrato de encargo con
+  Supabase y valorar una evaluación de impacto (EIPD).
+- Es una base redactada con cuidado, **no un dictamen jurídico**: conviene que
+  la revise un abogado antes de comercializar la app.
+
 ---
 
 ## 11. Créditos y licencias
 
+- **Código y textos originales de la app** — todos los derechos reservados al
+  titular indicado en `public/data/content/legal.js`. No es software libre.
 - **Leaflet** 1.9 — BSD-2-Clause, incluido localmente en `assets/vendor/`.
+- **Manrope** — SIL Open Font License (`assets/fonts/OFL-Manrope.txt`).
 - **es-atlas** — MIT, TopoJSON derivado del Equipamiento Geográfico de Referencia
   Nacional del **Instituto Geográfico Nacional (IGN)**.
 - **Instituto Geográfico Nacional** — teselas WMTS (mapa base, MTN, PNOA), CC BY 4.0.

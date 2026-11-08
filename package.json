@@ -22,7 +22,7 @@
     "topojson-client": "^3.1.0",
     "web-push": "^3.6.7"
   },
-  "license": "MIT",
+  "license": "UNLICENSED",
   "devDependencies": {
     "playwright": "^1.62.1"
   }
