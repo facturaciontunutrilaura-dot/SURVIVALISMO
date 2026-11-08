@@ -891,6 +891,45 @@ test('radio: elige la emisión HTTPS que menos gasta y aguanta un directorio ca�
   assert.equal(mbHora(32), 14); assert.equal(mbHora(64), 28);
 });
 
+test('mi efectivo: importes, recuento, saldo por bolsillo, días que dura y PDF', async () => {
+  const E = await imp('assets/js/efectivo-core.js');
+  assert.equal(E.aCentimos('12,5'), 1250); assert.equal(E.aCentimos('12.50'), 1250);
+  assert.equal(E.aCentimos('1.234,56'), 123456); assert.equal(E.aCentimos('1.000'), 100000);
+  assert.equal(E.aCentimos('7 €'), 700); assert.equal(E.aCentimos('abc'), null); assert.equal(E.aCentimos('0'), null); assert.equal(E.aCentimos('1,234'), null);
+  assert.equal(E.euros(123456), '1.234,56 €'); assert.equal(E.euros(5), '0,05 €'); assert.equal(E.euros(-250), '−2,50 €');
+  assert.equal(E.totalConteo({ 5000: 2, 200: 3, 1: 4 }), 10604);
+  assert.equal(E.totalConteo({ 1000: -3, 500: 'x' }), 0, 'cantidades no válidas no suman');
+  const DIA = 86400000, ahora = new Date('2026-11-08T12:00:00').getTime();
+  const d = E.datosIniciales();
+  assert.deepEqual(d.bolsillos.map((b) => b.id), ['casa', 'cartera', 'mochila']);
+  Object.assign(d.bolsillos[0], { base: 10000, baseTs: ahora - 3 * DIA });
+  d.movs = [
+    { id: 'a', ts: ahora - 4 * DIA, tipo: 'gasto', imp: 9999, cat: 'comida', bol: 'casa' }, // antes del recuento: no cuenta
+    { id: 'b', ts: ahora - 2 * DIA, tipo: 'gasto', imp: 1500, cat: 'comida', bol: 'casa' },
+    { id: 'c', ts: ahora - DIA, tipo: 'ingreso', imp: 500, cat: 'ingreso', bol: 'casa' },
+    { id: 'd', ts: ahora - 3600e3, tipo: 'gasto', imp: 1000, cat: 'agua', bol: 'cartera' },
+  ];
+  assert.equal(E.saldoBolsillo(d.bolsillos[0], d.movs), 9000);
+  assert.equal(E.saldoBolsillo(d.bolsillos[1], d.movs), -1000);
+  assert.equal(E.saldoTotal(d), 8000);
+  assert.equal(E.gastadoHoy(d.movs, ahora), 1000);
+  // Gastos de la última semana: 15 + 10 = 25 € (el de hace 4 días también: 99,99) en los 4 días desde el primero.
+  assert.equal(E.gastoDiario(d.movs, ahora), Math.round((9999 + 1500 + 1000) / 4));
+  assert.equal(E.gastoDiario([], ahora), null);
+  assert.equal(E.gastoDiario([{ ts: ahora - 3600e3, tipo: 'gasto', imp: 2000 }], ahora), 2000, 'el primer día no divide por 7');
+  assert.equal(E.diasQueDura(10000, 2500), 4); assert.equal(E.diasQueDura(10000, null), null); assert.equal(E.diasQueDura(0, 100), null);
+  assert.deepEqual(E.porCategoria(d.movs).map(([c]) => c), ['comida', 'agua']);
+  const { pdfEfectivo } = await imp('assets/js/efectivo.js');
+  const pdf = Buffer.from(pdfEfectivo(d, ahora)).toString('latin1');
+  assert.match(pdf, /^%PDF-1\.4/); assert.match(pdf, /%%EOF\n$/); assert.match(pdf, /Saldo total: 80,00 \\200/);
+  // Muchos movimientos: varias páginas.
+  const d2 = { ...d, movs: Array.from({ length: 120 }, (_, i) => ({ id: `m${i}`, ts: ahora - i * 60000, tipo: 'gasto', imp: 100, cat: 'otros', bol: 'casa' })) };
+  assert.ok(/\/Count [2-9]/.test(Buffer.from(pdfEfectivo(d2, ahora)).toString('latin1')));
+  // Entra en las copias de seguridad.
+  const { esDatoPropio } = await imp('assets/js/store.js');
+  assert.ok(esDatoPropio('kv', 'efectivo.datos'));
+});
+
 test('herramientas SOS: SMS a un toque, días de despensa y caducidades', async () => {
   const H = await imp('assets/js/herramientas-core.js');
   assert.equal(H.telefono('600 11 22 33'), '+34600112233');

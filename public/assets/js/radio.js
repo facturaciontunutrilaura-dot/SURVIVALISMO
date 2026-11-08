@@ -35,12 +35,31 @@ export function pararRadio() {
   sonando = null;
 }
 
+/** Copia un texto al portapapeles (con plan B para navegadores antiguos). */
+async function copiar(t) {
+  try { await navigator.clipboard.writeText(t); return true; } catch { /* plan B */ }
+  try {
+    const a = document.createElement('textarea');
+    a.value = t; a.setAttribute('readonly', ''); a.style.position = 'fixed'; a.style.opacity = '0';
+    document.body.appendChild(a); a.select(); const ok = document.execCommand('copy'); a.remove();
+    return ok;
+  } catch { return false; }
+}
+
 export async function radioView() {
   const n = el(`<section class="card rd" aria-labelledby="rd-t">
     <h3 id="rd-t">📻 Radio en directo</h3>
     <p class="muted">Por internet, eligiendo la emisión que menos datos gasta: sirve con poca cobertura. Sin internet, usa una radio FM a pilas (Radio Nacional y las emisoras locales dan los avisos oficiales).</p>
     <p id="rd-estado" role="status" aria-live="polite"></p>
     <div id="rd-lista"></div>
+    <details class="rd-atajos"><summary>📲 Escuchar la radio desde Atajos (iPhone)</summary><div>
+      <ol>
+        <li>Toca <b>📋 Atajos</b> junto a la emisora: se copia su dirección.</li>
+        <li>Abre la app <b>Atajos</b> → <b>+</b> → añade la acción <b>«Abrir URLs»</b> y pega la dirección.</li>
+        <li>Ponle nombre (por ejemplo, «Radio 5»). Podrás lanzarlo desde Atajos, el widget o diciendo a Siri su nombre: se abrirá en Safari y empezará a sonar.</li>
+      </ol>
+      <p class="muted">Las emisoras cambian a veces su dirección: si un atajo deja de sonar, vuelve a copiarla aquí.</p>
+    </div></details>
     <p class="muted rd-pie">Directorio de emisoras: Radio Browser (radio-browser.info). Las emisiones son de cada emisora.</p>
   </section>`);
   const estado = n.querySelector('#rd-estado'), lista = n.querySelector('#rd-lista');
@@ -51,9 +70,10 @@ export async function radioView() {
     if (!ems.length) { lista.innerHTML = ''; return; }
     const grupo = (tipo, t) => {
       const g = ems.filter((e) => e.tipo === tipo);
-      return g.length ? `<p class="rd-grupo">${t}</p><div class="rd-items">${g.map((e) => `<button type="button" class="rd-e" data-rd="${esc(e.id)}" aria-pressed="${sonando === e.id}">
+      return g.length ? `<p class="rd-grupo">${t}</p><div class="rd-items">${g.map((e) => `<div class="rd-fila"><button type="button" class="rd-e" data-rd="${esc(e.id)}" aria-pressed="${sonando === e.id}">
         <span class="rd-ic" aria-hidden="true">${sonando === e.id ? '⏸' : '▶'}</span><span><b>${esc(e.t)}</b>
-        <small>${e.kbps ? `${e.kbps} kbps · unos ${mbHora(e.kbps)} MB por hora` : 'consumo desconocido'}</small></span></button>`).join('')}</div>` : '';
+        <small>${e.kbps ? `${e.kbps} kbps · unos ${mbHora(e.kbps)} MB por hora` : 'consumo desconocido'}</small></span></button>
+        <button type="button" class="btn sm ghost rd-copiar" data-copiar="${esc(e.id)}" aria-label="Copiar dirección de ${esc(e.t)} para Atajos">📋 Atajos</button></div>`).join('')}</div>` : '';
     };
     lista.innerHTML = grupo('noticias', '🗞️ Noticias') + grupo('musica', '🎵 Música');
   }
@@ -74,7 +94,13 @@ export async function radioView() {
     pintar();
   }
 
-  lista.addEventListener('click', (ev) => {
+  lista.addEventListener('click', async (ev) => {
+    const cp = ev.target.closest('[data-copiar]');
+    if (cp) {
+      const e = datos.emisoras.find((x) => x.id === cp.dataset.copiar);
+      estado.textContent = (await copiar(e.url)) ? `Dirección de ${e.t} copiada. Pégala en Atajos con la acción «Abrir URLs».` : `No se ha podido copiar. Dirección de ${e.t}: ${e.url}`;
+      return;
+    }
     const b = ev.target.closest('[data-rd]');
     if (!b) return;
     const e = datos.emisoras.find((x) => x.id === b.dataset.rd);

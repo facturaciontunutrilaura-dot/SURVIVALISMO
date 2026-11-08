@@ -19,6 +19,8 @@
   "./assets/js/compra.js",
   "./assets/js/damas.js",
   "./assets/js/despensa.js",
+  "./assets/js/efectivo-core.js",
+  "./assets/js/efectivo.js",
   "./assets/js/entrenamiento-calc.js",
   "./assets/js/entrenamiento.js",
   "./assets/js/evacuacion.js",

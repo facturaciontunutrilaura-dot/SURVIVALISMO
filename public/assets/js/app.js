@@ -565,6 +565,12 @@ async function vSeccion(id, sub) {
     w.appendChild(await herramientasView(sub));
     return w;
   }
+  if (id === 'efectivo') {
+    const { efectivoView } = await import('./efectivo.js');
+    const w = el(`<div>${topbar(s.t, 'Solo en este móvil')}<h1>${s.ic} Mi efectivo</h1></div>`);
+    w.appendChild(await efectivoView());
+    return w;
+  }
   if (id === 'despensa-calc') {
     const { despensaView } = await import('./despensa.js');
     const w = el(`<div>${topbar(s.t, 'Días de autonomía', '#/grupo/mochila')}<h1>${s.ic} Calculadora de despensa</h1></div>`);
