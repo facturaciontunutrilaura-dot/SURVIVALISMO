@@ -177,7 +177,7 @@ test('versión única: sw.js coincide con data/content/index.js', () => {
 
 test('el manifiesto de precache incluye todos los recursos de la app', () => {
   const lista = new Set(JSON.parse(fs.readFileSync(path.join(PUB, 'precache-manifest.json'), 'utf8')));
-  const EXT = /\.(html|css|js|json|geojson|webmanifest|png|svg|woff2?|txt)$/i;
+  const EXT = /\.(html|css|m?js|json|geojson|webmanifest|png|svg|woff2?|txt)$/i;
   const faltan = [];
   const walk = (dir, base = '') => {
     for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -188,6 +188,28 @@ test('el manifiesto de precache incluye todos los recursos de la app', () => {
   };
   walk(PUB);
   assert.deepEqual(faltan, [], 'ejecuta npm run build:assets');
+});
+
+test('sin conexión: todo módulo importado y todo dato pedido por la app está en el precache', () => {
+  // Si un import (estático o dinámico) o un fetch('./data/…') apunta a algo
+  // que no está en el precache, esa parte de la app falla sin internet.
+  const lista = new Set(JSON.parse(fs.readFileSync(path.join(PUB, 'precache-manifest.json'), 'utf8')).map((x) => path.posix.normalize(x.replace(/^\.\//, ''))));
+  const faltan = new Set();
+  const walk = (dir) => {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      const p = path.join(dir, e.name);
+      if (e.isDirectory()) { walk(p); continue; }
+      if (!/\.m?js$/.test(e.name) || e.name === 'sw.js') continue;
+      const src = fs.readFileSync(p, 'utf8');
+      for (const m of src.matchAll(/(?:import\s*\(\s*|from\s+|import\s+)['"](\.[^'"]+)['"]/g)) {
+        const t = path.relative(PUB, path.resolve(path.dirname(p), m[1])).split(path.sep).join('/');
+        if (!lista.has(t)) faltan.add(`${t} (importado en ${path.relative(PUB, p)})`);
+      }
+      for (const m of src.matchAll(/['"`]\.\/((?:data|assets|icons)\/[^'"`$]+)['"`]/g)) if (!lista.has(m[1])) faltan.add(`${m[1]} (pedido en ${path.relative(PUB, p)})`);
+    }
+  };
+  walk(PUB);
+  assert.deepEqual([...faltan], []);
 });
 
 /* ------------------------- Infarto e ictus: contenido congelado -------------------------

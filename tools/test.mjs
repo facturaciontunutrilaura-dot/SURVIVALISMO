@@ -1770,6 +1770,34 @@ try {
   await page.waitForFunction(() => /La IA juega/.test(document.querySelector('#aje-estado').textContent), null, { timeout: 10000 });
   ok('SIN RED: el rival de ajedrez juega (su Web Worker está guardado)', true);
 
+  // Recorrido completo sin red: todas las secciones, grupos, artículos,
+  // emergencias, checklists, cursos y pestañas que cargan módulos aparte.
+  {
+    const ids = await page.evaluate(async () => {
+      const I = await import('./data/content/index.js'), E = await import('./data/content/emergencias.js');
+      const CK = await import('./data/content/checklists.js'), CU = await import('./data/content/cursos.js');
+      return [
+        ...I.SECCIONES.map((s) => `#/sec/${s.id}`), ...Object.keys(I.GRUPOS).map((g) => `#/grupo/${g}`), ...I.ARTICULOS.map((a) => `#/art/${a.id}`),
+        ...E.EMERGENCIAS.map((e) => `#/emergencia/${e.id}`), ...E.SOS_SANITARIAS.map((x) => `#/emergencia/sanitaria/${x.id}`),
+        ...CK.CHECKLISTS.map((c) => `#/check/${c.id}`), ...CU.CURSOS.map((c) => `#/curso/${c.id}`),
+        ...['walkie', 'bateria', 'tarjeta'].map((t) => `#/sec/herramientas/${t}`), '#/sec/volver/rutas', '#/legal/aviso', '#/legal/privacidad', '#/mapa',
+      ];
+    });
+    const fallos = [];
+    for (const r of ids) {
+      await page.evaluate((h) => { location.hash = h; }, r);
+      await page.waitForFunction(() => !document.querySelector('#app .cargando, #app [aria-busy="true"]'), null, { timeout: 3000 }).catch(() => {});
+      await page.waitForTimeout(120);
+      const t = (await page.textContent('#app').catch(() => '')) || '';
+      const m = t.match(/Algo ha fallado|Página no encontrada|\bundefined\b|\bNaN\b|\[object Object\]/);
+      if (m || t.trim().length < 40) fallos.push(`${r} (${m?.[0] || 'vacía'})`);
+    }
+    ok(`SIN RED: las ${ids.length} pantallas de la app se abren sin errores`, !fallos.length, fallos.slice(0, 8).join(' · '));
+    await page.evaluate(() => { location.hash = '#/sec/herramientas/tarjeta'; }); await page.waitForSelector('#tj-qr'); await page.click('#tj-qr');
+    await page.waitForSelector('#tj-qr-caja .qr-svg', { timeout: 5000 }).catch(() => {});
+    ok('SIN RED: el código QR se genera (su librería está guardada)', (await page.locator('#tj-qr-caja .qr-svg').count()) === 1);
+  }
+
   await ctx.setOffline(false);
 
   /* ------------------- 12 a. ¿Está lista tu app? (fase 4) ------------------- */

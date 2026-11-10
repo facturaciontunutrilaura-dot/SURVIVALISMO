@@ -110,7 +110,7 @@ fs.copyFileSync(path.join(ICONS, 'icon-192.png'), path.join(PUB, 'favicon.png'))
 
 /* --------------------------- Precache manifest --------------------------- */
 const SKIP = new Set(['precache-manifest.json', 'sw.js']);
-const EXT = /\.(html|css|js|json|geojson|webmanifest|png|svg|woff2?|txt)$/i;
+const EXT = /\.(html|css|m?js|json|geojson|webmanifest|png|svg|woff2?|txt)$/i;
 
 function walk(dir, base = '') {
   const out = [];

@@ -1,6 +1,9 @@
 /* =========================================================================
-   ui.js — helpers de render (sin dependencias)
+   ui.js — helpers de render
+   Única dependencia: la provincia del usuario, para los bloques de
+   contenido local (soloProv / noProv).
    ========================================================================= */
+import { provinciaActual } from './ubicacion.js';
 
 export const $ = (sel, root = document) => root.querySelector(sel);
 export const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
