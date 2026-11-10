@@ -919,6 +919,17 @@ try {
     await page.reload(); await page.waitForSelector('#ef-total');
     ok('Mi efectivo: se guarda en el móvil (sigue al recargar, discreto)', /●●●●/.test(await page.textContent('#ef-total')) && (await page.locator('.ef-mov').count()) === 2);
     await page.evaluate(async () => (await import('./assets/js/store.js')).del('kv', 'efectivo.datos'));
+    // Ayuda
+    await page.goto(BASE + '#/sec/ayuda'); await page.waitForSelector('#ay-q');
+    ok('Ayuda: preguntas frecuentes por temas', (await page.locator('.ay-p').count()) >= 12 && (await page.locator('.ay-grupo').count()) >= 5);
+    await page.fill('#ay-q', 'copia seguridad');
+    ok('Ayuda: el buscador filtra y abre la respuesta', (await page.locator('.ay-p:not([hidden])').count()) >= 1 && (await page.locator('.ay-p:not([hidden])').count()) < 5 && (await page.locator('.ay-p[open]').count()) >= 1);
+    await page.fill('#ay-q', 'zzzz'); 
+    ok('Ayuda: si no hay resultados, lo dice', await page.locator('#ay-nada').isVisible());
+    await page.click('#ay-copiar'); await page.waitForSelector('#ay-informe:not([hidden])');
+    ok('Ayuda: informe técnico para soporte sin datos personales', /SUPERVIVENCIA/.test(await page.textContent('#ay-informe')) && /Modo sin conexión/.test(await page.textContent('#ay-informe')));
+    await page.goto(BASE + '#/sec/config'); await page.waitForSelector('.cfg-ayuda');
+    ok('Ajustes: acceso directo a la ayuda', (await page.locator('.cfg-ayuda[href="#/sec/ayuda"]').count()) === 1);
     // Volver a casa (con GPS simulado en un contexto aparte)
     {
       const cg = await browser.newContext({ ...devices['Pixel 7'], serviceWorkers: 'block', permissions: ['geolocation'], geolocation: { latitude: 40.4168, longitude: -3.7038, accuracy: 10 } });

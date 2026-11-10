@@ -992,6 +992,18 @@ test('volver a casa: rumbo, distancia, coordenadas, ruta y QR/walkie', async () 
   assert.ok(esDatoPropio('kv', 'walkie.plan'));
 });
 
+test('ayuda: preguntas frecuentes completas y un informe técnico sin datos personales', async () => {
+  const A = await imp('assets/js/ayuda.js');
+  assert.ok(A.PREGUNTAS.length >= 12);
+  for (const p of A.PREGUNTAS) assert.ok(p.g && p.q.length > 10 && p.a.length, p.q);
+  const temas = A.PREGUNTAS.map((p) => p.q).join(' ');
+  for (const t of [/instal/i, /internet/i, /versión/i, /copia/i, /ubicación/i, /brújula/i, /avisos/i, /emergencia/i]) assert.match(temas, t);
+  const nav = { userAgent: 'UA-prueba', onLine: true, language: 'es-ES', standalone: false,
+    serviceWorker: { getRegistration: async () => ({ active: {} }) }, storage: { estimate: async () => ({ usage: 5 * 1048576, quota: 100 * 1048576 }), persisted: async () => true } };
+  const t = await A.informe(nav, { matchMedia: () => ({ matches: true }), innerWidth: 390, innerHeight: 844 });
+  assert.match(t, /^SUPERVIVENCIA \d+\.\d+\.\d+/); assert.match(t, /Instalada: sí/); assert.match(t, /Modo sin conexión: activo/); assert.match(t, /5 MB de 100 MB/);
+});
+
 test('herramientas SOS: SMS a un toque, días de despensa y caducidades', async () => {
   const H = await imp('assets/js/herramientas-core.js');
   assert.equal(H.telefono('600 11 22 33'), '+34600112233');

@@ -1492,3 +1492,11 @@ html[data-theme='ahorro'] img { filter: brightness(0.75); }
 .qr-caja { margin-top: 12px; text-align: center; }
 .qr-svg { width: min(100%, 300px); height: auto; background: #fff; padding: 8px; border-radius: 8px; }
 @media (prefers-reduced-motion: reduce) { .vc-flecha { transition: none; } }
+
+/* Ayuda (v1.22) */
+.ay-grupo h3 { margin: 18px 0 8px; }
+.ay-p { padding: 0; margin: 0 0 8px; }
+.ay-p > summary { padding: 14px 16px; cursor: pointer; font-weight: 700; }
+.ay-p > div { padding: 0 16px 8px; }
+.ay-informe { white-space: pre-wrap; word-break: break-word; font-size: .78rem; background: var(--bg2, rgba(0,0,0,.05)); padding: 10px; border-radius: 8px; }
+.cfg-ayuda { margin: 4px 0 8px; }

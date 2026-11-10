@@ -569,6 +569,12 @@ async function vSeccion(id, sub) {
     w.appendChild(await herramientasView(sub));
     return w;
   }
+  if (id === 'ayuda') {
+    const { ayudaView } = await import('./ayuda.js');
+    const w = el(`<div>${topbar(s.t, 'Preguntas frecuentes')}<h1>${s.ic} Ayuda</h1></div>`);
+    w.appendChild(ayudaView());
+    return w;
+  }
   if (id === 'volver') {
     const { volverView } = await import('./volver.js');
     const w = el(`<div>${topbar(s.t, 'También sin internet')}<h1>${s.ic} Volver a casa</h1></div>`);
@@ -1370,6 +1376,7 @@ async function vConfig() {
     <h1>⚙️ Ajustes</h1>
 
     ${hayAlmacen ? '' : `<h2>No se pueden guardar datos</h2>${avisoSinAlmacenamiento()}`}
+    <a class="btn ghost wide cfg-ayuda" href="#/sec/ayuda">🛟 Ayuda y preguntas frecuentes</a>
     <h2 id="preparacion">¿Está lista tu app?</h2>
     <div id="cfg-prep"></div>
 

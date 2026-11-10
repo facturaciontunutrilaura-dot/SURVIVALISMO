@@ -59,6 +59,7 @@ export const SECCIONES = [
   { id: 'biblioteca', t: 'Biblioteca', ic: '📚', desc: 'Tablas, meteorología, plantas y referencias' },
   { id: 'manual', t: 'Índice completo', ic: '📖', desc: 'Índice completo de todo el contenido' },
   { id: 'fuentes', t: 'Fuentes', ic: '📑', desc: 'De dónde procede cada dato' },
+  { id: 'ayuda', t: 'Ayuda', ic: '🛟', desc: 'Preguntas frecuentes: instalar, sin conexión, copias, permisos y contacto' },
   { id: 'config', t: 'Ajustes', ic: '⚙️', desc: 'Estado offline, copias de seguridad y ajustes' },
 ];
 
@@ -81,7 +82,7 @@ export const GRUPOS = {
   coche: { t: 'Coche y mascotas', ic: '🚗', desc: 'Kit del coche, nieve, inundación y animales', secs: ['vehiculo', 'mascotas'] },
   calma: { t: 'Calma y ánimo', ic: '🌿', desc: 'Psicología, respiración, juegos y audio', secs: ['psicologia', 'juegos', 'audio'] },
   riesgos: { t: 'Riesgos en España y en tu zona', ic: '📊', desc: 'Qué puede pasar, dónde y cómo evoluciona', secs: ['riesgos', 'espana', 'avila'] },
-  biblioteca: { t: 'Biblioteca', ic: '📚', desc: 'Tablas, referencias, índice completo y fuentes', secs: ['biblioteca', 'manual', 'fuentes'] },
+  biblioteca: { t: 'Biblioteca', ic: '📚', desc: 'Tablas, referencias, índice, fuentes y ayuda', secs: ['biblioteca', 'manual', 'fuentes', 'ayuda'] },
 };
 export const PORTADA = [
   { id: 'preparate', t: 'Prepárate', puertas: ['familia', 'g:mochila', 'evacuacion', 'entrenamiento'] },
