@@ -9,7 +9,7 @@
    ========================================================================= */
 import { el, esc, toast } from './ui.js';
 import * as store from './store.js';
-import qrcode from '../vendor/qrcode/qrcode.mjs';
+import qrcode from '../vendor/qrcode/qrcode.js';
 import { A4, C, lit, limpiar, escribir } from './compra-pdf.js';
 
 const kv = async (id, def) => (await store.get('kv', id).catch(() => null))?.v ?? def;

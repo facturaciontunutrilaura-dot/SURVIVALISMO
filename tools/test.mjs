@@ -919,6 +919,17 @@ try {
     await page.reload(); await page.waitForSelector('#ef-total');
     ok('Mi efectivo: se guarda en el móvil (sigue al recargar, discreto)', /●●●●/.test(await page.textContent('#ef-total')) && (await page.locator('.ef-mov').count()) === 2);
     await page.evaluate(async () => (await import('./assets/js/store.js')).del('kv', 'efectivo.datos'));
+    // Ayuda
+    await page.goto(BASE + '#/sec/ayuda'); await page.waitForSelector('#ay-q');
+    ok('Ayuda: preguntas frecuentes por temas', (await page.locator('.ay-p').count()) >= 12 && (await page.locator('.ay-grupo').count()) >= 5);
+    await page.fill('#ay-q', 'copia seguridad');
+    ok('Ayuda: el buscador filtra y abre la respuesta', (await page.locator('.ay-p:not([hidden])').count()) >= 1 && (await page.locator('.ay-p:not([hidden])').count()) < 5 && (await page.locator('.ay-p[open]').count()) >= 1);
+    await page.fill('#ay-q', 'zzzz'); 
+    ok('Ayuda: si no hay resultados, lo dice', await page.locator('#ay-nada').isVisible());
+    await page.click('#ay-copiar'); await page.waitForSelector('#ay-informe:not([hidden])');
+    ok('Ayuda: informe técnico para soporte sin datos personales', /SUPERVIVENCIA/.test(await page.textContent('#ay-informe')) && /Modo sin conexión/.test(await page.textContent('#ay-informe')));
+    await page.goto(BASE + '#/sec/config'); await page.waitForSelector('.cfg-ayuda');
+    ok('Ajustes: acceso directo a la ayuda', (await page.locator('.cfg-ayuda[href="#/sec/ayuda"]').count()) === 1);
     // Volver a casa (con GPS simulado en un contexto aparte)
     {
       const cg = await browser.newContext({ ...devices['Pixel 7'], serviceWorkers: 'block', permissions: ['geolocation'], geolocation: { latitude: 40.4168, longitude: -3.7038, accuracy: 10 } });
@@ -1769,6 +1780,34 @@ try {
   await page.click('#aje-tablero [data-i="52"]'); await page.click('#aje-tablero [data-i="36"]');
   await page.waitForFunction(() => /La IA juega/.test(document.querySelector('#aje-estado').textContent), null, { timeout: 10000 });
   ok('SIN RED: el rival de ajedrez juega (su Web Worker está guardado)', true);
+
+  // Recorrido completo sin red: todas las secciones, grupos, artículos,
+  // emergencias, checklists, cursos y pestañas que cargan módulos aparte.
+  {
+    const ids = await page.evaluate(async () => {
+      const I = await import('./data/content/index.js'), E = await import('./data/content/emergencias.js');
+      const CK = await import('./data/content/checklists.js'), CU = await import('./data/content/cursos.js');
+      return [
+        ...I.SECCIONES.map((s) => `#/sec/${s.id}`), ...Object.keys(I.GRUPOS).map((g) => `#/grupo/${g}`), ...I.ARTICULOS.map((a) => `#/art/${a.id}`),
+        ...E.EMERGENCIAS.map((e) => `#/emergencia/${e.id}`), ...E.SOS_SANITARIAS.map((x) => `#/emergencia/sanitaria/${x.id}`),
+        ...CK.CHECKLISTS.map((c) => `#/check/${c.id}`), ...CU.CURSOS.map((c) => `#/curso/${c.id}`),
+        ...['walkie', 'bateria', 'tarjeta'].map((t) => `#/sec/herramientas/${t}`), '#/sec/volver/rutas', '#/legal/aviso', '#/legal/privacidad', '#/mapa',
+      ];
+    });
+    const fallos = [];
+    for (const r of ids) {
+      await page.evaluate((h) => { location.hash = h; }, r);
+      await page.waitForFunction(() => !document.querySelector('#app .cargando, #app [aria-busy="true"]'), null, { timeout: 3000 }).catch(() => {});
+      await page.waitForTimeout(120);
+      const t = (await page.textContent('#app').catch(() => '')) || '';
+      const m = t.match(/Algo ha fallado|Página no encontrada|\bundefined\b|\bNaN\b|\[object Object\]/);
+      if (m || t.trim().length < 40) fallos.push(`${r} (${m?.[0] || 'vacía'})`);
+    }
+    ok(`SIN RED: las ${ids.length} pantallas de la app se abren sin errores`, !fallos.length, fallos.slice(0, 8).join(' · '));
+    await page.evaluate(() => { location.hash = '#/sec/herramientas/tarjeta'; }); await page.waitForSelector('#tj-qr'); await page.click('#tj-qr');
+    await page.waitForSelector('#tj-qr-caja .qr-svg', { timeout: 5000 }).catch(() => {});
+    ok('SIN RED: el código QR se genera (su librería está guardada)', (await page.locator('#tj-qr-caja .qr-svg').count()) === 1);
+  }
 
   await ctx.setOffline(false);
 

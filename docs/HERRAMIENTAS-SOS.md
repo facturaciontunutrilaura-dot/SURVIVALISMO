@@ -57,6 +57,6 @@ Sección `#/sec/volver` (portada → «Si tienes que salir» → «Volver a casa
 
 ## Tarjeta con QR, walkies y batería (v1.20)
 
-- **QR:** `herramientas-extra.js` (`textoQR`, `svgQR`, `opsQR`) con la librería `public/assets/vendor/qrcode/qrcode.mjs` (qrcode-generator 1.4.4, MIT, adaptada a módulo ES y UTF-8). El QR es texto plano con lo que el usuario ha escrito; se ve en pantalla y va en el PDF de la tarjeta.
+- **QR:** `herramientas-extra.js` (`textoQR`, `svgQR`, `opsQR`) con la librería `public/assets/vendor/qrcode/qrcode.js` (qrcode-generator 1.4.4, MIT, adaptada a módulo ES y UTF-8). El QR es texto plano con lo que el usuario ha escrito; se ve en pantalla y va en el PDF de la tarjeta.
 - **Walkie:** guía PMR446 y plan de canales en `kv 'walkie.plan'` (entra en las copias), con PDF imprimible.
 - **Batería:** «Ahorro máximo» pone el tema `ahorro` (guarda el anterior en `kv 'ahorro.temaAnterior'` para volver) y para la radio. Guía de ahorro para iPhone y Android y un atajo de iPhone «Modo supervivencia». Una app web no puede cambiar los ajustes del móvil.
