@@ -517,7 +517,7 @@ export const ART_RECURSOS = [
       ] },
       { h: 'Proteína animal' },
       { ul: [
-        'La caza y la pesca están reguladas: requieren licencia, permiso y respeto de vedas. En una emergencia real, prima la ley de necesidad, pero no es una actividad de aprendizaje improvisado.',
+        'La caza y la pesca requieren licencia, permiso del titular del terreno y respeto de vedas y especies protegidas. Hacerlo sin autorización es una infracción y, en algunos casos (especies protegidas, lazos, cepos, veneno u otros medios no selectivos), un delito. Esta guía no enseña a cazar ni a poner trampas.',
         'Los insectos son una fuente eficiente de proteína, pero evita los de colores llamativos, los peludos, los que huelen mal y todos los que se alimenten de carroña o excrementos. Cocínalos siempre.',
         'Cocina siempre a fondo cualquier proteína animal silvestre: triquinosis, salmonelosis y parásitos son riesgos reales.',
       ] },

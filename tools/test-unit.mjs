@@ -743,6 +743,9 @@ test('avisos push: solo lo muy grave, sin repetir, máximo diario y suscripcione
   const c = A.cargaAviso(graves[0]);
   assert.equal(c.url, '/#/sec/noticias');
   assert.ok(c.title.length <= 60 && c.body.length <= 200);
+  // Una noticia de prensa nunca debe parecer una alerta oficial.
+  assert.match(A.cargaAviso({ ...graves[0], oficial: false, t: 'x'.repeat(300) }).body, /no es un aviso oficial$/);
+  assert.doesNotMatch(A.cargaAviso({ ...graves[0], oficial: true }).body, /no es un aviso oficial/);
   // Suscripciones
   const keys = { p256dh: 'B'.repeat(87), auth: 'a'.repeat(22) };
   assert.ok(A.suscripcionValida({ endpoint: 'https://fcm.googleapis.com/fcm/send/abc', keys }));

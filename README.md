@@ -910,6 +910,8 @@ el papel no se queda sin batería.
 
 ### 10.1 Aviso legal, privacidad y RGPD
 
+La revisión jurídica completa (qué está bien, qué falta y la lista de comprobación antes de vender) está en `docs/legal/REVISION-JURIDICA.md`, y el registro de actividades de tratamiento en `docs/legal/REGISTRO-DE-ACTIVIDADES.md`.
+
 Todo el texto legal está en `public/data/content/legal.js` y se ve en la app en
 `#/legal/aviso` y `#/legal/privacidad` (enlaces en la portada, en Ajustes y en
 Fuentes).
