@@ -16,7 +16,7 @@
    conviene que la revise un abogado antes de comercializar la app.
    ========================================================================= */
 
-export const FECHA_LEGAL = '2026-11-08';
+export const FECHA_LEGAL = '2026-11-17';
 
 export const TITULAR = {
   nombre: '',      // Nombre y apellidos o razón social (obligatorio)
@@ -67,7 +67,8 @@ export const AVISO_LEGAL = [
   ] },
   { h: 'Exactitud y actualización', p: [
     'El contenido se ha elaborado a partir de fuentes oficiales y técnicas citadas en «Fuentes y referencias», con la fecha de consulta indicada. Las normas, teléfonos, planes y recursos pueden cambiar, y la información general puede no ajustarse a tu caso concreto. Contrasta lo importante con la fuente oficial.',
-    'Las noticias, los avisos automáticos y las emisoras de radio proceden de terceros. El titular no controla su contenido ni garantiza su disponibilidad. Un aviso que no llega no significa que no haya peligro: la vía oficial de alerta a la población es ES-Alert y los canales de Protección Civil.',
+    'Alex es un asistente automático: no es una persona ni un profesional, y solo responde con el contenido de la app. Puede equivocarse al interpretar una pregunta.',
+    'Las noticias, los avisos automáticos y las emisoras de radio proceden de terceros. El titular no controla su contenido ni garantiza su disponibilidad. Los avisos basados en noticias de prensa no son alertas oficiales y pueden contener errores. Un aviso que no llega no significa que no haya peligro: la vía oficial de alerta a la población es ES-Alert y los canales de Protección Civil.',
   ] },
   { h: 'Responsabilidad', p: [
     'El titular pone el máximo cuidado en la exactitud del contenido, pero no responde de los daños derivados de un uso imprudente, contrario a la ley o a las indicaciones de las autoridades, ni de interrupciones o errores técnicos ajenos a su control, en la medida en que la ley lo permite.',
@@ -75,7 +76,8 @@ export const AVISO_LEGAL = [
   ] },
   { h: 'Propiedad intelectual', p: [
     'Los textos originales, el diseño, la estructura y el código de la app pertenecen a {titular} o se usan con su autorización. No se permite reproducirlos, distribuirlos ni transformarlos con fines comerciales sin permiso escrito.',
-    'Se usan materiales de terceros con sus propias licencias: cartografía del Instituto Geográfico Nacional (CC BY 4.0), la biblioteca Leaflet (BSD-2-Clause) y la tipografía Manrope (SIL Open Font License). Las fuentes citadas pertenecen a sus autores.',
+    'Se usan materiales de terceros con sus propias licencias: cartografía del Instituto Geográfico Nacional (CC BY 4.0), la biblioteca Leaflet (BSD-2-Clause), la biblioteca qrcode-generator (MIT) y la tipografía Manrope (SIL Open Font License). Sus textos de licencia se incluyen en la propia app. Las fuentes citadas pertenecen a sus autores.',
+    'De las noticias solo se muestran el titular, el medio, la fecha y un enlace al original, que pertenece a su editor. Los nombres de medios y emisoras son marcas de sus titulares y se usan solo para identificarlos; no implican ninguna relación con ellos.',
   ] },
   { h: 'Enlaces externos', p: [
     'Los enlaces a webs de terceros se ofrecen como referencia. El titular no es responsable de su contenido ni de sus políticas de privacidad.',
@@ -105,6 +107,9 @@ export const PRIVACIDAD = [
   { h: 'Avisos graves en el móvil (opcional)', p: [
     'Si activas los avisos, el servidor de la app guarda la dirección técnica de suscripción de tu navegador (un identificador y unas claves de cifrado) para poder enviarte notificaciones. No incluye tu nombre, tu correo ni tu ubicación.',
     'Base jurídica: tu consentimiento (art. 6.1.a RGPD). Se conserva hasta que desactivas los avisos o el navegador da la suscripción por caducada. La notificación la entrega el servicio de mensajería de tu navegador (Google, Apple o Mozilla, según el caso).',
+  ] },
+  { h: 'Consultas y soporte', p: [
+    'Si escribes al correo de contacto, el titular trata tu dirección de correo y lo que cuentes en el mensaje (y el informe técnico, si lo pegas, que no lleva datos personales) solo para responderte. Base jurídica: tu solicitud y el interés legítimo en atenderla (art. 6.1.b y 6.1.f RGPD). Se conserva mientras dure la consulta y, después, solo el tiempo necesario para atender posibles reclamaciones. No envíes por correo información médica ni tu copia de seguridad.',
   ] },
   { h: 'Conexiones a Internet', p: [
     'Como cualquier web, cuando la app se conecta a un servidor este recibe la dirección IP de tu dispositivo. La app se conecta solo para:',
