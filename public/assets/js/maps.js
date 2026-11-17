@@ -279,12 +279,17 @@ export async function mapView() {
   const map = Lf.map(n.querySelector('#map'), { zoomControl: true, attributionControl: true })
     .setView([40.2, -3.7], 6);
   map.attributionControl.setPrefix('Leaflet');
-  alSalir(() => map.remove());
+  // Al salir se detiene cualquier zoom animado antes de quitar el mapa: una
+  // animación sobre un mapa retirado falla (_leaflet_pos). Y tras cada espera
+  // se comprueba `vivo`, por si se ha salido de la pantalla mientras tanto.
+  let vivo = true;
+  alSalir(() => { vivo = false; map.stop(); map.remove(); });
 
   /* Si el usuario ha indicado su provincia (Riesgos → Mi zona), el mapa se
      abre sobre ella y la resalta. Si no, muestra toda España. */
   const miProv = await ubi.guardada().catch(() => null);
-  if (miProv?.bbox) map.fitBounds([[miProv.bbox[1], miProv.bbox[0]], [miProv.bbox[3], miProv.bbox[2]]]);
+  if (!vivo) return n;
+  if (miProv?.bbox) map.fitBounds([[miProv.bbox[1], miProv.bbox[0]], [miProv.bbox[3], miProv.bbox[2]]], { animate: false });
 
   // --- Capa vectorial base (siempre offline) ---
   //
@@ -383,6 +388,7 @@ export async function mapView() {
   });
   const capasGeo = new Map();   // id → capa de Leaflet (para añadir/quitar sin recargar)
   const userGeo = hayAlmacen ? await store.all('geo') : [];
+  if (!vivo) return n;
   for (const g of userGeo) {
     try {
       const capa = capaGeo(g);
@@ -544,6 +550,7 @@ export async function mapView() {
     toast('Buscando posición…');
     navigator.geolocation.getCurrentPosition(
       (p) => {
+        if (!vivo) return;
         const ll = [p.coords.latitude, p.coords.longitude];
         map.setView(ll, 14);
         posicion.circulo?.remove();
@@ -770,7 +777,7 @@ export async function mapView() {
     });
   });
 
-  setTimeout(() => map.invalidateSize(), 120);
+  setTimeout(() => { if (vivo) map.invalidateSize(); }, 120);
   return n;
 }
 
