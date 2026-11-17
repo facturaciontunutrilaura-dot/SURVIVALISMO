@@ -24,7 +24,7 @@ export const PREGUNTAS = [
     'El fondo del mapa (calles, montes) hay que descargarlo antes, con internet: <a href="#/mapa">Mapa</a> → <b>Descargar zona</b>. Sin descargar, solo se ven las provincias y tus puntos.'] },
   { g: 'Actualizaciones', q: 'No me llega la última versión', a: [
     'Abre la app con internet y espera unos segundos: aparecerá arriba el aviso <b>«Actualizar ahora»</b>. Si no lo pulsas, se aplica sola la próxima vez que la abras.',
-    'Si no aparece, ciérrala del todo (desliza hacia arriba en la lista de apps) y vuelve a abrirla.',
+    'Si no aparece, ve a <a href="#/sec/config">Ajustes</a> → «Estado offline» → <b>«Buscar actualización»</b>. También sirve cerrarla del todo (desliza hacia arriba en la lista de apps) y volver a abrirla.',
     `La versión que tienes está en <a href="#/sec/config">Ajustes</a> → «Estado offline». Esta es la <b>${esc(VERSION)}</b>.`] },
   { g: 'Datos y copias', q: '¿Se pueden perder mis datos?', a: [
     'Todo lo que apuntas (plan familiar, efectivo, rutas, contactos…) se guarda <b>solo en tu móvil</b>, no en ningún servidor.',

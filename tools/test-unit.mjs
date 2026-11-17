@@ -992,6 +992,14 @@ test('volver a casa: rumbo, distancia, coordenadas, ruta y QR/walkie', async () 
   assert.ok(esDatoPropio('kv', 'walkie.plan'));
 });
 
+test('actualizaciones: la app busca versión nueva al volver a ella (iPhone no recarga)', () => {
+  const app = fs.readFileSync(path.join(PUB, 'assets/js/app.js'), 'utf8');
+  const v = app.slice(app.indexOf('function vigilarActualizacion'), app.indexOf("if ('serviceWorker' in navigator)"));
+  assert.match(v, /addEventListener\('visibilitychange'/);
+  assert.match(v, /addEventListener\('online'/);
+  assert.match(v, /reg\.update\(\)/);
+});
+
 test('ayuda: preguntas frecuentes completas y un informe técnico sin datos personales', async () => {
   const A = await imp('assets/js/ayuda.js');
   assert.ok(A.PREGUNTAS.length >= 12);

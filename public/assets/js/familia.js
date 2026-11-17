@@ -634,13 +634,17 @@ export async function mapaFamiliarView() {
 
   const map = L.map(n.querySelector('#map'), { zoomControl: true }).setView([40.2, -3.7], 6);
   map.attributionControl.setPrefix('Leaflet');
-  alSalir(() => map.remove());
+  // Ver evacuacion.js: se detiene la animación antes de quitar el mapa y se
+  // comprueba `vivo` tras cada espera.
+  let vivo = true;
+  alSalir(() => { vivo = false; map.stop(); map.remove(); });
   M.crearCapaRaster(L).addTo(map);
 
   try {
     const prov = await (await fetch('./data/geo/es-provincias.geojson')).json();
     L.geoJSON(prov, { style: { color: '#8b7752', weight: 1, fillOpacity: 0 } }).addTo(map);
   } catch { /* opcional */ }
+  if (!vivo) return n;
 
   const grupo = L.featureGroup().addTo(map);
   for (const nd of ns.filter(tieneCoords)) {
@@ -653,6 +657,7 @@ export async function mapaFamiliarView() {
 
   let trazas = 0;
   const geos = await store.all('geo');
+  if (!vivo) return n;
   for (const nd of ns) {
     for (const r of nd.rutas) {
       const g = r.geoId && geos.find((x) => x.id === r.geoId);
@@ -664,7 +669,7 @@ export async function mapaFamiliarView() {
       }).bindPopup(`<b>${esc(r.nombre || 'Ruta')}</b> → ${esc(nd.nombre)}<br>${esc(r.via || '')}${r.km ? `<br><b>${Math.round(r.km)} km</b>` : ''}<br><span class="muted">Estado de las vías: DESCONOCIDO. Verificar antes de salir.</span>`).addTo(grupo);
     }
   }
-  if (grupo.getLayers().length) map.fitBounds(grupo.getBounds().pad(0.2), { maxZoom: 12 });
+  if (grupo.getLayers().length) map.fitBounds(grupo.getBounds().pad(0.2), { maxZoom: 12, animate: false });
   n.querySelector('#mf-st').innerHTML = ns.length
     ? `${ns.length - sinPos.length} de ${ns.length} ubicaciones en el mapa · ${trazas} trazas de ruta · <b>continua</b> = principal · <b>discontinua</b> = alternativa`
     : 'Todavía no has configurado ninguna ubicación.';
@@ -675,6 +680,7 @@ export async function mapaFamiliarView() {
     toast('Buscando posición por GPS…');
     navigator.geolocation.getCurrentPosition(
       (p) => {
+        if (!vivo) return;
         const ll = [p.coords.latitude, p.coords.longitude];
         map.setView(ll, 12);
         yo?.remove();
@@ -687,7 +693,7 @@ export async function mapaFamiliarView() {
     );
   });
 
-  setTimeout(() => map.invalidateSize(), 120);
+  setTimeout(() => { if (vivo) map.invalidateSize(); }, 120);
   return n;
 }
 
