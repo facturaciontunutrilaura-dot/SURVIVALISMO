@@ -2019,6 +2019,17 @@ function vigilarActualizacion(reg) {
     });
   };
   hayNueva();
+  // En iPhone la app instalada casi nunca se cierra del todo: al volver a
+  // ella no se recarga y el navegador no busca versiones nuevas. Se busca
+  // al volver a la app y al recuperar la conexión (como mucho cada 30 min).
+  let ultimaBusqueda = Date.now();
+  const buscar = () => {
+    if (document.visibilityState !== 'visible' || !navigator.onLine || Date.now() - ultimaBusqueda < 30 * 60 * 1000) return;
+    ultimaBusqueda = Date.now();
+    reg.update().catch(() => {});
+  };
+  document.addEventListener('visibilitychange', buscar);
+  window.addEventListener('online', buscar);
   reg.addEventListener('updatefound', () => {
     const w = reg.installing;
     let instalada = false;
