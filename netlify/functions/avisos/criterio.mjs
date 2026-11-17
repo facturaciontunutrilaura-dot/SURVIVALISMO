@@ -62,7 +62,10 @@ export function avisosPendientes(noticias, enviados = {}, ahora = new Date()) {
 export function cargaAviso(n) {
   return {
     title: `${n.ic || '🚨'} ${n.temaT || 'Aviso'}`.slice(0, 60),
-    body: `${n.t} · ${n.fuente}`.slice(0, 200),
+    // Una noticia de prensa no es una alerta oficial: se dice siempre, al final
+    // y sin recortarlo (el titular se acorta si hace falta).
+    body: n.oficial ? `${n.t} · ${n.fuente}`.slice(0, 200)
+      : `${`${n.t} · ${n.fuente}`.slice(0, 200 - 40)} · Prensa, no es un aviso oficial`,
     url: '/#/sec/noticias',
     tag: claveAviso(n).slice(0, 60),
   };

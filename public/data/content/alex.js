@@ -142,7 +142,7 @@ export const GRACIAS = ['gracias', 'muchas gracias', 'genial', 'perfecto', 'vale
 export const PRESENTACION = 'Soy Alex. Te ayudo con emergencias, supervivencia y preparación usando la información revisada de la app, también sin conexión. Cuéntame qué pasa con tus palabras; después puedes pedirme «cuéntame más» o preguntarme «¿y si…?», y sigo con el mismo tema.';
 export const SIN_FICHA = 'Todavía no tengo una ficha sobre eso y no quiero inventarme nada. Si es una emergencia, llama al 112 y sigue las instrucciones de Protección Civil y de los avisos ES-Alert de tu móvil.';
 export const FUERA_DE_TEMA = 'Solo puedo ayudarte con emergencias, supervivencia y preparación. Prueba a contarme la situación de otra forma, por ejemplo:';
-export const AVISO_ALEX = 'Alex responde con el contenido de la app. No es un profesional sanitario ni sustituye al 112: ante una emergencia, llama primero.';
+export const AVISO_ALEX = 'Alex es un asistente automático, no una persona: responde con el contenido de la app. No es un profesional sanitario ni sustituye al 112: ante una emergencia, llama primero.';
 
 /* Teléfonos para una crisis personal (España). */
 export const CRISIS = [

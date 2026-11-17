@@ -217,7 +217,7 @@ export const ART_COMUNICACIONES = [
           ],
         },
       },
-      { warn: 'Transmitir en frecuencias reservadas a servicios de emergencia, cuerpos de seguridad, aeronáutica o marítima es ilegal y puede interferir con operaciones de rescate. Escuchar no está penalizado en general, pero difundir el contenido de comunicaciones no destinadas al público sí puede serlo.' },
+      { warn: 'Transmitir en frecuencias reservadas a servicios de emergencia, cuerpos de seguridad, aeronáutica o marítima es ilegal y puede interferir con operaciones de rescate. Tampoco está permitido interceptar sin autorización comunicaciones no destinadas al público (servicios de emergencia, cuerpos de seguridad, conversaciones privadas): la Ley General de Telecomunicaciones lo tipifica como infracción, y difundir lo escuchado puede ser delito. Escucha solo la radiodifusión (AM/FM), la radioafición y los canales de uso común.' },
       { h: 'PMR446 en la práctica' },
       { ul: [
         '16 canales, entre 446.00625 y 446.19375 MHz, separados 12,5 kHz.',

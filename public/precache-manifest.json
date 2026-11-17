@@ -47,6 +47,7 @@
   "./assets/js/ui.js",
   "./assets/js/volver-core.js",
   "./assets/js/volver.js",
+  "./assets/vendor/leaflet/LICENSE.txt",
   "./assets/vendor/leaflet/images/layers-2x.png",
   "./assets/vendor/leaflet/images/layers.png",
   "./assets/vendor/leaflet/images/marker-icon-2x.png",
