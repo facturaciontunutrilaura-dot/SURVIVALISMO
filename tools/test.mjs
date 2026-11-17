@@ -2168,6 +2168,10 @@ try {
     ok('VERSIÓN NUEVA: al instalarse completa se retira la nota de actualización fallida', await page.evaluate(() => localStorage.getItem('survival.actualizacionFallida') === null));
     const esperando = await page.evaluate(async () => ({ claves: await caches.keys(), w: !!(await navigator.serviceWorker.getRegistration()).waiting }));
     ok('VERSIÓN NUEVA: no se aplica sola a mitad de uso', esperando.w && esperando.claves.some((k) => k.includes(versionActual)), esperando.claves.join(','));
+    await page.goto(BASE + '#/sec/config'); await page.waitForSelector('#cfg-update');
+    await page.click('#cfg-update');
+    await page.waitForSelector('#cfg-aplicar', { timeout: 10000 }).catch(() => {});
+    ok('VERSIÓN NUEVA: «Buscar actualización» ofrece aplicar la que ya espera (iPhone)', (await page.locator('#cfg-aplicar').count()) === 1);
     await page.goto(BASE + '#/emergencia');
     await page.waitForSelector('.btn-112');
     ok('VERSIÓN NUEVA: el aviso no aparece en las pantallas de emergencia', !(await page.locator('#aviso-version').isVisible()));

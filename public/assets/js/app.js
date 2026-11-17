@@ -1508,7 +1508,15 @@ async function vConfig() {
     const log = n.querySelector('#cfg-swlog');
     if (!swReg) return (log.textContent = 'Service Worker no disponible.');
     log.textContent = 'Comprobando…';
-    try { await swReg.update(); log.textContent = 'Comprobación realizada. Si hay una versión nueva, se descarga entera y aparece arriba el aviso «Actualizar ahora». Si la descarga no se completa, no se instala nada y sigues con la versión actual.'; }
+    try {
+      await swReg.update();
+      // Si la versión nueva ya estaba descargada y esperando (pasa en iPhone,
+      // donde la app casi nunca se cierra del todo), se ofrece aplicarla ya.
+      if (swReg.waiting && navigator.serviceWorker.controller) {
+        log.innerHTML = 'Hay una versión nueva descargada y lista. <button class="btn sm" type="button" id="cfg-aplicar">Actualizar ahora</button>';
+        log.querySelector('#cfg-aplicar').addEventListener('click', () => { actualizando = true; log.textContent = 'Actualizando…'; swReg.waiting?.postMessage('skipWaiting'); });
+      } else log.textContent = 'Comprobación realizada. Si hay una versión nueva, se descarga entera y aparece arriba el aviso «Actualizar ahora». Si la descarga no se completa, no se instala nada y sigues con la versión actual.';
+    }
     catch { log.textContent = 'Sin conexión: se mantiene la versión instalada, que sigue funcionando.'; }
   });
 
@@ -2024,7 +2032,10 @@ function vigilarActualizacion(reg) {
   // al volver a la app y al recuperar la conexión (como mucho cada 30 min).
   let ultimaBusqueda = Date.now();
   const buscar = () => {
-    if (document.visibilityState !== 'visible' || !navigator.onLine || Date.now() - ultimaBusqueda < 30 * 60 * 1000) return;
+    if (document.visibilityState !== 'visible') return;
+    // Una versión que ya se descargó y espera: se vuelve a ofrecer.
+    hayNueva();
+    if (!navigator.onLine || Date.now() - ultimaBusqueda < 30 * 60 * 1000) return;
     ultimaBusqueda = Date.now();
     reg.update().catch(() => {});
   };
