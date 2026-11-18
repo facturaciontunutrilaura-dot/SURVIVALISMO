@@ -16,12 +16,12 @@ import { QUIZ, QUIZ_CATEGORIAS, RESPIRACIONES, GROUNDING } from './juegos.js';
 import { RIESGOS, NIVELES, CATEGORIAS_RIESGO } from './riesgos.js';
 import { SITUACIONES } from './familia.js';
 
-export const VERSION = '1.23.0';
+export const VERSION = '1.23.1';
 export const FECHA_CONTENIDO = FECHA_CONSULTA;
 
 export const SECCIONES = [
   { id: 'emergencia', t: 'Emergencia', ic: '🚨', cls: 'sos', desc: 'Qué hacer AHORA, escenario por escenario' },
-  { id: 'familia', t: 'Mi plan familiar', ic: '👨‍👩‍👧', cls: 'destacada', desc: 'Coordinación, rutas y estado de los tuyos' },
+  { id: 'familia', t: 'Mi plan familiar', ic: '👨‍👩‍👧', cls: 'destacada', desc: 'Coordinación, rutas y estado de los tuyos', dc: 'Rutas y estado de los tuyos' },
   { id: 'riesgos', t: 'Riesgos que vienen', ic: '📊', cls: 'destacada', desc: 'Cómo evolucionan los riesgos 2026–2036' },
   { id: 'mapa', t: 'Mapa', ic: '🗺', desc: 'Mapas offline y tus puntos personales' },
   { id: 'orientacion', t: 'Orientación', ic: '🧭', desc: 'Brújula, mapas, coordenadas y navegación' },
@@ -31,10 +31,10 @@ export const SECCIONES = [
   { id: 'alimentacion', t: 'Alimentación', ic: '🍲', desc: 'Despensa, conservación y cocina sin luz' },
   { id: 'en-casa', t: 'En casa durante la crisis', ic: '🏠', desc: 'Váter sin agua, frío, calor, luz, refugio ante un ataque, seguridad' },
   { id: 'bricolaje', t: 'Reparaciones en casa', ic: '🔧', desc: 'Cortar suministros, reparar fugas, cristales, electricidad segura y apaños' },
-  { id: 'defensa', t: 'Seguridad y defensa', ic: '🛡️', desc: 'Prevenir, calmar, escapar, la ley y la seguridad de tu familia' },
+  { id: 'defensa', t: 'Seguridad y defensa', ic: '🛡️', desc: 'Prevenir, calmar, escapar, la ley y la seguridad de tu familia', dc: 'Prevenir, escapar y la ley' },
   { id: 'huerto', t: 'Huerto', ic: '🥔', desc: 'Huerto de supervivencia: patatas, calendario, semillas y conservar' },
-  { id: 'primeros-auxilios', t: 'Primeros auxilios', ic: '🩹', desc: 'PAS, RCP, hemorragias y urgencias' },
-  { id: 'comunicaciones', t: 'Comunicaciones', ic: '📻', desc: 'Plan de comunicación, radio y frecuencias' },
+  { id: 'primeros-auxilios', t: 'Primeros auxilios', ic: '🩹', desc: 'PAS, RCP, hemorragias y urgencias', dc: 'RCP, hemorragias y urgencias' },
+  { id: 'comunicaciones', t: 'Comunicaciones', ic: '📻', desc: 'Plan de comunicación, radio y frecuencias', dc: 'Radio, frecuencias y plan' },
   { id: 'equipo', t: 'Mochila y equipo', ic: '🎒', desc: 'Niveles de preparación, mochilas y checklists' },
   { id: 'psicologia', t: 'Psicología', ic: '🧠', desc: 'Decidir bajo presión y resistir en el tiempo' },
   { id: 'juegos', t: 'Juegos', ic: '🎮', desc: 'Juegos offline y modo calma' },
@@ -48,17 +48,17 @@ export const SECCIONES = [
   { id: 'calculadoras', t: 'Calculadoras', ic: '🧮', desc: 'Agua, comida, marcha, rumbo, unidades' },
   { id: 'noticias', t: 'Noticias de última hora', ic: '📰', cls: 'noticias', desc: 'España y el mundo: emergencias, catástrofes y conflictos, cada 30 min' },
   { id: 'alex', t: 'Pregúntale a Alex', ic: '💬', desc: 'Tu asistente de supervivencia, también sin conexión' },
-  { id: 'evacuacion', t: 'Plan de evacuación', ic: '🧭', cls: 'evacuacion', desc: 'Por dónde salir según lo que pase: España, Portugal, Francia y por mar' },
-  { id: 'herramientas', t: 'Herramientas SOS', ic: '🔦', desc: 'Avisar «Estoy bien» por SMS, silbato, linterna, señales, diario, tarjeta con QR, walkies, ahorro de batería y fondos de pantalla' },
+  { id: 'evacuacion', t: 'Plan de evacuación', ic: '🧭', cls: 'evacuacion', desc: 'Por dónde salir según lo que pase: España, Portugal, Francia y por mar', dc: 'Por dónde salir según lo que pase' },
+  { id: 'herramientas', t: 'Herramientas SOS', ic: '🔦', desc: 'Avisar «Estoy bien» por SMS, silbato, linterna, señales, diario, tarjeta con QR, walkies, ahorro de batería y fondos de pantalla', dc: 'Avisar, linterna, señales y más' },
   { id: 'volver', t: 'Volver a casa', ic: '🏠', desc: 'Estoy perdido: hacia dónde queda casa. Y tus rutas a pie sin internet' },
-  { id: 'efectivo', t: 'Mi efectivo', ic: '💶', desc: 'Cuánto dinero en efectivo te queda y para cuántos días' },
+  { id: 'efectivo', t: 'Mi efectivo', ic: '💶', desc: 'Cuánto dinero en efectivo te queda y para cuántos días', dc: 'Cuánto te queda y para cuánto' },
   { id: 'despensa-calc', t: 'Calculadora de despensa', ic: '🥫', desc: 'Para cuántos días os llega lo que tenéis en casa' },
-  { id: 'entrenamiento', t: 'Entrenamiento', ic: '💪', desc: 'En casa, sin material: de principiante a extremo' },
-  { id: 'mi-plan', t: 'Tu plan a medida', ic: '🧩', cls: 'destacada', desc: 'En 2 minutos: qué preparar primero, agua, comida y tus riesgos' },
-  { id: 'modo-crisis', t: 'Modo crisis guiado', ic: '🚨', desc: 'Está pasando algo: te llevo paso a paso, con avisos y diario' },
-  { id: 'simulacros', t: 'Simulacros', ic: '🎯', desc: 'Historias con decisiones: ¿qué harías? Ideal en familia' },
+  { id: 'entrenamiento', t: 'Entrenamiento', ic: '💪', desc: 'En casa, sin material: de principiante a extremo', dc: 'En casa y sin material' },
+  { id: 'mi-plan', t: 'Tu plan a medida', ic: '🧩', cls: 'destacada', desc: 'En 2 minutos: qué preparar primero, agua, comida y tus riesgos', dc: 'Qué preparar primero, a tu medida' },
+  { id: 'modo-crisis', t: 'Modo crisis guiado', ic: '🚨', desc: 'Está pasando algo: te llevo paso a paso, con avisos y diario', dc: 'Paso a paso, con avisos' },
+  { id: 'simulacros', t: 'Simulacros', ic: '🎯', desc: 'Historias con decisiones: ¿qué harías? Ideal en familia', dc: '¿Qué harías? Practica en familia' },
   { id: 'compra', t: 'Compra urgente', ic: '🛒', cls: 'colapso', desc: 'Lista de compra urgente, oculta hasta que la actives' },
-  { id: 'cursos', t: 'Formación', ic: '🎓', desc: '10 cursos con teoría, ejercicios y test' },
+  { id: 'cursos', t: 'Formación', ic: '🎓', desc: '10 cursos con teoría, ejercicios y test', dc: '10 cursos con test' },
   { id: 'biblioteca', t: 'Biblioteca', ic: '📚', desc: 'Tablas, meteorología, plantas y referencias' },
   { id: 'manual', t: 'Índice completo', ic: '📖', desc: 'Índice completo de todo el contenido' },
   { id: 'fuentes', t: 'Fuentes', ic: '📑', desc: 'De dónde procede cada dato' },
@@ -77,15 +77,15 @@ export const SECCIONES = [
    (desde Mi plan familiar). Toda otra sección aparece exactamente una vez
    (lo comprueba tools/test-unit.mjs). */
 export const GRUPOS = {
-  mochila: { t: 'Mochila y despensa', ic: '🎒', desc: 'Equipo, compra urgente y calculadoras de agua y comida', secs: ['equipo', 'compra', 'despensa-calc', 'calculadoras'] },
-  casa: { t: 'En casa durante la crisis', ic: '🏠', desc: 'Váter sin agua, frío, calor, luz, refugio y reparaciones', secs: ['en-casa', 'bricolaje'] },
-  'agua-comida': { t: 'Agua y comida', ic: '💧', desc: 'Potabilizar, conservar, cocinar sin luz y huerto', secs: ['agua', 'alimentacion', 'huerto'] },
-  orientacion: { t: 'Volver a casa y mapas', ic: '🗺', desc: 'Estoy perdido, rutas a pie, mapas sin conexión y brújula', secs: ['volver', 'mapa', 'orientacion'] },
-  campo: { t: 'Vida en el campo', ic: '🏕', desc: 'Refugio, fuego y técnicas de campo', secs: ['refugio', 'fuego', 'bushcraft'] },
-  coche: { t: 'Coche y mascotas', ic: '🚗', desc: 'Kit del coche, nieve, inundación y animales', secs: ['vehiculo', 'mascotas'] },
-  calma: { t: 'Calma y ánimo', ic: '🌿', desc: 'Psicología, respiración, juegos y audio', secs: ['psicologia', 'juegos', 'audio'] },
-  riesgos: { t: 'Riesgos en España y en tu zona', ic: '📊', desc: 'Qué puede pasar, dónde y cómo evoluciona', secs: ['riesgos', 'espana', 'avila'] },
-  biblioteca: { t: 'Biblioteca', ic: '📚', desc: 'Tablas, referencias, índice, fuentes y ayuda', secs: ['biblioteca', 'manual', 'fuentes', 'ayuda'] },
+  mochila: { t: 'Mochila y despensa', ic: '🎒', desc: 'Equipo, compra urgente y calculadoras de agua y comida', dc: 'Equipo, compra y calculadoras', secs: ['equipo', 'compra', 'despensa-calc', 'calculadoras'] },
+  casa: { t: 'En casa durante la crisis', ic: '🏠', desc: 'Váter sin agua, frío, calor, luz, refugio y reparaciones', dc: 'Agua, frío, calor, luz y apaños', secs: ['en-casa', 'bricolaje'] },
+  'agua-comida': { t: 'Agua y comida', ic: '💧', desc: 'Potabilizar, conservar, cocinar sin luz y huerto', dc: 'Potabilizar, conservar y huerto', secs: ['agua', 'alimentacion', 'huerto'] },
+  orientacion: { t: 'Volver a casa y mapas', ic: '🗺', desc: 'Estoy perdido, rutas a pie, mapas sin conexión y brújula', dc: 'Volver a casa, mapas y brújula', secs: ['volver', 'mapa', 'orientacion'] },
+  campo: { t: 'Vida en el campo', ic: '🏕', desc: 'Refugio, fuego y técnicas de campo', dc: 'Refugio, fuego y técnicas', secs: ['refugio', 'fuego', 'bushcraft'] },
+  coche: { t: 'Coche y mascotas', ic: '🚗', desc: 'Kit del coche, nieve, inundación y animales', dc: 'Kit, nieve, inundación y animales', secs: ['vehiculo', 'mascotas'] },
+  calma: { t: 'Calma y ánimo', ic: '🌿', desc: 'Psicología, respiración, juegos y audio', dc: 'Respiración, juegos y audio', secs: ['psicologia', 'juegos', 'audio'] },
+  riesgos: { t: 'Riesgos en España y en tu zona', ic: '📊', desc: 'Qué puede pasar, dónde y cómo evoluciona', dc: 'Qué puede pasar y dónde', secs: ['riesgos', 'espana', 'avila'] },
+  biblioteca: { t: 'Biblioteca', ic: '📚', desc: 'Tablas, referencias, índice, fuentes y ayuda', dc: 'Tablas, índice, fuentes y ayuda', secs: ['biblioteca', 'manual', 'fuentes', 'ayuda'] },
 };
 export const PORTADA = [
   { id: 'preparate', t: 'Prepárate', puertas: ['mi-plan', 'familia', 'g:mochila', 'evacuacion', 'entrenamiento'] },
