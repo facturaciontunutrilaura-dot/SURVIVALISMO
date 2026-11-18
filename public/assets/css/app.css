@@ -1500,3 +1500,103 @@ html[data-theme='ahorro'] img { filter: brightness(0.75); }
 .ay-p > div { padding: 0 16px 8px; }
 .ay-informe { white-space: pre-wrap; word-break: break-word; font-size: .78rem; background: var(--bg2, rgba(0,0,0,.05)); padding: 10px; border-radius: 8px; }
 .cfg-ayuda { margin: 4px 0 8px; }
+
+/* ======================= v1.22: plan, crisis, simulacros, voz ======================= */
+/* Tu siguiente paso */
+.paso { border-left: 4px solid var(--olive); margin-bottom: 18px; }
+.paso.fin { border-left-color: var(--green); }
+.paso h3 { margin: 4px 0 6px; }
+.paso p { margin: 0 0 10px; }
+.paso-et { font-size: .82rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--olive3); margin: 0 !important; }
+.paso-et .muted { text-transform: none; letter-spacing: 0; font-weight: 400; }
+.paso .btnrow { margin-bottom: 0; }
+
+/* Asistente del plan */
+.mp-asis h2 { margin: 8px 0 12px; }
+.mp-cont { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+.mp-cont small, .mp-lista small, .mp-riesgos small, .rc-toca small { display: block; color: var(--dim); font-size: .85rem; line-height: 1.35; }
+.mp-num { display: flex; align-items: center; gap: 8px; }
+.mp-num output { min-width: 2ch; text-align: center; font-size: 1.3rem; font-weight: 700; }
+.mp-num .btn-ico { width: 44px; height: 44px; font-size: 1.3rem; border: 1px solid var(--line2); border-radius: 50%; background: var(--bg2); color: var(--txt); cursor: pointer; }
+.mp-sub { margin: 14px 0 6px; font-weight: 600; }
+.mp-sino, .mp-ops { display: flex; flex-wrap: wrap; gap: 8px; }
+.mp-ops { flex-direction: column; }
+.mp-op { min-height: 48px; padding: 8px 16px; border: 1px solid var(--line2); border-radius: var(--r); background: var(--bg2); color: var(--txt); font: inherit; text-align: left; cursor: pointer; }
+.mp-sino .mp-op { min-width: 90px; text-align: center; }
+.mp-op[aria-checked='true'] { background: var(--olive); border-color: var(--olive3); color: var(--on-accent); font-weight: 700; }
+.mp-err { color: var(--err-txt); font-weight: 600; }
+.mp-nav { margin-top: 14px; }
+.mp-riesgos { padding-left: 1.3em; margin: 0; }
+.mp-riesgos li { padding: 8px 0; border-top: 1px solid var(--line); }
+.mp-riesgos li:first-child { border-top: 0; }
+.mp-riesgos .btnrow { margin: 6px 0 0; }
+.mp-pr { font-size: .95rem; margin: 16px 0 6px; }
+.mp-lista { list-style: none; margin: 0; padding: 0; }
+.mp-lista li { display: flex; gap: 12px; align-items: flex-start; padding: 10px 8px; border: 1px solid var(--line); border-radius: var(--r); background: var(--panel); margin-bottom: 6px; }
+.mp-lista li.ok b { color: var(--dim); text-decoration: line-through; }
+.mp-lista li.ok .chk-box { background: var(--ok-bg); border-color: var(--green); color: var(--ok-fg); }
+.mp-lista button.chk-box { width: 32px; height: 32px; cursor: pointer; font: inherit; font-weight: 700; color: var(--ok-fg); padding: 0; }
+
+/* Recordatorios inteligentes */
+.rc-toca { list-style: none; margin: 4px 0 0; padding: 0; }
+.rc-toca li { display: flex; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line); }
+.rc-toca li > .ic { font-size: 1.3rem; line-height: 1.4; }
+.rc-toca li > div { flex: 1; }
+.rc-toca .btnrow { margin: 6px 0 0; }
+
+/* Modo crisis */
+.home-crisis a {
+  display: flex; gap: 10px; align-items: center; margin-top: 8px; padding: 12px; text-decoration: none;
+  background: var(--danger-bg); border: 2px solid var(--red); border-radius: var(--r); color: var(--danger-fg); line-height: 1.35;
+}
+.home-crisis a > span:first-child { font-size: 1.6rem; }
+.home-crisis small { display: block; color: var(--danger-fg2); }
+.cr-elegir { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin: 14px 0; }
+.cr-op {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-height: 96px; padding: 12px;
+  border: 2px solid var(--danger-line); border-radius: var(--r); background: var(--danger-bg); color: var(--danger-fg); font: inherit; cursor: pointer;
+}
+.cr-op .ic { font-size: 2rem; }
+.cr-cab h2 { margin: 0 0 4px; }
+.cr-cab .btnrow { margin: 8px 0 0; }
+.cr-timers ul { list-style: none; margin: 0; padding: 0; }
+.cr-timers li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 6px 0; border-top: 1px solid var(--line); }
+.cr-timers li > span:first-child { flex: 1 1 180px; }
+.cr-fase h3 { margin: 18px 0 6px; }
+.cr-fase.propio h3 { color: var(--olive3); }
+.cr-lista { list-style: none; margin: 0; padding: 0; }
+.cr-lista li { border: 1px solid var(--line); border-radius: var(--r); background: var(--panel); margin-bottom: 6px; }
+.cr-t { display: block; color: var(--warn-txt); font-size: .82rem; margin-top: 2px; }
+#cr-fin { margin: 18px 0; }
+
+/* Simulacros */
+.sim-escena { border-left: 4px solid var(--amber); }
+.sim-texto { font-size: 1.12rem; line-height: 1.45; margin: 0 0 8px; }
+.sim-pregunta { font-weight: 700; margin: 0; }
+.sim-ops { display: flex; flex-direction: column; gap: 8px; margin: 12px 0; }
+.sim-op {
+  min-height: 56px; padding: 10px 14px; border: 2px solid var(--line2); border-radius: var(--r); background: var(--panel);
+  color: var(--txt); font: inherit; font-size: 1rem; text-align: left; cursor: pointer;
+}
+.sim-op:disabled { cursor: default; opacity: .75; }
+.sim-op.buena { border-color: var(--green); opacity: 1; }
+.sim-op.elegida { opacity: 1; font-weight: 700; }
+.sim-op.elegida.ok { background: var(--ok-bg); color: var(--ok-fg); }
+.sim-op.elegida.regular { background: var(--amber-bg); border-color: var(--amber); }
+.sim-op.elegida.mal { background: var(--danger-bg); border-color: var(--red); color: var(--danger-fg); }
+.sim-fb.ok { border-left: 4px solid var(--green); }
+.sim-fb.regular { border-left: 4px solid var(--amber); }
+.sim-fb.mal { border-left: 4px solid var(--red); }
+.sim-fb h3 { margin-top: 0; }
+.sim-final { text-align: center; }
+.sim-final .btnrow { justify-content: center; }
+.sim-ic { font-size: 3rem; margin: 0; }
+
+/* Alex por voz */
+.al-voz { margin-bottom: 10px; }
+.al-voz [aria-pressed='true'] { background: var(--olive); border-color: var(--olive3); color: var(--on-accent); }
+.al-escuchar {
+  display: inline-block; margin-top: 10px; min-height: 40px; padding: 4px 12px; border: 1px solid var(--line2); border-radius: 999px;
+  background: var(--bg2); color: var(--txt); font: inherit; font-size: .85rem; cursor: pointer;
+}
+.al-escuchar[aria-pressed='true'] { background: var(--olive); color: var(--on-accent); border-color: var(--olive3); }

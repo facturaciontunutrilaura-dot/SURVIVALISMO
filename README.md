@@ -523,6 +523,50 @@ y prevalecen siempre las instrucciones de las autoridades.
 
 ---
 
+## 4 ter. Novedades de la versión 1.22: una app más interactiva
+
+Todo funciona **sin Internet**, con reglas pensadas por nosotros (como Alex):
+sin IA ni servidores. Los datos se guardan solo en el dispositivo y entran en
+las copias de seguridad.
+
+| Función | Ruta | Módulos |
+|---|---|---|
+| **Tu plan a medida** (asistente de 8 preguntas) | `#/sec/mi-plan` | `miplan.js`, `plan-core.js`, `data/content/miplan.js` |
+| **Tu siguiente paso** (portada) | portada y plan | `plan-core.js → siguientePaso()` |
+| **Modo crisis guiado** | `#/sec/modo-crisis` | `crisis.js`, `crisis-core.js`, `data/content/crisis.js` |
+| **Simulacros con decisiones** | `#/sec/simulacros` | `simulacros.js`, `data/content/simulacros.js` |
+| **Recordatorios inteligentes** | portada | `recordatorios-core.js` |
+| **Alex por voz** | `#/sec/alex` | `voz.js` |
+
+- **Plan a medida.** Pregunta cuántos sois (adultos, mayores, niños, bebés),
+  mascotas, medicación (y si necesita nevera), aparatos eléctricos médicos,
+  movilidad reducida, vivienda (bajo, piso, piso alto, casa), entorno, coche y
+  zona (propuesta según la provincia guardada). Calcula agua (3 l adulto o
+  mayor, 2 l niño, 1,5 l bebé y 1 l mascota al día), energía y efectivo
+  orientativo (50 €/persona), ordena la lista de preparación por prioridad y
+  dice qué riesgos te tocan y por qué. Claves: `miplan.perfil`,
+  `miplan.hechos`, `miplan.pospuestos`.
+- **Tu siguiente paso.** Una sola tarea cada vez, cruzando despensa (agua y
+  kcal), efectivo, contactos, contacto externo, punto de encuentro, rutas e
+  información médica: «Te faltan 12 litros de agua para llegar a 3 días»,
+  «No tienes efectivo apuntado»… Con «Ya lo tengo» y «Ahora no» (7 días).
+- **Modo crisis.** Apagón, inundación/DANA, ola de calor, evacuación,
+  nevada/frío e incendio forestal. Casillas por fases, temporizadores
+  (p. ej. «revisa la nevera en 4 h») y diario automático (`diario.emergencia`,
+  el mismo de Herramientas SOS). Añade una fase «Para tu hogar» según el plan.
+  Estado en `crisis.activa`. Los avisos suenan mientras la app está abierta o
+  al volver a ella: un navegador no puede despertar una web cerrada.
+- **Simulacros.** Seis historias (una para niños), tres opciones por escena
+  (2 = lo mejor, 1 = mejorable, 0 = peligroso), explicación y puntuación.
+  Mejor resultado en `simulacros.resultados`.
+- **Recordatorios.** Periódicos (agua cada 6 meses, pilas, caducidades,
+  efectivo cada 3 meses desde el último recuento, mochila, medicación, kit del
+  bebé, contactos) y de temporada (invierno, primavera, verano, incendios,
+  DANA en otoño). Máximo tres a la vez; «Hecho» en `recordatorios.hechos`.
+- **Alex por voz.** Botón «Escuchar» en cada respuesta y opción de leerlas
+  solas. Usa `speechSynthesis` con las voces del sistema (en iPhone y Android
+  funcionan sin conexión); prefiere voces locales en español de España.
+
 ## 4 quater. Paleta "Military Camo"
 
 El sistema de color se reconstruyó a partir de una paleta de 30 tonos aportada
