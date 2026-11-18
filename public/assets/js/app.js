@@ -162,28 +162,39 @@ async function avisoNoticias(caja) {
   caja.hidden = false;
 }
 
-/* Recordatorios en la portada (v1.18): lo que caduca en 30 días y la
-   revisión de la mochila cada 6 meses. Solo si hay algo que recordar. */
+/* Recordatorios en la portada (v1.18, inteligentes desde v1.22): lo que
+   caduca en 30 días y lo que toca por tiempo (rotar el agua, pilas,
+   efectivo, mochila…) o por la época del año. Solo si hay algo que recordar;
+   como mucho tres a la vez para no agobiar. */
 async function recordatorios(caja) {
-  const { caducidades, tocaRevision } = await import('./herramientas-core.js');
+  const [{ caducidades }, R, { datosPlan }] = await Promise.all([import('./herramientas-core.js'), import('./recordatorios-core.js'), import('./miplan.js')]);
   const checks = await store.all('checks').catch(() => []);
   const nombres = {};
   for (const c of CHECKLISTS) { const k = clavesChecklist(c); c.grupos.forEach((g, gi) => g.items.forEach((it, ii) => { nombres[k[gi][ii]] = `${typeof it === 'string' ? it : it.t} (${c.t})`; })); }
   const cad = caducidades(checks, nombres).slice(0, 5);
-  const ultima = (await store.get('kv', 'revision.mochila').catch(() => null))?.v;
-  const revisar = checks.length > 0 && tocaRevision(ultima);
-  if ((!cad.length && !revisar) || !caja.isConnected) { caja.hidden = true; return; }
+  const d = await datosPlan().catch(() => ({}));
+  const hechos = { ...((await store.get('kv', 'recordatorios.hechos').catch(() => null))?.v || {}) };
+  const mochila = (await store.get('kv', 'revision.mochila').catch(() => null))?.v;
+  if (mochila) hechos.mochila = Math.max(hechos.mochila || 0, mochila);
+  const ctx = { plan: !!d.perfil, perfil: d.perfil, agua: d.aguaL || 0, checks: checks.length, efectivoTs: d.efectivoTs || 0, hechos };
+  // Quien acaba de llegar (sin plan ni datos) solo ve lo de temporada.
+  const nuevo = !ctx.plan && !ctx.checks && !ctx.agua;
+  const rec = R.recordatoriosPendientes(ctx).filter((r) => !nuevo || r.temporada).slice(0, 3);
+  if ((!cad.length && !rec.length) || !caja.isConnected) { caja.hidden = true; return; }
   caja.className = 'card home-recordar';
   caja.innerHTML = `<h3>⏰ Recordatorios</h3>
     ${cad.length ? `<ul class="rc-lista">${cad.map((x) => `<li><a href="#/check/${esc(x.lista)}">${esc(x.t)}</a>: ${x.dias < 0 ? `<b>caducó hace ${-x.dias} d</b>` : x.dias === 0 ? '<b>caduca hoy</b>' : `caduca en ${x.dias} d`}</li>`).join('')}</ul>` : ''}
-    ${revisar ? `<p>${ultima ? 'Han pasado más de 6 meses desde que revisaste la mochila y la despensa.' : 'Revisa la mochila y la despensa cada 6 meses: pilas, agua, comida, medicinas y ropa de temporada.'}</p>
-      <div class="btnrow"><a class="btn sm ghost" href="#/check/bob">Revisar la mochila</a><button class="btn sm" type="button" id="rc-hecho">✓ Revisada hoy</button></div>` : ''}`;
+    ${rec.length ? `<ul class="rc-toca">${rec.map((r) => `<li><span class="ic" aria-hidden="true">${r.ic}</span><div><b>${esc(r.t)}</b><small>${esc(r.d)}</small>
+      <span class="btnrow">${r.ruta ? `<a class="btn sm ghost" href="${esc(r.ruta)}">Ver</a>` : ''}<button class="btn sm" type="button" data-rc="${esc(r.id)}">✓ Hecho</button></span></div></li>`).join('')}</ul>` : ''}`;
   caja.hidden = false;
-  caja.querySelector('#rc-hecho')?.addEventListener('click', async () => {
-    await store.put('kv', { id: 'revision.mochila', v: Date.now() });
-    toast('Anotado: te lo recordaré dentro de 6 meses');
+  caja.querySelectorAll('[data-rc]').forEach((b) => b.addEventListener('click', async () => {
+    const id = b.dataset.rc;
+    const h = (await store.get('kv', 'recordatorios.hechos').catch(() => null))?.v || {};
+    await store.put('kv', { id: 'recordatorios.hechos', v: { ...h, [id]: Date.now() } }).catch(() => {});
+    if (id === 'mochila') await store.put('kv', { id: 'revision.mochila', v: Date.now() }).catch(() => {});
+    toast(id.startsWith('temp-') ? 'Anotado' : 'Anotado: te lo recordaré cuando vuelva a tocar', { tipo: 'ok' });
     recordatorios(caja);
-  });
+  }));
 }
 
 /* Pantalla de grupo (#/grupo/<id>): reúne varias secciones de la portada. */
@@ -226,11 +237,13 @@ function vHome() {
       </div>
       <a class="home-buscar" href="#/buscar"><span aria-hidden="true">🔍</span> Busca o pregunta a Alex: «se ha ido la luz»…</a>
       <div id="home-aviso" hidden></div>
+      <div id="home-crisis" hidden></div>
     </section>
 
     <div id="home-legal"></div>
     <div id="home-ubi"></div>
     <div id="home-prep" class="home-prep" hidden></div>
+    <div id="home-paso" hidden></div>
     <div id="home-recordar" hidden></div>
 
     ${PORTADA.map((b) => `<section class="home-bloque" aria-labelledby="h-${b.id}">
@@ -247,6 +260,8 @@ function vHome() {
   avisoNoticias(n.querySelector('#home-aviso'));
   avisoInicial(n.querySelector('#home-legal'));
   recordatorios(n.querySelector('#home-recordar'));
+  import('./miplan.js').then((m) => m.montarSiguientePaso(n.querySelector('#home-paso'))).catch(() => {});
+  import('./crisis.js').then((m) => m.montarAvisoCrisis(n.querySelector('#home-crisis'))).catch(() => {});
   // Primera vez: dónde vives (para la evacuación, los riesgos y lo local).
   ubi.guardada().catch(() => null).then((u) => {
     if (u?.mun) return;
@@ -579,6 +594,25 @@ async function vSeccion(id, sub) {
     const { volverView } = await import('./volver.js');
     const w = el(`<div>${topbar(s.t, 'También sin internet')}<h1>${s.ic} Volver a casa</h1></div>`);
     w.appendChild(await volverView(sub));
+    return w;
+  }
+  if (id === 'mi-plan') {
+    const { miPlanView } = await import('./miplan.js');
+    const editar = sub === 'editar';
+    const w = el(`<div>${topbar(editar ? 'Cambiar mi plan' : s.t, 'Solo en este móvil', editar ? '#/sec/mi-plan' : '#/')}<h1>${s.ic} ${editar ? 'Cambiar mi plan' : esc(s.t)}</h1></div>`);
+    w.appendChild(await miPlanView(sub));
+    return w;
+  }
+  if (id === 'modo-crisis') {
+    const { crisisView } = await import('./crisis.js');
+    const w = el(`<div>${topbar(s.t, 'Paso a paso, con avisos')}<h1>${s.ic} ${esc(s.t)}</h1></div>`);
+    w.appendChild(await crisisView());
+    return { node: w, emg: true };
+  }
+  if (id === 'simulacros') {
+    const { simulacrosView } = await import('./simulacros.js');
+    const w = el(`<div>${topbar(s.t, '¿Qué harías?', sub ? '#/sec/simulacros' : '#/')}<h1>${s.ic} ${esc(s.t)}</h1></div>`);
+    w.appendChild(await simulacrosView(sub));
     return w;
   }
   if (id === 'efectivo') {
@@ -1145,6 +1179,9 @@ const TIPOS_BUSQUEDA = {
   noticias: { t: 'Noticias', ic: '📰', f: 'otros' },
   audio: { t: 'Audio', ic: '🎵', f: 'otros' },
   familia: { t: 'Familia', ic: '👨‍👩‍👧', f: 'otros' },
+  plan: { t: 'Tu plan', ic: '🧩', f: 'otros' },
+  crisis: { t: 'Modo crisis', ic: '🚨', f: 'sos' },
+  simulacro: { t: 'Simulacro', ic: '🎯', f: 'otros' },
 };
 const FILTROS_BUSQUEDA = [['todo', 'Todo'], ['sos', '🚨 SOS'], ['manual', '📄 Manual'], ['listas', '☑ Checklists'], ['otros', 'Otros']];
 let buscador = null;
@@ -2070,6 +2107,11 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js').then(vigilarActualizacion).catch((e) => console.warn('SW:', e));
   });
 }
+
+/* ===================== MODO CRISIS: avisos en marcha ===================== */
+/* Si hay una crisis en marcha (aunque se haya cerrado la app), sus
+   temporizadores siguen avisando en cualquier pantalla. */
+store.get('kv', 'crisis.activa').then((e) => { if (e?.v) import('./crisis.js').then((m) => m.vigilarCrisis()); }).catch(() => {});
 
 /* ======================= SINCRONIZACIÓN (opcional) ======================= */
 /* Se carga en diferido y solo si está configurada. Nunca bloquea el arranque

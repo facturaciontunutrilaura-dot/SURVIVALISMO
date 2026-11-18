@@ -2,7 +2,8 @@
    alex.js — PREGÚNTALE A ALEX (pantalla de conversación)
    La conversación vive solo en la pantalla: no se guarda ni sale del móvil.
    ========================================================================= */
-import { el, esc } from './ui.js';
+import { el, esc, alSalir } from './ui.js';
+import * as voz from './voz.js';
 import { crearAlex } from './alex-motor.js';
 import { PRESENTACION, FUERA_DE_TEMA, SIN_FICHA, AVISO_ALEX, CRISIS, SUGERENCIAS } from '../../data/content/alex.js';
 
@@ -60,7 +61,9 @@ export function pintarRespuesta(r) {
 
 export function alexView() {
   alex = alex || crearAlex();
+  const conVoz = voz.disponible();
   const n = el(`<div class="alex">
+    ${conVoz ? `<div class="al-voz"><button type="button" class="btn sm ghost" id="al-auto" aria-pressed="${voz.auto()}">🔊 Leer las respuestas en voz alta</button></div>` : ''}
     <div id="al-log" class="al-log" role="log" aria-live="polite" aria-label="Conversación con Alex"></div>
     <form id="al-form" class="al-form" autocomplete="off">
       <label class="sr-only" for="al-q">Tu pregunta para Alex</label>
@@ -71,23 +74,53 @@ export function alexView() {
   </div>`);
   const log = n.querySelector('#al-log'), input = n.querySelector('#al-q');
 
+  /* Voz: cada respuesta de Alex tiene «Escuchar»; con el interruptor
+     activado se leen solas. Sin Internet en iPhone y Android (voces del
+     sistema). Al salir de la pantalla se calla. */
+  alSalir(() => voz.parar());
+  let leyendo = null;
+  const textoBurbuja = (bur) => {
+    const c = bur.cloneNode(true);
+    c.querySelectorAll('.al-sug, .al-rel, .al-rel-t, .btn, .btn-112 small, button, .al-escuchar').forEach((x) => x.remove());
+    return [...c.querySelectorAll('p, h3, li, .btn-112 b')].map((x) => x.textContent.trim()).filter(Boolean).map((t) => (/[.!?:]$/.test(t) ? t : t + '.')).join(' ');
+  };
+  const marcar = (b, on) => { if (!b) return; b.setAttribute('aria-pressed', String(on)); b.textContent = on ? '⏹ Parar' : '🔊 Escuchar'; };
+  function escuchar(b) {
+    if (leyendo === b) { voz.parar(); marcar(b, false); leyendo = null; return; }
+    marcar(leyendo, false);
+    leyendo = b; marcar(b, true);
+    const ok = voz.leer(textoBurbuja(b.closest('.al-bur')), () => { if (leyendo === b) { marcar(b, false); leyendo = null; } });
+    if (!ok) { marcar(b, false); leyendo = null; }
+  }
+
   function mensaje(html, de, desplazar = true) {
-    const m = el(`<div class="al-msg ${de}">${de === 'alex' ? avatar : ''}<div class="al-bur">${html}</div></div>`);
+    const m = el(`<div class="al-msg ${de}">${de === 'alex' ? avatar : ''}<div class="al-bur">${html}${de === 'alex' && conVoz ? '<button type="button" class="al-escuchar" aria-pressed="false">🔊 Escuchar</button>' : ''}</div></div>`);
     log.appendChild(m);
     if (desplazar) m.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    return m;
   }
   function preguntar(q) {
     q = String(q || '').trim();
     if (!q) return;
     mensaje(`<p>${esc(q)}</p>`, 'yo');
-    mensaje(pintarRespuesta(alex.responder(q)), 'alex');
+    const m = mensaje(pintarRespuesta(alex.responder(q)), 'alex');
+    if (conVoz && voz.auto()) escuchar(m.querySelector('.al-escuchar'));
   }
 
   n.querySelector('#al-form').addEventListener('submit', (ev) => { ev.preventDefault(); preguntar(input.value); input.value = ''; input.focus(); });
   // Desde el buscador: #/sec/alex?q=… llega ya preguntado.
   const desdeBuscador = new URLSearchParams(location.hash.split('?')[1] || '').get('q');
   if (desdeBuscador) queueMicrotask(() => preguntar(desdeBuscador.slice(0, 300)));
-  n.addEventListener('click', (ev) => { const b = ev.target.closest('[data-preg]'); if (b) preguntar(b.dataset.preg); });
+  n.addEventListener('click', (ev) => {
+    const b = ev.target.closest('[data-preg]'); if (b) preguntar(b.dataset.preg);
+    const e = ev.target.closest('.al-escuchar'); if (e) escuchar(e);
+  });
+  n.querySelector('#al-auto')?.addEventListener('click', (ev) => {
+    const on = ev.currentTarget.getAttribute('aria-pressed') !== 'true';
+    ev.currentTarget.setAttribute('aria-pressed', String(on));
+    voz.setAuto(on);
+    if (!on) { voz.parar(); marcar(leyendo, false); leyendo = null; }
+  });
 
   mensaje(`<p>${esc(PRESENTACION)}</p>${chips(SUGERENCIAS)}`, 'alex', false);
   return n;

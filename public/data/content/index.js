@@ -16,7 +16,7 @@ import { QUIZ, QUIZ_CATEGORIAS, RESPIRACIONES, GROUNDING } from './juegos.js';
 import { RIESGOS, NIVELES, CATEGORIAS_RIESGO } from './riesgos.js';
 import { SITUACIONES } from './familia.js';
 
-export const VERSION = '1.21.4';
+export const VERSION = '1.22.0';
 export const FECHA_CONTENIDO = FECHA_CONSULTA;
 
 export const SECCIONES = [
@@ -54,6 +54,9 @@ export const SECCIONES = [
   { id: 'efectivo', t: 'Mi efectivo', ic: '💶', desc: 'Cuánto dinero en efectivo te queda y para cuántos días' },
   { id: 'despensa-calc', t: 'Calculadora de despensa', ic: '🥫', desc: 'Para cuántos días os llega lo que tenéis en casa' },
   { id: 'entrenamiento', t: 'Entrenamiento', ic: '💪', desc: 'En casa, sin material: de principiante a extremo' },
+  { id: 'mi-plan', t: 'Tu plan a medida', ic: '🧩', cls: 'destacada', desc: 'En 2 minutos: qué preparar primero, agua, comida y tus riesgos' },
+  { id: 'modo-crisis', t: 'Modo crisis guiado', ic: '🚨', desc: 'Está pasando algo: te llevo paso a paso, con avisos y diario' },
+  { id: 'simulacros', t: 'Simulacros', ic: '🎯', desc: 'Historias con decisiones: ¿qué harías? Ideal en familia' },
   { id: 'compra', t: 'Compra urgente', ic: '🛒', cls: 'colapso', desc: 'Lista de compra urgente, oculta hasta que la actives' },
   { id: 'cursos', t: 'Formación', ic: '🎓', desc: '10 cursos con teoría, ejercicios y test' },
   { id: 'biblioteca', t: 'Biblioteca', ic: '📚', desc: 'Tablas, meteorología, plantas y referencias' },
@@ -85,11 +88,11 @@ export const GRUPOS = {
   biblioteca: { t: 'Biblioteca', ic: '📚', desc: 'Tablas, referencias, índice, fuentes y ayuda', secs: ['biblioteca', 'manual', 'fuentes', 'ayuda'] },
 };
 export const PORTADA = [
-  { id: 'preparate', t: 'Prepárate', puertas: ['familia', 'g:mochila', 'evacuacion', 'entrenamiento'] },
-  { id: 'pasando', t: 'Si está pasando', puertas: ['herramientas', 'efectivo', 'g:casa', 'primeros-auxilios', 'g:agua-comida', 'comunicaciones', 'defensa'] },
+  { id: 'preparate', t: 'Prepárate', puertas: ['mi-plan', 'familia', 'g:mochila', 'evacuacion', 'entrenamiento'] },
+  { id: 'pasando', t: 'Si está pasando', puertas: ['modo-crisis', 'herramientas', 'efectivo', 'g:casa', 'primeros-auxilios', 'g:agua-comida', 'comunicaciones', 'defensa'] },
   { id: 'salir', t: 'Si tienes que salir', puertas: ['g:orientacion', 'g:campo', 'g:coche'] },
   { id: 'calma', t: 'Calma y ánimo', puertas: ['g:calma'] },
-  { id: 'aprende', t: 'Aprende más', puertas: ['g:riesgos', 'cursos', 'g:biblioteca'] },
+  { id: 'aprende', t: 'Aprende más', puertas: ['simulacros', 'g:riesgos', 'cursos', 'g:biblioteca'] },
 ];
 /** Secciones a las que lleva una puerta de la portada. */
 export const seccionesDePuerta = (p) => (p.startsWith('g:') ? GRUPOS[p.slice(2)].secs : [p]);
@@ -283,6 +286,21 @@ export const INDICE = [
     tipo: 'compra', id: 'compra-colapso', ruta: '#/sec/compra', t: 'Compra de colapso', sec: 'compra',
     pr: 'critico', sum: 'Lista de compra urgente para quedarse en casa de 72 horas a una semana, calculada para las personas de tu hogar.',
     texto: 'compra colapso lista de la compra supermercado comprar víveres provisiones despensa agua comida comprar antes de que se agote 72 horas una semana kcal proteína hogar',
+  },
+  {
+    tipo: 'plan', id: 'mi-plan', ruta: '#/sec/mi-plan', t: 'Tu plan a medida', sec: 'mi-plan',
+    pr: 'critico', sum: 'Unas pocas preguntas y la app ordena tu preparación, calcula el agua y la comida de tu hogar y te dice qué riesgos te tocan.',
+    texto: 'plan a medida personalizado asistente cuántos somos bebé mayores mascotas medicación piso casa coche zona siguiente paso qué preparo primero cuánta agua necesito prioridades lista de preparación',
+  },
+  {
+    tipo: 'crisis', id: 'modo-crisis', ruta: '#/sec/modo-crisis', t: 'Modo crisis guiado', sec: 'modo-crisis',
+    pr: 'critico', sum: 'Si está pasando algo, la app te lleva paso a paso con casillas, temporizadores y el diario apuntándose solo.',
+    texto: 'modo crisis guiado paso a paso está pasando apagón inundación dana ola de calor evacuación nevada frío incendio temporizador aviso diario checklist',
+  },
+  {
+    tipo: 'simulacro', id: 'simulacros', ruta: '#/sec/simulacros', t: 'Simulacros con decisiones', sec: 'simulacros',
+    pr: 'recomendado', sum: 'Historias interactivas: eliges qué harías y la app te explica si fue buena idea y por qué, con puntuación.',
+    texto: 'simulacro simulacros practicar entrenar decisiones qué harías historia juego niños familia humo incendio apagón dana calor perdido monte puntuación',
   },
 ];
 

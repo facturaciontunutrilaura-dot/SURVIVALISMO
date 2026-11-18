@@ -1074,3 +1074,124 @@ test('legal: aviso legal y privacidad completos y coherentes con la app', async 
   const faltan = L.faltanDatosTitular();
   if (faltan.length) console.log(`  ⚠ Recordatorio: faltan datos del titular en data/content/legal.js (${faltan.join(', ')}). Rellénalos antes de publicar.`);
 });
+
+/* ----------------------- v1.22: plan, crisis, simulacros, recordatorios, voz ----------------------- */
+test('tu plan a medida: agua, comida, riesgos y lista según el hogar', async () => {
+  const P = await imp('assets/js/plan-core.js');
+  const base = { adultos: 2, ninos: 0, bebes: 0, mayores: 0, mascotas: 0, vivienda: 'piso-medio', zona: 'interior', entorno: 'ciudad', coche: true };
+  const n = P.necesidadesPlan(base);
+  assert.equal(n.aguaDia, 6); assert.equal(n.agua3, 18); assert.equal(n.agua7, 42); assert.equal(n.kcalDia, 4400); assert.equal(n.efectivo, 100);
+  // Bebé, medicación con frío, piso alto en el Mediterráneo, sin coche.
+  const p = { ...base, bebes: 1, mascotas: 1, medicacion: true, frio: true, vivienda: 'piso-alto', zona: 'mediterraneo', coche: false };
+  const r = P.riesgosPlan(p);
+  assert.equal(r[0].id, 'apagon', 'el apagón pesa más con medicación en nevera y piso alto');
+  assert.ok(r.some((x) => x.id === 'inundacion') && r.some((x) => x.id === 'falta-agua') && r.some((x) => x.id === 'evacuacion'));
+  const t = P.tareasPlan(p).map((x) => x.id);
+  for (const id of ['bebe', 'medicacion', 'frio', 'mascotas', 'sin-coche', 'agua-extra']) assert.ok(t.includes(id), `falta la tarea ${id}`);
+  assert.ok(!t.includes('coche') && !t.includes('electro'));
+  const orden = P.tareasPlan(p).map((x) => ({ critico: 0, importante: 1, recomendado: 2 })[x.pr]);
+  assert.deepEqual(orden, [...orden].sort((a, b) => a - b), 'ordenada por prioridad');
+  // La medicación sin «toma» no deja frío marcado.
+  assert.equal(P.normalizarPerfil({ medicacion: false, frio: true }).frio, false);
+});
+
+test('tu siguiente paso: una sola tarea, cruzando despensa, efectivo, contactos y rutas', async () => {
+  const P = await imp('assets/js/plan-core.js');
+  const p = { adultos: 2, ninos: 0, bebes: 0, mayores: 0, mascotas: 0, vivienda: 'piso-medio', zona: 'interior', entorno: 'ciudad', coche: true };
+  assert.equal(P.siguientePaso(null).id, 'plan');
+  assert.equal(P.siguientePaso(p, {}).id, 'contactos');
+  const s = P.siguientePaso(p, { contactos: 1, aguaL: 6 });
+  assert.equal(s.id, 'agua'); assert.match(s.t, /Te faltan 12 litros de agua para llegar a 3 días/);
+  assert.match(P.siguientePaso(p, { contactos: 1, aguaL: 18 }).t, /comida/);
+  assert.equal(P.siguientePaso(p, { contactos: 1, aguaL: 18, kcal: 20000 }).t, 'No tienes efectivo apuntado');
+  const lleno = { contactos: 2, externo: true, encuentro: true, rutas: true, aguaL: 18, kcal: 20000, efectivo: 80 };
+  const x = P.siguientePaso(p, lleno);
+  assert.ok(x.marcar, 'con los datos al día, pasa a la lista del plan');
+  // «Ahora no» lo aparta una semana; «Ya lo tengo» lo da por hecho.
+  assert.notEqual(P.siguientePaso(p, { ...lleno, pospuestos: { [x.id]: Date.now() } }).id, x.id);
+  assert.equal(P.siguientePaso(p, { ...lleno, pospuestos: { [x.id]: Date.now() - 8 * 86400000 } }).id, x.id);
+  const todo = Object.fromEntries(P.tareasPlan(p).map((t) => [t.id, 1]));
+  assert.match(P.siguientePaso(p, { ...lleno, aguaL: 50, kcal: 40000, hechos: todo }).t, /todo al día/);
+  const pr = P.progresoPlan(p, { ...lleno, hechos: todo, aguaL: 18, kcal: 20000 });
+  assert.equal(pr.hechas, pr.total);
+});
+
+test('modo crisis: pasos según el plan, temporizadores y progreso', async () => {
+  const C = await imp('assets/js/crisis-core.js');
+  const { CRISIS } = await imp('data/content/crisis.js');
+  const { EMERGENCIAS_MAP } = await imp('data/content/index.js');
+  for (const c of CRISIS) {
+    assert.ok(EMERGENCIAS_MAP[c.emg], `protocolo inexistente: ${c.emg}`);
+    const ids = C.todosLosPasos(C.pasosCrisis(c.id, { adultos: 1, bebes: 1, mayores: 1, mascotas: 1, medicacion: true, frio: true, electro: true, movilidad: true, vivienda: 'piso-alto', coche: true })).map((p) => p.id);
+    assert.equal(new Set(ids).size, ids.length, `ids repetidos en ${c.id}`);
+  }
+  const sin = C.pasosCrisis('apagon', null);
+  assert.ok(!sin.fases.some((f) => f.propio), 'sin plan no hay pasos del hogar');
+  const con = C.pasosCrisis('apagon', { adultos: 1, bebes: 1, medicacion: true, frio: true, vivienda: 'piso-alto' });
+  const propios = con.fases.find((f) => f.propio).pasos.map((p) => p.id);
+  assert.ok(propios.includes('bebe-agua') && propios.includes('frio-nevera') && propios.includes('alto-agua'));
+  assert.ok(!C.todosLosPasos(C.pasosCrisis('ola-calor', { adultos: 1, vivienda: 'piso-alto' })).some((p) => p.id === 'alto-agua'), 'cada extra solo en sus crisis');
+  // Temporizador: «revisa la nevera en 4 h».
+  const t0 = Date.UTC(2026, 10, 18, 10);
+  const nevera = sin.fases[0].pasos.find((p) => p.id === 'nevera');
+  let e = C.marcarPaso(C.nuevaCrisis('apagon', t0), nevera, true, t0);
+  assert.equal(e.timers.length, 1); assert.equal(e.timers[0].fin, t0 + 4 * 3600e3);
+  assert.equal(C.timersVencidos(e, t0 + 3 * 3600e3).length, 0);
+  assert.equal(C.timersVencidos(e, t0 + 4 * 3600e3).length, 1);
+  e = C.avisados(e, ['nevera']);
+  assert.equal(C.timersVencidos(e, t0 + 5 * 3600e3).length, 0, 'no avisa dos veces');
+  assert.equal(C.progresoCrisis(sin, e).n, 1);
+  e = C.marcarPaso(e, nevera, false, t0);
+  assert.equal(e.timers.length, 0); assert.equal(C.progresoCrisis(sin, e).n, 0);
+  assert.equal(C.falta(80 * 60000), '1 h 20 min'); assert.equal(C.falta(5 * 60000), '5 min'); assert.equal(C.falta(0), 'ya');
+});
+
+test('simulacros: tres opciones, una mejor, explicación y protocolo existente', async () => {
+  const { SIMULACROS } = await imp('data/content/simulacros.js');
+  const { EMERGENCIAS_MAP } = await imp('data/content/index.js');
+  const { maximo, veredicto } = await imp('assets/js/simulacros.js');
+  assert.ok(SIMULACROS.length >= 5 && SIMULACROS.some((s) => s.ninos));
+  for (const s of SIMULACROS) {
+    assert.ok(EMERGENCIAS_MAP[s.emg], `protocolo inexistente: ${s.emg}`);
+    for (const e of s.escenas) {
+      assert.ok(e.opciones.length >= 2 && e.opciones.length <= 4);
+      assert.equal(e.opciones.filter((o) => o.p === 2).length, 1, `una sola opción mejor en «${e.texto}»`);
+      for (const o of e.opciones) assert.ok(o.t && o.exp && [0, 1, 2].includes(o.p));
+    }
+    assert.equal(maximo(s), s.escenas.length * 2);
+  }
+  assert.equal(veredicto(8, 8).ic, '🏆'); assert.equal(veredicto(5, 8).ic, '👍'); assert.equal(veredicto(2, 8).ic, '📚');
+});
+
+test('recordatorios inteligentes: periódicos, de temporada y «hecho»', async () => {
+  const R = await imp('assets/js/recordatorios-core.js');
+  const nov = new Date('2026-11-18T10:00:00').getTime();
+  const ctx = { plan: true, perfil: { coche: true, medicacion: true, zona: 'mediterraneo' }, agua: 20, checks: 3, efectivoTs: nov - 100 * 86400000, hechos: {} };
+  const ids = R.recordatoriosPendientes(ctx, nov).map((r) => r.id);
+  assert.equal(ids[0], 'temp-invierno-2026', 'en noviembre, primero el invierno');
+  assert.ok(ids.includes('temp-otono-2026') && ids.includes('efectivo') && ids.includes('medicacion') && ids.includes('agua'));
+  const inv = R.recordatoriosPendientes(ctx, nov).find((r) => r.id === 'temp-invierno-2026');
+  assert.match(inv.d, /kit del coche/);
+  assert.match(R.recordatoriosPendientes({ ...ctx, perfil: { coche: false } }, nov).find((r) => r.id === 'temp-invierno-2026').d, /^(?!.*coche)/);
+  // Hecho: desaparece hasta que vuelve a tocar.
+  const hechos = { 'temp-invierno-2026': nov, agua: nov - 10 * 86400000 };
+  const d = R.recordatoriosPendientes({ ...ctx, hechos }, nov).map((r) => r.id);
+  assert.ok(!d.includes('temp-invierno-2026') && !d.includes('agua'));
+  assert.ok(R.recordatoriosPendientes({ ...ctx, hechos }, nov + 180 * 86400000).some((r) => r.id === 'agua'), 'el agua vuelve a los 6 meses');
+  // El invierno de enero es el del año anterior.
+  assert.equal(R.claveTemporada(R.TEMPORADA[0], new Date('2027-01-10')), 'temp-invierno-2026');
+  // Sin medicación ni bebé, esos no aparecen; sin efectivo apuntado, tampoco.
+  const sinNada = R.recordatoriosPendientes({ plan: false, perfil: null, agua: 0, checks: 0, efectivoTs: 0, hechos: {} }, nov).map((r) => r.id);
+  assert.ok(!sinNada.includes('medicacion') && !sinNada.includes('bebe') && !sinNada.includes('efectivo'));
+  const { esDatoPropio } = await imp('assets/js/store.js');
+  assert.ok(esDatoPropio('kv', 'miplan.perfil') && esDatoPropio('kv', 'recordatorios.hechos') && esDatoPropio('kv', 'crisis.activa'));
+});
+
+test('Alex por voz: voz local en español y texto limpio', async () => {
+  const V = await imp('assets/js/voz.js');
+  const voces = [{ lang: 'en-US', localService: true }, { lang: 'es-MX', localService: false }, { lang: 'es-ES', localService: true, name: 'Mónica' }, { lang: 'es-US', localService: true }];
+  assert.equal(V.elegirVoz(voces).name, 'Mónica');
+  assert.equal(V.elegirVoz([{ lang: 'en-GB' }]), null);
+  assert.equal(V.textoParaLeer('🚨 Llama al 112 → ya'), 'Llama al uno uno dos ya');
+  assert.equal(V.disponible(), false, 'en Node no hay síntesis de voz y no falla');
+});

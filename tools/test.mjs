@@ -56,7 +56,8 @@ try {
   ok('Portada renderiza el botón de emergencia', await page.locator('.tile.sos').isVisible());
   const enlacesPortada = await page.locator('#app a[href^="#/sec/"], #app a[href="#/mapa"]').count();
   const puertas = await page.locator('#app .home-bloque .grid a.tile').count();
-  ok('Portada: puertas ordenadas por momentos (pocas y claras)', puertas >= 12 && puertas <= 18 && enlacesPortada >= 6, `(${puertas} puertas, ${enlacesPortada} secciones directas)`);
+  // v1.22: +3 puertas (Tu plan a medida, Modo crisis, Simulacros): límite de 18 a 21.
+  ok('Portada: puertas ordenadas por momentos (pocas y claras)', puertas >= 12 && puertas <= 21 && enlacesPortada >= 6, `(${puertas} puertas, ${enlacesPortada} secciones directas)`);
   ok('Portada: nombre visible Supervivencia', (await page.textContent('.brand h1')).trim() === 'Supervivencia');
   ok('Portada: SOS y búsqueda + cinco bloques (Prepárate · Si está pasando · Si tienes que salir · Calma · Aprende más)', (await page.locator('.home-bloque').count()) === 6
     && /Prepárate/.test(await page.textContent('#h-preparate')) && /Si está pasando/.test(await page.textContent('#h-pasando')) && /Si tienes que salir/.test(await page.textContent('#h-salir')) && /Aprende más/.test(await page.textContent('#h-aprende')));
@@ -964,6 +965,40 @@ try {
     await page.evaluate(async () => (await import('./assets/js/store.js')).setSetting('theme', 'ahorro'));
     ok('Ahorro de batería: fondo negro puro', (await page.evaluate(() => getComputedStyle(document.body).backgroundColor)) === 'rgb(0, 0, 0)');
     await page.evaluate(async () => (await import('./assets/js/store.js')).setSetting('theme', 'auto'));
+  }
+
+  /* ------------- v1.22: plan a medida, modo crisis, simulacros y voz ------------- */
+  console.log('\n▸ Plan a medida, modo crisis, simulacros y Alex por voz');
+  {
+    await page.goto(BASE + '#/'); await page.waitForSelector('#home-paso:not([hidden])', { timeout: 8000 }).catch(() => {});
+    ok('Portada: «Tu siguiente paso» invita a hacer el plan', /Haz tu plan a medida/.test(await page.textContent('#home-paso')));
+    await page.goto(BASE + '#/sec/mi-plan'); await page.waitForSelector('.mp-asis');
+    await page.click('[data-mas="bebes"]'); await page.click('[data-sig]');
+    for (let i = 0; i < 6; i++) { await page.waitForSelector('[data-sig]'); await page.click('[data-sig]'); }
+    await page.click('[data-k="zona"][data-v="mediterraneo"]'); await page.click('[data-sig]');
+    await page.waitForSelector('.mp-lista', { timeout: 8000 });
+    const plan = await page.textContent('#app');
+    ok('Plan: agua de tu hogar para 3 días', /3 días: 23 l/.test(plan));
+    ok('Plan: kit del bebé y riesgos de la zona', /Kit del bebé/.test(plan) && /Inundación o DANA/.test(plan));
+    await page.evaluate(async () => { const st = await import('./assets/js/store.js'); await st.put('contactos', { id: 'ct-plan', n: 'Ana', t: '600112233', r: 'familia' }); await st.put('kv', { id: 'despensa.inventario', v: { agua: '10' } }); });
+    await page.goto(BASE + '#/'); await page.waitForFunction(() => /litros/.test(document.querySelector('#home-paso')?.textContent || ''), null, { timeout: 8000 }).catch(() => {});
+    ok('Siguiente paso: cruza la despensa («te faltan 13 litros»)', /Te faltan 13 litros de agua para llegar a 3 días/.test(await page.textContent('#home-paso')));
+    await page.goto(BASE + '#/sec/modo-crisis'); await page.click('[data-empezar="apagon"]');
+    await page.waitForSelector('[data-paso="nevera"]'); await page.click('[data-paso="nevera"]');
+    await page.waitForSelector('.cr-timers');
+    ok('Modo crisis: temporizador «revisa la nevera en 4 h»', /en 4 h/.test(await page.textContent('.cr-timers')));
+    ok('Modo crisis: añade los pasos del bebé', (await page.locator('[data-paso="bebe-agua"]').count()) === 1);
+    const dia = await page.evaluate(async () => (await (await import('./assets/js/store.js')).get('kv', 'diario.emergencia')).v.map((x) => x.t).join('|'));
+    ok('Modo crisis: el diario se apunta solo', /Empieza: Apagón/.test(dia) && /Nevera y congelador cerrados/.test(dia));
+    await page.click('#cr-fin'); await page.waitForSelector('[data-empezar]');
+    ok('Modo crisis: se termina y queda en el diario', /Termina: Apagón/.test(await page.evaluate(async () => JSON.stringify((await (await import('./assets/js/store.js')).get('kv', 'diario.emergencia')).v))));
+    await page.goto(BASE + '#/sec/simulacros/humo');
+    for (let i = 0; i < 4; i++) { await page.waitForSelector('[data-op]'); await page.click('[data-op="0"]'); await page.click('#sim-sig'); }
+    await page.waitForSelector('.sim-final');
+    ok('Simulacro: explica y puntúa al final', /de 8 puntos/.test(await page.textContent('.sim-final')));
+    await page.goto(BASE + '#/sec/alex'); await page.waitForSelector('#al-q');
+    ok('Alex: botón para leer en voz alta', (await page.locator('#al-auto').count()) === 1 && (await page.locator('.al-escuchar').count()) === 1);
+    await page.evaluate(async () => { const st = await import('./assets/js/store.js'); for (const k of ['miplan.perfil', 'miplan.hechos', 'despensa.inventario', 'diario.emergencia', 'crisis.activa']) await st.del('kv', k); await st.del('contactos', 'ct-plan'); });
   }
 
   /* ---------------------- 9 ter. NUEVO: Riesgos 2036 ---------------------- */
