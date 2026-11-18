@@ -56,7 +56,8 @@ try {
   ok('Portada renderiza el botón de emergencia', await page.locator('.tile.sos').isVisible());
   const enlacesPortada = await page.locator('#app a[href^="#/sec/"], #app a[href="#/mapa"]').count();
   const puertas = await page.locator('#app .home-bloque .grid a.tile').count();
-  ok('Portada: puertas ordenadas por momentos (pocas y claras)', puertas >= 12 && puertas <= 18 && enlacesPortada >= 6, `(${puertas} puertas, ${enlacesPortada} secciones directas)`);
+  // v1.22: +3 puertas (Tu plan a medida, Modo crisis, Simulacros): límite de 18 a 21.
+  ok('Portada: puertas ordenadas por momentos (pocas y claras)', puertas >= 12 && puertas <= 21 && enlacesPortada >= 6, `(${puertas} puertas, ${enlacesPortada} secciones directas)`);
   ok('Portada: nombre visible Supervivencia', (await page.textContent('.brand h1')).trim() === 'Supervivencia');
   ok('Portada: SOS y búsqueda + cinco bloques (Prepárate · Si está pasando · Si tienes que salir · Calma · Aprende más)', (await page.locator('.home-bloque').count()) === 6
     && /Prepárate/.test(await page.textContent('#h-preparate')) && /Si está pasando/.test(await page.textContent('#h-pasando')) && /Si tienes que salir/.test(await page.textContent('#h-salir')) && /Aprende más/.test(await page.textContent('#h-aprende')));
