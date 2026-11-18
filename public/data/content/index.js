@@ -16,7 +16,7 @@ import { QUIZ, QUIZ_CATEGORIAS, RESPIRACIONES, GROUNDING } from './juegos.js';
 import { RIESGOS, NIVELES, CATEGORIAS_RIESGO } from './riesgos.js';
 import { SITUACIONES } from './familia.js';
 
-export const VERSION = '1.22.0';
+export const VERSION = '1.23.0';
 export const FECHA_CONTENIDO = FECHA_CONSULTA;
 
 export const SECCIONES = [
@@ -49,7 +49,7 @@ export const SECCIONES = [
   { id: 'noticias', t: 'Noticias de última hora', ic: '📰', cls: 'noticias', desc: 'España y el mundo: emergencias, catástrofes y conflictos, cada 30 min' },
   { id: 'alex', t: 'Pregúntale a Alex', ic: '💬', desc: 'Tu asistente de supervivencia, también sin conexión' },
   { id: 'evacuacion', t: 'Plan de evacuación', ic: '🧭', cls: 'evacuacion', desc: 'Por dónde salir según lo que pase: España, Portugal, Francia y por mar' },
-  { id: 'herramientas', t: 'Herramientas SOS', ic: '🔦', desc: 'Avisar «Estoy bien» por SMS, silbato, linterna, señales, diario, tarjeta con QR, walkies y ahorro de batería' },
+  { id: 'herramientas', t: 'Herramientas SOS', ic: '🔦', desc: 'Avisar «Estoy bien» por SMS, silbato, linterna, señales, diario, tarjeta con QR, walkies, ahorro de batería y fondos de pantalla' },
   { id: 'volver', t: 'Volver a casa', ic: '🏠', desc: 'Estoy perdido: hacia dónde queda casa. Y tus rutas a pie sin internet' },
   { id: 'efectivo', t: 'Mi efectivo', ic: '💶', desc: 'Cuánto dinero en efectivo te queda y para cuántos días' },
   { id: 'despensa-calc', t: 'Calculadora de despensa', ic: '🥫', desc: 'Para cuántos días os llega lo que tenéis en casa' },
@@ -296,6 +296,11 @@ export const INDICE = [
     tipo: 'crisis', id: 'modo-crisis', ruta: '#/sec/modo-crisis', t: 'Modo crisis guiado', sec: 'modo-crisis',
     pr: 'critico', sum: 'Si está pasando algo, la app te lleva paso a paso con casillas, temporizadores y el diario apuntándose solo.',
     texto: 'modo crisis guiado paso a paso está pasando apagón inundación dana ola de calor evacuación nevada frío incendio temporizador aviso diario checklist',
+  },
+  {
+    tipo: 'fondos', id: 'fondos-pantalla', ruta: '#/sec/herramientas/fondos', t: 'Fondos de pantalla', sec: 'herramientas',
+    pr: 'recomendado', sum: 'Fondo de emergencia para la pantalla de bloqueo con el 112 y a quién avisar, y fondos decorativos con el estilo de la app.',
+    texto: 'fondo de pantalla fondos wallpaper pantalla de bloqueo imagen móvil decorativo emergencia 112 contactos punto de encuentro información médica brújula camuflaje curvas de nivel cielo estrella polar',
   },
   {
     tipo: 'simulacro', id: 'simulacros', ruta: '#/sec/simulacros', t: 'Simulacros con decisiones', sec: 'simulacros',

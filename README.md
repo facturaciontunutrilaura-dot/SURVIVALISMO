@@ -567,6 +567,25 @@ las copias de seguridad.
   solas. Usa `speechSynthesis` con las voces del sistema (en iPhone y Android
   funcionan sin conexión); prefiere voces locales en español de España.
 
+## 4 ter bis. Fondos de pantalla (v1.23)
+
+`Herramientas SOS → 🖼 Fondos` (`#/sec/herramientas/fondos`, módulos
+`fondos.js` y `fondos-core.js`). Las imágenes se dibujan en el propio móvil
+con canvas, al tamaño real de su pantalla y sin conexión; no hay imágenes
+nuevas en el precache.
+
+- **Fondo de emergencia** para la pantalla de bloqueo: «Llama al 112» y lo que
+  el usuario elija de su plan: nombre, hasta 3 contactos, punto de encuentro,
+  información médica (desactivada de entrada, porque la ve cualquiera) y un
+  código QR. El texto va en la franja libre entre el reloj y los botones
+  inferiores, y se reduce si no cabe. Opciones en `fondos.opciones`.
+- **Fondos decorativos**: rosa de los vientos, curvas de nivel, camuflaje,
+  cielo nocturno (negro puro, con la Osa Mayor y la Estrella Polar) y
+  cuadrícula de mapa. Con semilla fija: el mismo diseño sale siempre igual.
+- **Guardar**: en el móvil abre «Compartir» (→ Guardar imagen); si no, se
+  descarga el PNG. Ningún navegador permite que una web cambie el fondo: la
+  pantalla explica cómo ponerlo en iPhone y Android.
+
 ## 4 quater. Paleta "Military Camo"
 
 El sistema de color se reconstruyó a partir de una paleta de 30 tonos aportada

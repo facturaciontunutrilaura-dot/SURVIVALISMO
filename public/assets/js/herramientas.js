@@ -3,6 +3,7 @@
      · Mensajes «Estoy bien» (SMS a un toque; WhatsApp si hay datos)
      · Silbato · Linterna de pantalla · Señales de auxilio
      · Diario de la emergencia · Tarjeta de emergencia en PDF
+     · Fondos de pantalla (de emergencia y decorativos)
    Todo funciona sin conexión (el SMS va por la red de telefonía).
    ========================================================================= */
 import { el, esc, toast, alSalir } from './ui.js';
@@ -213,7 +214,7 @@ async function tarjeta() {
   n.querySelector('#tj-qr').addEventListener('click', async () => {
     const X = await import('./herramientas-extra.js');
     const caja = n.querySelector('#tj-qr-caja');
-    caja.innerHTML = `${X.svgQR(X.textoQR(await datosTarjeta()), 'Código QR con tus datos de emergencia')}<p class="muted">Enséñalo o haz una captura de pantalla para tenerlo como fondo de la pantalla de bloqueo.</p>`;
+    caja.innerHTML = `${X.svgQR(X.textoQR(await datosTarjeta()), 'Código QR con tus datos de emergencia')}<p class="muted">Enséñalo, o ponlo en la pantalla de bloqueo desde <a href="#/sec/herramientas/fondos">🖼 Fondos</a>.</p>`;
     caja.hidden = false;
   });
   n.querySelector('#tj-pdf').addEventListener('click', async () => {
@@ -235,6 +236,7 @@ const PESTANAS = [
   ['sen', '🆘 Señales', senales], ['dia', '📝 Diario', diario], ['tar', '🪪 Tarjeta y QR', tarjeta],
   ['wk', '📻 Walkie', async () => (await import('./herramientas-extra.js')).walkie()],
   ['bat', '🔋 Batería', async () => (await import('./herramientas-extra.js')).bateria()],
+  ['fon', '🖼 Fondos', async () => (await import('./fondos.js')).fondosView()],
 ];
 
 export async function herramientasView(inicial) {
@@ -252,6 +254,6 @@ export async function herramientasView(inicial) {
   }
   n.querySelectorAll('[data-hr]').forEach((b) => b.addEventListener('click', () => pinta(b.dataset.hr)));
   alSalir(destruir);
-  await pinta({ mensajes: 'msg', silbato: 'sil', linterna: 'lin', senales: 'sen', diario: 'dia', tarjeta: 'tar', walkie: 'wk', bateria: 'bat' }[inicial] || 'msg');
+  await pinta({ mensajes: 'msg', silbato: 'sil', linterna: 'lin', senales: 'sen', diario: 'dia', tarjeta: 'tar', walkie: 'wk', bateria: 'bat', fondos: 'fon' }[inicial] || 'msg');
   return n;
 }

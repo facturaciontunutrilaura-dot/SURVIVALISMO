@@ -1182,6 +1182,7 @@ const TIPOS_BUSQUEDA = {
   plan: { t: 'Tu plan', ic: '🧩', f: 'otros' },
   crisis: { t: 'Modo crisis', ic: '🚨', f: 'sos' },
   simulacro: { t: 'Simulacro', ic: '🎯', f: 'otros' },
+  fondos: { t: 'Fondos', ic: '🖼', f: 'otros' },
 };
 const FILTROS_BUSQUEDA = [['todo', 'Todo'], ['sos', '🚨 SOS'], ['manual', '📄 Manual'], ['listas', '☑ Checklists'], ['otros', 'Otros']];
 let buscador = null;
