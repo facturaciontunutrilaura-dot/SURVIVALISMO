@@ -842,7 +842,7 @@ try {
   {
     await page.evaluate(async () => { const st = await import('./assets/js/store.js'); await st.put('contactos', { id: 'ct-prueba', n: 'Ana (hermana)', t: '600 11 22 33', r: 'externo' }); });
     await page.goto(BASE + '#/sec/herramientas'); await page.reload(); await page.waitForSelector('#ms-txt');
-    ok('Herramientas: ocho pestañas (Estoy bien, silbato, linterna, señales, diario, tarjeta, walkie y batería)', (await page.locator('[data-hr]').count()) === 8);
+    ok('Herramientas: nueve pestañas (Estoy bien, silbato, linterna, señales, diario, tarjeta, walkie, batería y fondos)', (await page.locator('[data-hr]').count()) === 9);
     const sms = await page.getAttribute('.ms-c a[href^="sms:"]', 'href');
     ok('Estoy bien: SMS a un toque con el número y el texto ya escritos', /^sms:\+34600112233/.test(sms) && /Estoy%20bien/.test(sms), sms);
     await page.click('[data-est="voy"]');
