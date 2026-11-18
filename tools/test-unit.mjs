@@ -1195,3 +1195,23 @@ test('Alex por voz: voz local en español y texto limpio', async () => {
   assert.equal(V.textoParaLeer('🚨 Llama al 112 → ya'), 'Llama al uno uno dos ya');
   assert.equal(V.disponible(), false, 'en Node no hay síntesis de voz y no falla');
 });
+
+test('fondos de pantalla: tamaño, azar con semilla y datos de emergencia elegidos', async () => {
+  const F = await imp('assets/js/fondos-core.js');
+  assert.deepEqual(F.tamanoPantalla(390, 844, 3), { w: 1170, h: 2532 });
+  assert.deepEqual(F.tamanoPantalla(844, 390, 3), { w: 1170, h: 2532 }, 'en horizontal también sale vertical');
+  assert.deepEqual(F.tamanoPantalla(1920, 1080, 1), { w: 1170, h: 2532 }, 'escritorio → móvil típico');
+  const g = F.tamanoPantalla(600, 1300, 4); assert.ok(g.w <= 1440 && g.h <= 3200);
+  const a = F.azar(42), b = F.azar(42); assert.equal(a(), b()); assert.ok(a() >= 0 && a() < 1);
+  assert.deepEqual(F.partirTexto('uno dos tres cuatro', 9, (t) => t.length), ['uno dos', 'tres', 'cuatro']);
+  const d = { nombre: ' Laura ', contactos: [{ n: 'Ana', t: '600' }, { n: 'Luis', t: '' }, { n: 'B', t: '1' }, { n: 'C', t: '2' }, { n: 'D', t: '3' }], encuentro: 'Plaza', medico: 'Alergia' };
+  const base = F.bloquesEmergencia(d, { nombre: true, contactos: true, encuentro: true, medico: false });
+  assert.equal(base[0].tipo, 'aviso'); assert.ok(base.some((x) => x.t === 'Llama al 112'));
+  assert.equal(base.filter((x) => x.tipo === 'contacto').length, 3, 'como mucho 3 contactos y solo con teléfono');
+  assert.ok(!base.some((x) => x.t === 'Alergia'), 'la información médica va desactivada de entrada');
+  assert.ok(F.bloquesEmergencia(d, { medico: true }).some((x) => x.t === 'Alergia'));
+  assert.deepEqual(F.bloquesEmergencia({}, {}).map((x) => x.tipo), ['aviso', 'tel'], 'sin datos: solo el 112');
+  assert.equal(F.DISENOS.length, 5);
+  const { esDatoPropio } = await imp('assets/js/store.js');
+  assert.ok(esDatoPropio('kv', 'fondos.opciones'));
+});

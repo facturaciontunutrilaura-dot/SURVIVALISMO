@@ -28,6 +28,8 @@
   "./assets/js/entrenamiento.js",
   "./assets/js/evacuacion.js",
   "./assets/js/familia.js",
+  "./assets/js/fondos-core.js",
+  "./assets/js/fondos.js",
   "./assets/js/herramientas-core.js",
   "./assets/js/herramientas-extra.js",
   "./assets/js/herramientas.js",

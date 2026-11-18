@@ -842,7 +842,7 @@ try {
   {
     await page.evaluate(async () => { const st = await import('./assets/js/store.js'); await st.put('contactos', { id: 'ct-prueba', n: 'Ana (hermana)', t: '600 11 22 33', r: 'externo' }); });
     await page.goto(BASE + '#/sec/herramientas'); await page.reload(); await page.waitForSelector('#ms-txt');
-    ok('Herramientas: ocho pestañas (Estoy bien, silbato, linterna, señales, diario, tarjeta, walkie y batería)', (await page.locator('[data-hr]').count()) === 8);
+    ok('Herramientas: nueve pestañas (Estoy bien, silbato, linterna, señales, diario, tarjeta, walkie, batería y fondos)', (await page.locator('[data-hr]').count()) === 9);
     const sms = await page.getAttribute('.ms-c a[href^="sms:"]', 'href');
     ok('Estoy bien: SMS a un toque con el número y el texto ya escritos', /^sms:\+34600112233/.test(sms) && /Estoy%20bien/.test(sms), sms);
     await page.click('[data-est="voy"]');
@@ -998,6 +998,11 @@ try {
     ok('Simulacro: explica y puntúa al final', /de 8 puntos/.test(await page.textContent('.sim-final')));
     await page.goto(BASE + '#/sec/alex'); await page.waitForSelector('#al-q');
     ok('Alex: botón para leer en voz alta', (await page.locator('#al-auto').count()) === 1 && (await page.locator('.al-escuchar').count()) === 1);
+    await page.goto(BASE + '#/sec/herramientas/fondos');
+    await page.waitForFunction(() => document.querySelector('#fd-em')?.naturalWidth > 1000 && document.querySelector('#fd-dec')?.naturalWidth > 1000, null, { timeout: 15000 }).catch(() => {});
+    ok('Fondos: crea el de emergencia y el decorativo al tamaño de la pantalla', await page.evaluate(() => document.querySelector('#fd-em').naturalHeight > document.querySelector('#fd-em').naturalWidth * 1.3));
+    const [fd] = await Promise.all([page.waitForEvent('download', { timeout: 8000 }).catch(() => null), page.click('[data-guardar="dec"]')]);
+    ok('Fondos: se guarda como imagen PNG', !!fd && /^fondo-brujula-\d+x\d+\.png$/.test(fd.suggestedFilename()));
     await page.evaluate(async () => { const st = await import('./assets/js/store.js'); for (const k of ['miplan.perfil', 'miplan.hechos', 'despensa.inventario', 'diario.emergencia', 'crisis.activa']) await st.del('kv', k); await st.del('contactos', 'ct-plan'); });
   }
 
