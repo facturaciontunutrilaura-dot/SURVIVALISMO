@@ -216,7 +216,7 @@ function vHome() {
     const href = g ? `#/grupo/${p.slice(2)}` : rutaSeccion(p);
     return `<a class="tile${g ? '' : clase(s)}" href="${href}">
       <span class="ic" aria-hidden="true">${s.ic}</span>
-      <span><span class="nm">${esc(s.t)}</span><span class="ds">${esc(s.desc)}</span></span>
+      <span><span class="nm">${esc(s.t)}</span><span class="ds">${esc(s.dc || s.desc)}</span></span>
     </a>`;
   };
 
